@@ -5,7 +5,7 @@ import collections
 import io
 import logging
 
-import pysftp
+import paramiko
 from cloudbridge.base.resources import (BaseAttachmentInfo, BaseBucket,
                                         BaseBucketObject, BaseFloatingIP,
                                         BaseInstance, BaseInternetGateway,
@@ -1205,7 +1205,7 @@ class AzureInstance(BaseInstance):
         chines/linux/capture-image. In azure, we need to deprovision the VM
         before capturing.
         To deprovision, login to the VM and execute the `waagent deprovision`
-        command. To do this programmatically, use pysftp to ssh into the VM
+        command. To do this programmatically, use paramiko to ssh into the VM
         and executing deprovision command. To SSH into the VM programmatically
         however, we need to pass private key file path, so we have modified the
         CloudBridge interface to pass the private key file path
@@ -1236,16 +1236,18 @@ class AzureInstance(BaseInstance):
         return AzureMachineImage(self._provider, image)
 
     def _deprovision(self, private_key_path):
-        cnopts = pysftp.CnOpts()
-        cnopts.hostkeys = None
-        if private_key_path:
-            with pysftp.\
-                    Connection(self.public_ips[0],
-                               username=self._provider.vm_default_user_name,
-                               cnopts=cnopts,
-                               private_key=private_key_path) as sftp:
-                sftp.execute('sudo waagent -deprovision -force')
-                sftp.close()
+        if not private_key_path:
+            return
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        try:
+            client.connect(
+                hostname=self.public_ips[0],
+                username=self._provider.vm_default_user_name,
+                key_filename=private_key_path)
+            client.exec_command('sudo waagent -deprovision -force')
+        finally:
+            client.close()
 
     def add_floating_ip(self, floating_ip):
         """
@@ -1432,11 +1434,11 @@ class AzureKeyPair(BaseKeyPair):
 
     @property
     def id(self):
-        return self._key_pair.Name
+        return self._key_pair['Name']
 
     @property
     def name(self):
-        return self._key_pair.Name
+        return self._key_pair['Name']
 
 
 class AzureRouter(BaseRouter):

@@ -31,27 +31,28 @@ REQS_AWS = [
 # below are compatible with each other. List individual libraries instead
 # of using the azure umbrella package to speed up installation.
 REQS_AZURE = [
-    'msrestazure<1.0.0',
     'azure-identity<2.0.0',
     'azure-common<2.0.0',
+    'azure-core<2.0.0',
     'azure-mgmt-devtestlabs<10.0.0',
-    'azure-mgmt-resource<24.0.0',
-    'azure-mgmt-compute>=27.2.0,<31.0.0',
-    'azure-mgmt-network<26.0.0',
-    'azure-mgmt-storage<22.0.0',
+    'azure-mgmt-resource<26.0.0',
+    'azure-mgmt-subscription<4.0.0',
+    'azure-mgmt-compute>=27.2.0,<39.0.0',
+    'azure-mgmt-network<31.0.0',
+    'azure-mgmt-storage<25.0.0',
     'azure-storage-blob<13.0.0',
-    'azure-cosmosdb-table<2.0.0',
-    'pysftp<1.0.0'
+    'azure-data-tables<13.0.0',
+    'paramiko<6.0.0'
 ]
 REQS_GCP = [
     'google-api-python-client>=2.0,<3.0.0'
 ]
 REQS_OPENSTACK = [
-    'openstacksdk>=0.12.0,<4.0.0',
-    'python-novaclient>=7.0.0,<19.0',
+    'openstacksdk>=0.12.0,<5.0.0',
+    'python-novaclient>=7.0.0,<20.0',
     'python-swiftclient>=3.2.0,<5.0',
-    'python-neutronclient>=6.0.0,<12.0',
-    'python-keystoneclient>=3.13.0,<6.0'
+    'python-neutronclient>=6.0.0,<13.0',
+    'python-keystoneclient>=3.13.0,<7.0'
 ]
 REQS_FULL = REQS_AWS + REQS_GCP + REQS_OPENSTACK + REQS_AZURE
 # httpretty is required with/for moto 1.0.0 or AWS tests fail

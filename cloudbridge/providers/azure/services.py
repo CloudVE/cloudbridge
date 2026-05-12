@@ -877,7 +877,7 @@ class AzureInstanceService(BaseInstanceService):
                             "path":
                                 "/home/{}/.ssh/authorized_keys".format(
                                         self.provider.vm_default_user_name),
-                                "key_data": key_pair._key_pair.Key
+                                "key_data": key_pair._key_pair['Key']
                         }]
                     }
                 }

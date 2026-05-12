@@ -7,17 +7,18 @@ from cloudbridge.interfaces.exceptions import (DuplicateResourceException,
                                                ProviderConnectionException,
                                                WaitStateException)
 
+from azure.core.credentials import AzureNamedKeyCredential
 from azure.core.exceptions import (ClientAuthenticationError,
                                    HttpResponseError, ResourceExistsError,
                                    ResourceNotFoundError)
-from azure.cosmosdb.table.tableservice import TableService
+from azure.data.tables import TableServiceClient
 from azure.identity import ClientSecretCredential
 from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.resource import ResourceManagementClient
-from azure.mgmt.resource.subscriptions import SubscriptionClient
 from azure.mgmt.storage import StorageManagementClient
+from azure.mgmt.subscription import SubscriptionClient
 from azure.storage.blob import (BlobSasPermissions, BlobServiceClient,
                                 generate_blob_sas)
 
@@ -172,7 +173,8 @@ class AzureClient(object):
         self._compute_client = None
         self._access_key_result = None
         self._block_blob_service = None
-        self._table_service = None
+        self._table_service_client = None
+        self._public_key_table_client = None
         self._storage_account = None
 
         log.debug("azure subscription : %s", self.subscription_id)
@@ -273,15 +275,18 @@ class AzureClient(object):
     @property
     def table_service(self):
         self._get_or_create_storage_account()
-        if not self._table_service:
-            self._table_service = TableService(
+        if not self._table_service_client:
+            credential = AzureNamedKeyCredential(
                 self.storage_account,
                 self.access_key_result.keys[0].value)
-        if not self._table_service. \
-                exists(table_name=self.public_key_storage_table_name):
-            self._table_service.create_table(
-                self.public_key_storage_table_name)
-        return self._table_service
+            self._table_service_client = TableServiceClient(
+                endpoint=f"https://{self.storage_account}.table.core.windows.net/",
+                credential=credential)
+        if not self._public_key_table_client:
+            self._public_key_table_client = \
+                self._table_service_client.create_table_if_not_exists(
+                    table_name=self.public_key_storage_table_name)
+        return self._public_key_table_client
 
     def blob_client(self, container_name, blob_name):
         return self.blob_service.get_blob_client(container=container_name, blob=blob_name)
@@ -845,27 +850,29 @@ class AzureClient(object):
             ).result()
 
     def create_public_key(self, entity):
-        return self.table_service. \
-            insert_or_replace_entity(self.public_key_storage_table_name,
-                                     entity)
+        return self.table_service.upsert_entity(entity)
 
     def get_public_key(self, name):
-        entities = self.table_service. \
-            query_entities(self.public_key_storage_table_name,
-                           "Name eq '{0}'".format(name), num_results=1)
-
-        return entities.items[0] if len(entities.items) > 0 else None
+        entities = list(self.table_service.query_entities(
+            query_filter="Name eq '{0}'".format(name),
+            results_per_page=1))
+        return entities[0] if entities else None
 
     def delete_public_key(self, entity):
-        self.table_service.delete_entity(self.public_key_storage_table_name,
-                                         entity.PartitionKey, entity.RowKey)
+        self.table_service.delete_entity(
+            partition_key=entity['PartitionKey'],
+            row_key=entity['RowKey'])
 
     def list_public_keys(self, partition_key, limit=None, marker=None):
-        entities = self.table_service. \
-            query_entities(self.public_key_storage_table_name,
-                           "PartitionKey eq '{0}'".format(partition_key),
-                           marker=marker, num_results=limit)
-        return (entities.items, entities.next_marker)
+        pager = self.table_service.query_entities(
+            query_filter="PartitionKey eq '{0}'".format(partition_key),
+            results_per_page=limit).by_page(continuation_token=marker)
+        try:
+            page = next(pager)
+        except StopIteration:
+            return ([], None)
+        items = list(page)
+        return (items, pager.continuation_token)
 
     def delete_route_table(self, route_table_name):
         self.network_management_client. \
