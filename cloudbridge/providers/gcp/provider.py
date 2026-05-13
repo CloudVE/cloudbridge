@@ -126,6 +126,12 @@ class GCPResources(object):
             method = methods['get']
             parameters = method['parameterOrder']
 
+            # Skip resources using gRPC reserved-character placeholders
+            # ({+param}); string.Template can't handle them and cloudbridge
+            # does not address these resources.
+            if '{+' in method['path']:
+                continue
+
             # We would like to change a path like
             # {project}/regions/{region}/addresses/{address} to a pattern like
             # (PROJECT REGEX)/regions/(REGION REGEX)/addresses/(ADDRESS REGEX).
