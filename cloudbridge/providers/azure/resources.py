@@ -609,7 +609,7 @@ class AzureMachineImage(BaseMachineImage):
         if self.is_gallery_image:
             return azure_helpers.generate_urn(self._image)
         else:
-            return self._image.id
+            return azure_helpers.normalize_rg_case(self._image.id)
 
     @property
     def name(self):
