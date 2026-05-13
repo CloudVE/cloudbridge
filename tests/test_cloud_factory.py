@@ -37,10 +37,9 @@ class CloudFactoryTestCase(unittest.TestCase):
         self.assertIsNone(CloudProviderFactory().get_provider_class("aws1"))
 
     def test_find_provider_include_mocks(self):
-        providers = CloudProviderFactory().get_all_provider_classes()
         self.assertTrue(
             any(cls for cls
-                in providers
+                in CloudProviderFactory().get_all_provider_classes()
                 if issubclass(cls, TestMockHelperMixin)),
             "expected to find at least one mock provider")
 
