@@ -37,7 +37,8 @@ from azure.mgmt.compute.models import (CreationData, DataDisk,
                                        StorageProfile)
 from azure.mgmt.network.models import (AddressSpace,
                                        NetworkInterfaceIPConfiguration,
-                                       SubResource)
+                                       PublicIPAddressSku,
+                                       PublicIPAddressSkuName, SubResource)
 
 from .resources import (AzureBucket, AzureBucketObject, AzureFloatingIP,
                         AzureInstance, AzureInternetGateway, AzureKeyPair,
@@ -1355,9 +1356,12 @@ class AzureFloatingIPService(BaseFloatingIPService):
     @dispatch(event="provider.networking.floating_ips.create",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def create(self, gateway):
+        # Basic-SKU public IPs are retired in most Azure subscriptions
+        # (quota=0). Standard SKU requires Static allocation.
         public_ip_parameters = {
             'location': self.provider.azure_client.region_name,
-            'public_ip_allocation_method': 'Static'
+            'public_ip_allocation_method': 'Static',
+            'sku': PublicIPAddressSku(name=PublicIPAddressSkuName.STANDARD),
         }
 
         public_ip_name = AzureFloatingIP._generate_name_from_label(
