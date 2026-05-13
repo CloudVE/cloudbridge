@@ -23,6 +23,7 @@ from cloudbridge.interfaces.resources import (Instance, MachineImageState,
 
 from azure.common import AzureException
 from azure.core.exceptions import ResourceNotFoundError
+from azure.mgmt.compute.models import SubResource as ComputeSubResource
 from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network.models import NetworkSecurityGroup
 
@@ -1225,9 +1226,7 @@ class AzureInstance(BaseInstance):
 
         create_params = {
             'location': self._provider.region_name,
-            'source_virtual_machine': {
-                'id': self.resource_id
-            },
+            'source_virtual_machine': ComputeSubResource(id=self.resource_id),
             'tags': {'Label': label}
         }
 

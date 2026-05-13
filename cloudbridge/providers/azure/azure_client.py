@@ -14,10 +14,19 @@ from azure.core.exceptions import (ClientAuthenticationError,
 from azure.data.tables import TableServiceClient
 from azure.identity import ClientSecretCredential
 from azure.mgmt.compute import ComputeManagementClient
+from azure.mgmt.compute.models import (CreationData, Disk, DiskUpdate, Image,
+                                       Snapshot, SnapshotUpdate,
+                                       VirtualMachine)
 from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network import NetworkManagementClient
+from azure.mgmt.network.models import (NetworkInterface,
+                                       NetworkSecurityGroup, PublicIPAddress,
+                                       RouteTable, SecurityRule, SubResource,
+                                       Subnet, VirtualNetwork)
 from azure.mgmt.resource import ResourceManagementClient
+from azure.mgmt.resource.resources.models import ResourceGroup
 from azure.mgmt.storage import StorageManagementClient
+from azure.mgmt.storage.models import Sku, StorageAccountCreateParameters
 from azure.mgmt.subscription import SubscriptionClient
 from azure.storage.blob import (BlobSasPermissions, BlobServiceClient,
                                 generate_blob_sas)
@@ -296,7 +305,7 @@ class AzureClient(object):
 
     def create_resource_group(self, name, parameters):
         return self.resource_client.resource_groups. \
-            create_or_update(name, parameters)
+            create_or_update(name, ResourceGroup(**parameters))
 
     def get_storage_account(self, storage_account):
         return self.storage_client.storage_accounts. \
@@ -304,7 +313,8 @@ class AzureClient(object):
 
     def create_storage_account(self, name, params):
         return self.storage_client.storage_accounts. \
-            begin_create(self.resource_group, name.lower(), params).result()
+            begin_create(self.resource_group, name.lower(),
+                         StorageAccountCreateParameters(**params)).result()
 
     # Create a storage account. To prevent a race condition, try
     # to get or create at least twice
@@ -320,9 +330,7 @@ class AzureClient(object):
                     self.get_storage_account(self.storage_account)
             except ResourceNotFoundError:
                 storage_account_params = {
-                    'sku': {
-                        'name': 'Standard_LRS'
-                    },
+                    'sku': Sku(name='Standard_LRS'),
                     'kind': 'storage',
                     'location': self.region_name,
                 }
@@ -367,17 +375,19 @@ class AzureClient(object):
 
     def create_vm_firewall(self, name, parameters):
         return self.network_management_client.network_security_groups. \
-            begin_create_or_update(self.resource_group, name,
-                                   parameters).result()
+            begin_create_or_update(
+                self.resource_group, name,
+                NetworkSecurityGroup(**parameters)).result()
 
     def update_vm_firewall_tags(self, fw_id, tags):
         url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
                                              fw_id)
         name = url_params.get(VM_FIREWALL_NAME, "")
         return self.network_management_client.network_security_groups. \
-            begin_create_or_update(self.resource_group, name,
-                                   {'tags': tags,
-                                    'location': self.region_name}).result()
+            begin_create_or_update(
+                self.resource_group, name,
+                NetworkSecurityGroup(
+                    tags=tags, location=self.region_name)).result()
 
     def get_vm_firewall(self, fw_id):
         url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
@@ -398,9 +408,14 @@ class AzureClient(object):
         url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
                                              fw_id)
         vm_firewall_name = url_params.get(VM_FIREWALL_NAME, "")
+        # parameters may be either a raw dict (from VMFirewallRuleService) or
+        # an existing SecurityRule model (when overriding default rules from
+        # the firewall.default_security_rules list).
+        rule = (parameters if isinstance(parameters, SecurityRule)
+                else SecurityRule(**parameters))
         return self.network_management_client.security_rules. \
             begin_create_or_update(self.resource_group, vm_firewall_name,
-                                   rule_name, parameters).result()
+                                   rule_name, rule).result()
 
     def delete_vm_firewall_rule(self, fw_rule_id, vm_firewall):
         url_params = azure_helpers.parse_url(VM_FIREWALL_RULE_RESOURCE_ID,
@@ -481,14 +496,14 @@ class AzureClient(object):
         return self.compute_client.disks.begin_create_or_update(
             self.resource_group,
             disk_name,
-            params
+            Disk(**params)
         ).result()
 
     def create_snapshot_disk(self, disk_name, params):
         return self.compute_client.disks.begin_create_or_update(
             self.resource_group,
             disk_name,
-            params
+            Disk(**params)
         ).result()
 
     def get_disk(self, disk_id):
@@ -514,7 +529,7 @@ class AzureClient(object):
         return self.compute_client.disks.begin_update(
             self.resource_group,
             disk_name,
-            {'tags': tags}  # type: ignore
+            DiskUpdate(tags=tags)
         ).wait()
 
     def list_snapshots(self):
@@ -532,14 +547,14 @@ class AzureClient(object):
         snapshot = self.compute_client.snapshots.begin_create_or_update(
             self.resource_group,
             snapshot_name,
-            {
-                'location': volume.location,
-                'creation_data': {
-                    'create_option': 'Copy',
-                    'source_uri': volume.id
-                },
-                'tags': tags
-            }
+            Snapshot(
+                location=volume.location,
+                creation_data=CreationData(
+                    create_option='Copy',
+                    source_uri=volume.id
+                ),
+                tags=tags
+            )
         ).result()
 
         self.update_snapshot_tags(snapshot.id, tags)
@@ -559,7 +574,7 @@ class AzureClient(object):
         return self.compute_client.snapshots.begin_update(
             self.resource_group,
             snapshot_name,
-            {'tags': tags}  # type: ignore
+            SnapshotUpdate(tags=tags)
         ).wait()
 
     def is_gallery_image(self, image_id):
@@ -570,7 +585,8 @@ class AzureClient(object):
 
     def create_image(self, name, params):
         return self.compute_client.images. \
-            begin_create_or_update(self.resource_group, name, params).result()
+            begin_create_or_update(
+                self.resource_group, name, Image(**params)).result()
 
     def delete_image(self, image_id):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
@@ -607,11 +623,10 @@ class AzureClient(object):
         else:
             name = url_params.get(IMAGE_NAME, "")
             return self.compute_client.images. \
-                begin_create_or_update(self.resource_group, name,
-                                       {
-                                           'tags': tags,
-                                           'location': self.region_name
-                                       }).result()
+                begin_create_or_update(
+                    self.resource_group, name,
+                    Image(tags=tags,
+                          location=self.region_name)).result()
 
     def list_vm_types(self):
         return self.compute_client.virtual_machine_sizes. \
@@ -630,7 +645,9 @@ class AzureClient(object):
 
     def create_network(self, name, params):
         return self.network_management_client.virtual_networks. \
-            begin_create_or_update(self.networking_resource_group, name, parameters=params).result()
+            begin_create_or_update(
+                self.networking_resource_group, name,
+                parameters=VirtualNetwork(**params)).result()
 
     def delete_network(self, network_id):
         url_params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
@@ -673,7 +690,7 @@ class AzureClient(object):
                 self.networking_resource_group,
                 network_name,
                 subnet_name,
-                params
+                Subnet(**params)
             )
         subnet_info = result_create.result()
 
@@ -710,8 +727,10 @@ class AzureClient(object):
 
     def create_floating_ip(self, public_ip_name, public_ip_parameters):
         return self.network_management_client.public_ip_addresses. \
-            begin_create_or_update(self.networking_resource_group,
-                                   public_ip_name, public_ip_parameters).result()
+            begin_create_or_update(
+                self.networking_resource_group,
+                public_ip_name,
+                PublicIPAddress(**public_ip_parameters)).result()
 
     def get_floating_ip(self, public_ip_id):
         url_params = azure_helpers.parse_url(PUBLIC_IP_RESOURCE_ID,
@@ -732,8 +751,13 @@ class AzureClient(object):
         url_params = azure_helpers.parse_url(PUBLIC_IP_RESOURCE_ID,
                                              fip_id)
         fip_name = url_params.get(PUBLIC_IP_NAME, "")
+        # Accept either a full PublicIPAddress model (refresh-and-update flow)
+        # or a raw tags dict.
+        fip = (tags if isinstance(tags, PublicIPAddress)
+               else PublicIPAddress(tags=tags, location=self.region_name))
         self.network_management_client.public_ip_addresses. \
-            begin_create_or_update(self.networking_resource_group, fip_name, tags).result()
+            begin_create_or_update(
+                self.networking_resource_group, fip_name, fip).result()
 
     def list_floating_ips(self):
         return self.network_management_client.public_ip_addresses.list(
@@ -777,14 +801,18 @@ class AzureClient(object):
 
     def create_vm(self, vm_name, params):
         return self.compute_client.virtual_machines. \
-            begin_create_or_update(self.resource_group, vm_name, params).result()
+            begin_create_or_update(
+                self.resource_group, vm_name,
+                VirtualMachine(**params)).result()
 
     def update_vm(self, vm_id, params):
         url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
                                              vm_id)
         vm_name = url_params.get(VM_NAME, "")
         return self.compute_client.virtual_machines. \
-            begin_create_or_update(self.resource_group, vm_name, params).wait()
+            begin_create_or_update(
+                self.resource_group, vm_name,
+                VirtualMachine(**params)).wait()
 
     def deallocate_vm(self, vm_id):
         url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
@@ -832,11 +860,15 @@ class AzureClient(object):
         nic_params = azure_helpers.\
             parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
         nic_name = nic_params.get(NETWORK_INTERFACE_NAME, "")
+        # update_nic is called with the existing NIC model (from get_nic());
+        # create_nic is called with a raw dict from services.py. Accept both.
+        nic = (params if isinstance(params, NetworkInterface)
+               else NetworkInterface(**params))
         async_nic_creation = self.network_management_client. \
             network_interfaces.begin_create_or_update(
                 self.resource_group,
                 nic_name,
-                params
+                nic
             )
         nic_info = async_nic_creation.result()
         return nic_info
@@ -846,7 +878,7 @@ class AzureClient(object):
             network_interfaces.begin_create_or_update(
                 self.resource_group,
                 nic_name,
-                params
+                NetworkInterface(**params)
             ).result()
 
     def create_public_key(self, entity):
@@ -891,9 +923,7 @@ class AzureClient(object):
             subnet_name
         )
         if subnet_info:
-            subnet_info.route_table = {
-                'id': route_table_id
-            }
+            subnet_info.route_table = SubResource(id=route_table_id)
 
             result_create = self.network_management_client. \
                 subnets.begin_create_or_update(
@@ -945,7 +975,7 @@ class AzureClient(object):
         return self.network_management_client. \
             route_tables.begin_create_or_update(
              self.resource_group,
-             route_table_name, params).result()
+             route_table_name, RouteTable(**params)).result()
 
     def update_route_table_tags(self, route_table_name, tags):
         self.network_management_client.route_tables. \

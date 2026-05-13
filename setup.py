@@ -31,17 +31,20 @@ REQS_AWS = [
 # below are compatible with each other. List individual libraries instead
 # of using the azure umbrella package to speed up installation.
 REQS_AZURE = [
-    'azure-identity<2.0.0',
-    'azure-common<2.0.0',
-    'azure-core<2.0.0',
-    'azure-mgmt-devtestlabs<10.0.0',
-    'azure-mgmt-resource<26.0.0',
-    'azure-mgmt-subscription<4.0.0',
-    'azure-mgmt-compute>=27.2.0,<39.0.0',
-    'azure-mgmt-network<31.0.0',
-    'azure-mgmt-storage<25.0.0',
-    'azure-storage-blob<13.0.0',
-    'azure-data-tables<13.0.0',
+    # Minimums match SDK generation tested against the model-class
+    # serialization fixes in cloudbridge/providers/azure/. Older SDKs may
+    # work but are not covered by integration tests.
+    'azure-identity>=1.20.0,<2.0.0',
+    'azure-common>=1.1.28,<2.0.0',
+    'azure-core>=1.30.0,<2.0.0',
+    'azure-mgmt-devtestlabs>=9.0.0,<10.0.0',
+    'azure-mgmt-resource>=23.0.0,<26.0.0',
+    'azure-mgmt-subscription>=3.0.0,<4.0.0',
+    'azure-mgmt-compute>=34.0.0,<39.0.0',
+    'azure-mgmt-network>=28.0.0,<31.0.0',
+    'azure-mgmt-storage>=22.0.0,<25.0.0',
+    'azure-storage-blob>=12.20.0,<13.0.0',
+    'azure-data-tables>=12.4.0,<13.0.0',
     'paramiko<6.0.0'
 ]
 REQS_GCP = [

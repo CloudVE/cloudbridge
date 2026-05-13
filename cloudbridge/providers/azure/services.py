@@ -27,7 +27,17 @@ from cloudbridge.interfaces.resources import (MachineImage, Network, Snapshot,
                                               VMType, Volume)
 from azure.core.exceptions import ResourceNotFoundError
 
-from azure.mgmt.compute.models import DiskCreateOption
+from azure.mgmt.compute.models import (CreationData, DataDisk,
+                                       DiskCreateOption, HardwareProfile,
+                                       ImageReference, LinuxConfiguration,
+                                       ManagedDiskParameters,
+                                       NetworkInterfaceReference,
+                                       NetworkProfile, OSDisk, OSProfile,
+                                       SshConfiguration, SshPublicKey,
+                                       StorageProfile)
+from azure.mgmt.network.models import (AddressSpace,
+                                       NetworkInterfaceIPConfiguration,
+                                       SubResource)
 
 from .resources import (AzureBucket, AzureBucketObject, AzureFloatingIP,
                         AzureInstance, AzureInternetGateway, AzureKeyPair,
@@ -387,10 +397,10 @@ class AzureVolumeService(BaseVolumeService):
         if snapshot:
             params = {
                 'location': zone_name,
-                'creation_data': {
-                    'create_option': DiskCreateOption.copy,
-                    'source_uri': snapshot.resource_id
-                },
+                'creation_data': CreationData(
+                    create_option=DiskCreateOption.copy,
+                    source_uri=snapshot.resource_id,
+                ),
                 'tags': tags
             }
 
@@ -401,9 +411,9 @@ class AzureVolumeService(BaseVolumeService):
             params = {
                 'location': zone_name,
                 'disk_size_gb': size,
-                'creation_data': {
-                    'create_option': DiskCreateOption.empty
-                },
+                'creation_data': CreationData(
+                    create_option=DiskCreateOption.empty,
+                ),
                 'tags': tags
             }
 
@@ -689,56 +699,52 @@ class AzureInstanceService(BaseInstanceService):
         if image.is_gallery_image:
             # pylint:disable=protected-access
             reference = image._image.as_dict()
-            image_ref = {
-                'publisher': reference['publisher'],
-                'offer': reference['offer'],
-                'sku': reference['sku'],
-                'version': reference['version']
-            }
+            image_ref = ImageReference(
+                publisher=reference['publisher'],
+                offer=reference['offer'],
+                sku=reference['sku'],
+                version=reference['version'],
+            )
         else:
-            image_ref = {
-                'id': image.resource_id
-            }
+            image_ref = ImageReference(id=image.resource_id)
 
-        storage_profile = {
-            'image_reference': image_ref,
-            "os_disk": {
-                "name": instance_name + '_os_disk',
-                "create_option": DiskCreateOption.from_image
-            },
-        }
+        os_disk = OSDisk(
+            name=instance_name + '_os_disk',
+            create_option=DiskCreateOption.from_image,
+        )
 
+        data_disks = None
         if launch_config:
             data_disks, root_disk_size = self._process_block_device_mappings(
                 launch_config)
-            if data_disks:
-                storage_profile['data_disks'] = data_disks
             if root_disk_size:
-                storage_profile['os_disk']['disk_size_gb'] = root_disk_size
+                os_disk.disk_size_gb = root_disk_size
 
-        return storage_profile
+        return StorageProfile(
+            image_reference=image_ref,
+            os_disk=os_disk,
+            data_disks=data_disks or None,
+        )
 
     def _process_block_device_mappings(self, launch_config):
         """
         Processes block device mapping information
-        and returns a Data disk dictionary list. If new volumes
+        and returns a DataDisk model list. If new volumes
         are requested (source is None and destination is VOLUME), they will be
         created and the relevant volume ids included in the mapping.
         """
         data_disks = []
         root_disk_size = None
 
-        def append_disk(disk_def, device_no, delete_on_terminate):
-            # In azure, there is no option to specify terminate disks
-            # (similar to AWS delete_on_terminate) on VM delete.
-            # This method uses the azure tags functionality to store
-            # the  delete_on_terminate option when the virtual machine
-            # is deleted, we parse the tags and delete accordingly
-            disk_def['lun'] = device_no
-            disk_def['tags'] = {
-                'delete_on_terminate': delete_on_terminate
-            }
-            data_disks.append(disk_def)
+        def append_disk(disk_kwargs, device_no, delete_on_terminate,
+                        managed_disk_id=None):
+            # Azure has no direct equivalent of AWS' delete_on_terminate, so
+            # the cleanup tag is recorded on the parent VM later; we just
+            # carry the flag (and the disk id) alongside the DataDisk model.
+            disk = DataDisk(lun=device_no, **disk_kwargs)
+            disk._cb_delete_on_terminate = delete_on_terminate
+            disk._cb_managed_disk_id = managed_disk_id
+            data_disks.append(disk)
 
         for device_no, device in enumerate(launch_config.block_devices):
             if device.is_volume:
@@ -749,37 +755,42 @@ class AzureInstanceService(BaseInstanceService):
                     # we are ignoring the root disk, if specified
                     if isinstance(device.source, Snapshot):
                         snapshot_vol = device.source.create_volume()
-                        disk_def = {
+                        disk_kwargs = {
                             # pylint:disable=protected-access
                             'name': snapshot_vol._volume.name,
                             'create_option': DiskCreateOption.attach,
-                            'managed_disk': {
-                                'id': snapshot_vol.id
-                            }
+                            'managed_disk': ManagedDiskParameters(
+                                id=snapshot_vol.id),
                         }
+                        append_disk(disk_kwargs, device_no,
+                                    device.delete_on_terminate,
+                                    managed_disk_id=snapshot_vol.id)
+                        continue
                     elif isinstance(device.source, Volume):
-                        disk_def = {
+                        disk_kwargs = {
                             # pylint:disable=protected-access
                             'name': device.source._volume.name,
                             'create_option': DiskCreateOption.attach,
-                            'managed_disk': {
-                                'id': device.source.id
-                            }
+                            'managed_disk': ManagedDiskParameters(
+                                id=device.source.id),
                         }
+                        append_disk(disk_kwargs, device_no,
+                                    device.delete_on_terminate,
+                                    managed_disk_id=device.source.id)
+                        continue
                     elif isinstance(device.source, MachineImage):
-                        disk_def = {
+                        disk_kwargs = {
                             # pylint:disable=protected-access
                             'name': device.source._volume.name,
                             'create_option': DiskCreateOption.from_image,
-                            'source_resource_id': device.source.id
+                            'source_resource_id': device.source.id,
                         }
                     else:
-                        disk_def = {
-                            # pylint:disable=protected-access
+                        disk_kwargs = {
                             'create_option': DiskCreateOption.empty,
-                            'disk_size_gb': device.size
+                            'disk_size_gb': device.size,
                         }
-                    append_disk(disk_def, device_no,
+                    append_disk(disk_kwargs, device_no,
                                 device.delete_on_terminate)
             else:  # device is ephemeral
                 # in azure we cannot add the ephemeral disks explicitly
@@ -825,19 +836,16 @@ class AzureInstanceService(BaseInstanceService):
 
         nic_params = {
             'location': self.provider.region_name,
-            'ip_configurations': [{
-                'name': instance_name + '_ip_config',
-                'private_ip_allocation_method': 'Dynamic',
-                'subnet': {
-                    'id': subnet_id
-                }
-            }]
+            'ip_configurations': [NetworkInterfaceIPConfiguration(
+                name=instance_name + '_ip_config',
+                private_ip_allocation_method='Dynamic',
+                subnet=SubResource(id=subnet_id),
+            )],
         }
 
         if vm_firewall_id:
-            nic_params['network_security_group'] = {
-                'id': vm_firewall_id
-            }
+            nic_params['network_security_group'] = SubResource(
+                id=vm_firewall_id)
         nic_info = self.provider.azure_client.create_nic(
             instance_name + '_nic',
             nic_params
@@ -865,41 +873,41 @@ class AzureInstanceService(BaseInstanceService):
                 name=temp_kp_name)
             temp_key_pair = key_pair
 
+        os_profile = OSProfile(
+            admin_username=self.provider.vm_default_user_name,
+            computer_name=instance_name,
+            linux_configuration=LinuxConfiguration(
+                disable_password_authentication=True,
+                ssh=SshConfiguration(public_keys=[SshPublicKey(
+                    path="/home/{}/.ssh/authorized_keys".format(
+                        self.provider.vm_default_user_name),
+                    key_data=key_pair._key_pair['Key'],
+                )]),
+            ),
+        )
+
+        tags = {'Label': label}
+        # Surface each data disk's delete-on-terminate flag onto the parent
+        # VM tags so the VM-delete path can later clean them up.
+        for disk in (storage_profile.data_disks or []):
+            tags['delete_on_terminate'] = getattr(
+                disk, '_cb_delete_on_terminate', False)
+
         params = {
             'location': zone_id,
-            'os_profile': {
-                'admin_username': self.provider.vm_default_user_name,
-                'computer_name': instance_name,
-                'linux_configuration': {
-                    "disable_password_authentication": True,
-                    "ssh": {
-                        "public_keys": [{
-                            "path":
-                                "/home/{}/.ssh/authorized_keys".format(
-                                        self.provider.vm_default_user_name),
-                                "key_data": key_pair._key_pair['Key']
-                        }]
-                    }
-                }
-            },
-            'hardware_profile': {
-                'vm_size': instance_size
-            },
-            'network_profile': {
-                'network_interfaces': [{
-                    'id': nic_info.id
-                }]
-            },
+            'os_profile': os_profile,
+            'hardware_profile': HardwareProfile(vm_size=instance_size),
+            'network_profile': NetworkProfile(
+                network_interfaces=[NetworkInterfaceReference(
+                    id=nic_info.id)],
+            ),
             'storage_profile': storage_profile,
-            'tags': {'Label': label}
+            'tags': tags,
         }
-
-        for disk_def in storage_profile.get('data_disks', []):
-            params['tags'] = dict(disk_def.get('tags', {}), **params['tags'])
 
         if user_data:
             custom_data = base64.b64encode(bytes(ud, 'utf-8'))
-            params['os_profile']['custom_data'] = str(custom_data, 'utf-8')
+            params['os_profile'].custom_data = str(custom_data, 'utf-8')
 
         if not temp_key_pair:
             params['tags'].update(Key_Pair=key_pair.id)
@@ -909,9 +917,9 @@ class AzureInstanceService(BaseInstanceService):
         except Exception as e:
             # If VM creation fails, attempt to clean up intermediary resources
             self.provider.azure_client.delete_nic(nic_info.id)
-            for disk_def in storage_profile.get('data_disks', []):
-                if disk_def.get('tags', {}).get('delete_on_terminate'):
-                    disk_id = disk_def.get('managed_disk', {}).get('id')
+            for disk in (storage_profile.data_disks or []):
+                if getattr(disk, '_cb_delete_on_terminate', False):
+                    disk_id = getattr(disk, '_cb_managed_disk_id', None)
                     if disk_id:
                         vol = self.provider.storage.volumes.get(disk_id)
                         vol.delete()
@@ -1108,9 +1116,8 @@ class AzureNetworkService(BaseNetworkService):
         AzureNetwork.assert_valid_resource_label(label)
         params = {
             'location': self.provider.azure_client.region_name,
-            'address_space': {
-                'address_prefixes': [cidr_block]
-            },
+            'address_space': AddressSpace(
+                address_prefixes=[cidr_block]),
             'tags': {'Label': label}
         }
 
