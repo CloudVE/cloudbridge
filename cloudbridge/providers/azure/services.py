@@ -1233,7 +1233,7 @@ class AzureSubnetService(BaseSubnetService):
             az_network = self.provider.azure_client.get_network(net_id)
             az_network.tags.pop(sn.tag_name)
             self.provider.azure_client.update_network_tags(
-                az_network.id, az_network)
+                az_network.id, az_network.tags)
 
 
 class AzureRouterService(BaseRouterService):

@@ -766,7 +766,7 @@ class AzureNetwork(BaseNetwork):
         self.assert_valid_resource_label(value)
         self._network.tags.update(Label=value or "")
         self._provider.azure_client. \
-            update_network_tags(self.id, self._network)
+            update_network_tags(self.id, self._network.tags)
 
     @property
     def external(self):
@@ -964,7 +964,7 @@ class AzureSubnet(BaseSubnet):
         kwargs = {self.tag_name: value or ""}
         az_network.tags.update(**kwargs)
         self._provider.azure_client.update_network_tags(
-            az_network.id, az_network)
+            az_network.id, az_network.tags)
 
     @property
     def tag_name(self):
@@ -1090,7 +1090,7 @@ class AzureInstance(BaseInstance):
         self.assert_valid_resource_label(value)
         self._vm.tags.update(Label=value or "")
         self._provider.azure_client. \
-            update_vm_tags(self.id, self._vm)
+            update_vm_tags(self.id, self._vm.tags)
 
     @property
     def public_ips(self):
@@ -1477,7 +1477,7 @@ class AzureRouter(BaseRouter):
         self._route_table.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_route_table_tags(self._route_table.name,
-                                    self._route_table)
+                                    self._route_table.tags)
 
     def refresh(self):
         self._route_table = self._provider.azure_client. \
