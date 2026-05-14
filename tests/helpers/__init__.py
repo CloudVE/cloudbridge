@@ -44,6 +44,36 @@ def skipIfNoService(services):
     return wrap
 
 
+def skipIfMockMotoVersion(spec, reason):
+    """
+    A decorator for skipping tests when running against the mock
+    provider and the installed moto version matches `spec` (a
+    PEP 440 specifier string such as ">=5.0,<5.3"). Other providers
+    (aws / azure / gcp / openstack) always run the test, and the mock
+    provider runs it normally when moto sits outside the broken range.
+    """
+    def wrap(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            provider = getattr(self, 'provider', None)
+            if provider and getattr(provider, 'PROVIDER_ID', None) == 'mock':
+                from importlib.metadata import PackageNotFoundError
+                from importlib.metadata import version as get_version
+                from packaging.specifiers import SpecifierSet
+                from packaging.version import Version
+                try:
+                    moto_version = Version(get_version('moto'))
+                except PackageNotFoundError:
+                    moto_version = None
+                if moto_version and moto_version in SpecifierSet(spec):
+                    self.skipTest(
+                        "Skipping for mock/moto %s matching %s: %s"
+                        % (moto_version, spec, reason))
+            func(self, *args, **kwargs)
+        return wrapper
+    return wrap
+
+
 def skipIfPython(op, major, minor):
     """
     A decorator for skipping tests if the python

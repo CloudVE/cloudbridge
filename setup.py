@@ -68,6 +68,7 @@ REQS_DEV = ([
     'tox>=4.0.0',
     'pytest',
     'moto[ec2,s3]>=5.0.0',
+    'packaging',
     'sphinx>=1.3.1',
     'pydevd',
     'flake8>=3.3.0',
