@@ -26,7 +26,6 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "six>=1.11",
     "tenacity>=6.0",
     "deprecation>=2.0.7",
     "pyeventsystem<2",

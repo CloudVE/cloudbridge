@@ -1,8 +1,6 @@
 import datetime
 import ipaddress
 
-import six
-
 from cloudbridge.base import helpers as cb_helpers
 from cloudbridge.base.resources import BaseNetwork
 from cloudbridge.factory import ProviderList
@@ -120,7 +118,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                              "Image id {0} is not equal to the expected id"
                              " {1}".format(test_instance.image_id, image_id))
             self.assertIsInstance(test_instance.zone_id,
-                                  six.string_types)
+                                  str)
             self.assertEqual(
                 test_instance.image_id,
                 helpers.get_provider_test_data(self.provider, "image"))
@@ -158,7 +156,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 self._is_valid_ip(ip_address),
                 "Instance must have a valid IP address. Got: %s" % ip_address)
             self.assertIsInstance(test_instance.vm_type_id,
-                                  six.string_types)
+                                  str)
             vm_type = self.provider.compute.vm_types.get(
                 test_instance.vm_type_id)
             self.assertEqual(

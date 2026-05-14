@@ -3,9 +3,7 @@ import collections
 import datetime
 import hashlib
 import re
-
-import six
-from six.moves.urllib.parse import quote
+from urllib.parse import quote
 
 from googleapiclient.errors import HttpError
 
@@ -204,7 +202,10 @@ def generate_signed_url(credentials, bucket_name, object_name,
         # max allowed expiration time is 7 days
         expiration = 604800
 
-    escaped_object_name = quote(six.ensure_binary(object_name), safe=b'/~')
+    escaped_object_name = quote(
+        object_name.encode('utf-8') if isinstance(object_name, str)
+        else object_name,
+        safe=b'/~')
     canonical_uri = '/{}'.format(escaped_object_name)
 
     datetime_now = datetime.datetime.utcnow()

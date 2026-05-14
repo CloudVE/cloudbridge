@@ -1,5 +1,3 @@
-import six
-
 from tests import helpers
 from tests.helpers import ProviderTestBase
 from tests.helpers import standard_interface_tests as sit
@@ -34,12 +32,12 @@ class CloudVMTypeServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 vm_type.family is None or isinstance(
                     vm_type.family,
-                    six.string_types),
+                    str),
                 "VMType family must be None or a"
                 " string but is: {0}".format(vm_type.family))
             self.assertTrue(
                 vm_type.vcpus is None or (
-                    isinstance(vm_type.vcpus, six.integer_types) and
+                    isinstance(vm_type.vcpus, int) and
                     vm_type.vcpus >= 0),
                 "VMType vcpus must be None or a positive integer but is: {0}"
                 .format(vm_type.vcpus))
@@ -58,7 +56,7 @@ class CloudVMTypeServiceTestCase(ProviderTestBase):
                 " number")
             self.assertTrue(
                 isinstance(vm_type.num_ephemeral_disks,
-                           six.integer_types) and
+                           int) and
                 vm_type.num_ephemeral_disks >= 0,
                 "VMType num_ephemeral_disks must be None or a positive"
                 " number")

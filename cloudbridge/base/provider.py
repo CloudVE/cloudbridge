@@ -3,15 +3,10 @@ import ast
 import functools
 import logging
 import os
+from configparser import ConfigParser
 from os.path import expanduser
-try:
-    from configparser import ConfigParser
-except ImportError:  # Python 2
-    from ConfigParser import SafeConfigParser as ConfigParser
 
 from pyeventsystem.middleware import SimpleMiddlewareManager
-
-import six
 
 from ..base.middleware import ExceptionWrappingMiddleware
 from ..interfaces import CloudProvider
@@ -206,7 +201,4 @@ class BaseCloudProvider(CloudProvider):
         elif (self._config_parser.has_option(self.PROVIDER_ID, key) and
               self._config_parser.get(self.PROVIDER_ID, key)):
             value = self._config_parser.get(self.PROVIDER_ID, key)
-        if isinstance(value, six.string_types) and not isinstance(
-                value, six.text_type):
-            return six.u(value)
         return value
