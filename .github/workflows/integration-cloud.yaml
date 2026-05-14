@@ -134,13 +134,15 @@ jobs:
           message: ${{ fromJSON('["passing", "failing"]')[steps.tox.outcome != 'success'] }}
           color: ${{ fromJSON('["green", "red"]')[steps.tox.outcome != 'success'] }}
 
-      - name: Coveralls
+      - name: Upload coverage to Coveralls
         if: ${{ steps.tox.outcome == 'success' }}
-        uses: AndreMiras/coveralls-python-action@ac868b9540fad490f7ca82b8ca00480fd751ed19 # develop @ 2024-09-26
+        uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           flag-name: run-${{ matrix.python-version }}-${{ matrix.cloud-provider }}
           parallel: true
+          file: coverage.xml
+          format: cobertura
 
   finish:
     needs: cloud
@@ -148,7 +150,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Coveralls Finished
-      uses: AndreMiras/coveralls-python-action@ac868b9540fad490f7ca82b8ca00480fd751ed19 # develop @ 2024-09-26
+      uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         parallel-finished: true
