@@ -51,11 +51,16 @@ REQS_GCP = [
     'google-api-python-client>=2.0,<3.0.0'
 ]
 REQS_OPENSTACK = [
-    'openstacksdk>=0.12.0,<5.0.0',
-    'python-novaclient>=7.0.0,<20.0',
-    'python-swiftclient>=3.2.0,<5.0',
-    'python-neutronclient>=6.0.0,<13.0',
-    'python-keystoneclient>=3.13.0,<7.0'
+    # Minimums match SDK generation tested against the OpenStack
+    # provider fixes in cloudbridge/providers/openstack/. The previous
+    # floors were circa-2018 and exposed Nova/Neutron APIs (e.g. the
+    # add_floating_ip_to_server action) that are gone from any modern
+    # OpenStack deployment.
+    'openstacksdk>=3.0.0,<5.0.0',
+    'python-novaclient>=17.0.0,<20.0',
+    'python-swiftclient>=4.0.0,<5.0',
+    'python-neutronclient>=11.0.0,<13.0',
+    'python-keystoneclient>=4.0.0,<7.0'
 ]
 REQS_FULL = REQS_AWS + REQS_GCP + REQS_OPENSTACK + REQS_AZURE
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
