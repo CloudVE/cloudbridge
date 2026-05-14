@@ -15,7 +15,7 @@
         "StringLike": {
           "token.actions.githubusercontent.com:sub": [
             "repo:CloudVE/cloudbridge:ref:refs/heads/main",
-            "repo:CloudVE/cloudbridge:pull_request"
+            "repo:CloudVE/cloudbridge:environment:cloud-integration"
           ]
         }
       }

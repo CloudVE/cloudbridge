@@ -5,14 +5,20 @@ on:
   push:
     tags:
       - '*'
+
+permissions:
+  contents: read
+
 jobs:
   build-n-publish:
     name: Build and publish Python 🐍 distributions 📦 to PyPI and TestPyPI
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
     - name: Set up Python 3.10.12
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v6
       with:
         python-version: 3.10.12
     - name: Install dependencies
@@ -25,13 +31,13 @@ jobs:
         twine check dist/*
         ls -l dist
     - name: Publish distribution 📦 to Test PyPI
-      uses: pypa/gh-action-pypi-publish@master
+      uses: pypa/gh-action-pypi-publish@v1.14.0
       with:
         password: ${{ secrets.TEST_PYPI_API_TOKEN }}
         repository_url: https://test.pypi.org/legacy/
         skip_existing: true
     - name: Publish distribution 📦 to PyPI
       if: github.event_name == 'release'
-      uses: pypa/gh-action-pypi-publish@master
+      uses: pypa/gh-action-pypi-publish@v1.14.0
       with:
         password: ${{ secrets.PYPI_API_TOKEN }}

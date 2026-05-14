@@ -1,0 +1,26 @@
+name: Strip safe-to-test on PR update
+
+# When new commits land on a PR, automatically remove the `safe-to-test` label
+# so the cloud integration workflow cannot be re-triggered against unreviewed
+# code. A maintainer must re-apply the label after reviewing the new diff.
+
+on:
+  pull_request_target:
+    types: [synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  strip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove safe-to-test label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        # `gh pr edit --remove-label` exits non-zero if the label isn't
+        # present; that's the common case (most PRs are never labeled), so
+        # swallow it.
+        run: gh pr edit "$PR_NUMBER" --remove-label safe-to-test || true
