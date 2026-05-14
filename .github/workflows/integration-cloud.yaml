@@ -51,7 +51,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.10']
+        python-version: ['3.13']
         cloud-provider: ['aws', 'azure', 'gcp', 'openstack']
 
     steps:
