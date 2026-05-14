@@ -106,7 +106,7 @@ TEST_DATA_CONFIG = {
             cb_helpers.get_env('CB_IMAGE_AZURE',
                                'Canonical:0001-com-ubuntu-minimal-jammy:minimal-22_04-lts-gen2:latest'),
         "vm_type": cb_helpers.get_env('CB_VM_TYPE_AZURE', 'Standard_DC1ds_v3'),
-        "placement": cb_helpers.get_env('CB_PLACEMENT_AZURE', 'eastus2'),
+        "placement": cb_helpers.get_env('CB_PLACEMENT_AZURE', 'eastus'),
         "placement_cfg_key": "azure_zone_name"
     }
 }
