@@ -1,9 +1,10 @@
 import logging
 import uuid
 
-from deprecation import deprecated
+from azure.core.exceptions import HttpResponseError
+from azure.core.exceptions import ResourceNotFoundError
 
-from msrestazure.azure_exceptions import CloudError
+from deprecation import deprecated
 
 import tenacity
 
@@ -143,7 +144,7 @@ class AzureCloudProvider(BaseCloudProvider):
         return self._azure_client
 
     @tenacity.retry(stop=tenacity.stop_after_attempt(2),
-                    retry=tenacity.retry_if_exception_type(CloudError),
+                    retry=tenacity.retry_if_exception_type(HttpResponseError),
                     reraise=True)
     def _initialize(self):
         """
@@ -154,33 +155,30 @@ class AzureCloudProvider(BaseCloudProvider):
         try:
             self._azure_client.get_resource_group(self.resource_group)
 
-        except CloudError as cloud_error:
-            if cloud_error.error.error == "ResourceGroupNotFound":
-                resource_group_params = {'location': self.region_name}
-                try:
-                    self._azure_client.\
-                        create_resource_group(self.resource_group,
-                                              resource_group_params)
-                except CloudError as cloud_error2:  # pragma: no cover
-                    if cloud_error2.error.error == "AuthorizationFailed":
-                        mess = 'The following error was returned by Azure:\n' \
-                               '%s\n\nThis is likely because the Role' \
-                               'associated with the given credentials does ' \
-                               'not allow for Resource Group creation.\nA ' \
-                               'Resource Group is necessary to manage ' \
-                               'resources in Azure. You must either ' \
-                               'provide an existing Resource Group as part ' \
-                               'of the configuration, or elevate the ' \
-                               'associated role.\nFor more information on ' \
-                               'roles, see: https://docs.microsoft.com/' \
-                               'en-us/azure/role-based-access-control/' \
-                               'overview\n' % cloud_error2
-                        raise ProviderConnectionException(mess)
-                    else:
-                        raise cloud_error2
-
-            else:
-                raise cloud_error
+        except ResourceNotFoundError:
+            resource_group_params = {'location': self.region_name}
+            try:
+                self._azure_client.\
+                    create_resource_group(self.resource_group,
+                                          resource_group_params)
+            except HttpResponseError as cloud_error2:  # pragma: no cover
+                if getattr(cloud_error2, 'error', None) and \
+                        cloud_error2.error.code == "AuthorizationFailed":
+                    mess = 'The following error was returned by Azure:\n' \
+                           '%s\n\nThis is likely because the Role' \
+                           'associated with the given credentials does ' \
+                           'not allow for Resource Group creation.\nA ' \
+                           'Resource Group is necessary to manage ' \
+                           'resources in Azure. You must either ' \
+                           'provide an existing Resource Group as part ' \
+                           'of the configuration, or elevate the ' \
+                           'associated role.\nFor more information on ' \
+                           'roles, see: https://docs.microsoft.com/' \
+                           'en-us/azure/role-based-access-control/' \
+                           'overview\n' % cloud_error2
+                    raise ProviderConnectionException(mess)
+                else:
+                    raise cloud_error2
 
         """
         Verify that resource group used for network exists,
@@ -188,8 +186,5 @@ class AzureCloudProvider(BaseCloudProvider):
         """
         try:
             self._azure_client.get_resource_group(self.networking_resource_group)
-        except CloudError as cloud_error:
-            if cloud_error.error.error == "ResourceGroupNotFound":
-                self.networking_resource_group = self.resource_group
-            else:
-                raise cloud_error
+        except ResourceNotFoundError:
+            self.networking_resource_group = self.resource_group

@@ -1,0 +1,156 @@
+name: Cloud integration tests
+
+# Runs the per-cloud integration matrix. This workflow handles untrusted PR
+# code from forks, so it relies on layered protections:
+#
+#   1. Trigger is pull_request_target with types=[labeled] — fires only when a
+#      label is *added*. A force-push to the PR head does not re-fire this.
+#   2. The `safe-to-test` label is the only one that matters (see `if:` below).
+#      Pushing new commits to the PR causes pr-label-strip.yaml to remove the
+#      label, so re-testing requires a maintainer to re-label after re-review.
+#   3. The PR head SHA is taken from the event payload, which is captured at
+#      label-add time. Even if the attacker force-pushes between label-add and
+#      the runner starting, the checkout pins to the SHA the maintainer saw.
+#   4. The `cloud-integration` GitHub Environment requires reviewer approval
+#      per run. This is the last-line defense and is enforced by GitHub before
+#      the OIDC token / cloud secrets are exposed.
+#   5. The AWS trust policy only accepts the `environment:cloud-integration`
+#      sub claim for PR runs — so even if 1–4 were bypassed, a fork PR run
+#      without our environment cannot assume the role.
+#   6. Each cloud's secrets are gated by matrix.cloud-provider so a single
+#      compromised matrix cell cannot exfiltrate other clouds' credentials.
+#
+# Push to main and workflow_dispatch run without the label gate (the
+# Environment is conditionally skipped — they are trusted contexts).
+
+on:
+  pull_request_target:
+    types: [labeled]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  cloud:
+    name: Per-cloud integration tests
+    # Gate fork PR runs by the `safe-to-test` label. Push and workflow_dispatch
+    # don't carry a `github.event.label` so the right-hand branch fires.
+    if: >-
+      github.event_name != 'pull_request_target'
+      || github.event.label.name == 'safe-to-test'
+    runs-on: ubuntu-latest
+    # The environment is only set for pull_request_target — push and
+    # workflow_dispatch are trusted contexts and don't need a per-run approval.
+    environment: ${{ github.event_name == 'pull_request_target' && 'cloud-integration' || '' }}
+    permissions:
+      id-token: write   # required for AWS OIDC
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.13']
+        cloud-provider: ['aws', 'azure', 'gcp', 'openstack']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          # github.event.pull_request.head.sha is captured at trigger time and
+          # immutable in the event payload — pins to the SHA the maintainer
+          # reviewed when applying the label.
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+           python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dir
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: pip-cache-${{ matrix.python-version }}-${{ hashFiles('**/setup.py', '**/requirements.txt') }}
+
+      - name: Install required packages
+        run: pip install tox
+
+      - name: Configure AWS credentials via OIDC
+        if: matrix.cloud-provider == 'aws'
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Run tox
+        id: tox
+        run: tox -e py${{ matrix.python-version }}-${{ matrix.cloud-provider }}
+        env:
+          PYTHONUNBUFFERED: "True"
+          # Per-cloud secret scoping: each variable is only set in the matrix
+          # cell that needs it. Limits blast radius if a single cell is
+          # compromised.
+          # aws — credentials supplied via the OIDC step above
+          CB_VM_TYPE_AWS: ${{ matrix.cloud-provider == 'aws' && secrets.CB_VM_TYPE_AWS || '' }}
+          # azure
+          AZURE_CLIENT_ID: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_CLIENT_ID || '' }}
+          AZURE_SUBSCRIPTION_ID: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_SUBSCRIPTION_ID || '' }}
+          AZURE_SECRET: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_SECRET || '' }}
+          AZURE_TENANT: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_TENANT || '' }}
+          AZURE_RESOURCE_GROUP: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_RESOURCE_GROUP || '' }}
+          AZURE_STORAGE_ACCOUNT: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_STORAGE_ACCOUNT || '' }}
+          CB_IMAGE_AZURE: ${{ matrix.cloud-provider == 'azure' && secrets.CB_IMAGE_AZURE || '' }}
+          CB_VM_TYPE_AZURE: ${{ matrix.cloud-provider == 'azure' && secrets.CB_VM_TYPE_AZURE || '' }}
+          # gcp
+          GCP_SERVICE_CREDS_DICT: ${{ matrix.cloud-provider == 'gcp' && secrets.GCP_SERVICE_CREDS_DICT || '' }}
+          CB_IMAGE_GCP: ${{ matrix.cloud-provider == 'gcp' && secrets.CB_IMAGE_GCP || '' }}
+          CB_VM_TYPE_GCP: ${{ matrix.cloud-provider == 'gcp' && secrets.CB_VM_TYPE_GCP || '' }}
+          # openstack
+          OS_AUTH_URL: ${{ matrix.cloud-provider == 'openstack' && secrets.OS_AUTH_URL || '' }}
+          OS_PASSWORD: ${{ matrix.cloud-provider == 'openstack' && secrets.OS_PASSWORD || '' }}
+          OS_PROJECT_NAME: ${{ matrix.cloud-provider == 'openstack' && secrets.OS_PROJECT_NAME || '' }}
+          OS_PROJECT_DOMAIN_NAME: ${{ matrix.cloud-provider == 'openstack' && secrets.OS_PROJECT_DOMAIN_NAME || '' }}
+          OS_TENANT_NAME: ${{ matrix.cloud-provider == 'openstack' && secrets.OS_TENANT_NAME || '' }}
+          OS_USERNAME: ${{ matrix.cloud-provider == 'openstack' && secrets.OS_USERNAME || '' }}
+          OS_REGION_NAME: ${{ matrix.cloud-provider == 'openstack' && secrets.OS_REGION_NAME || '' }}
+          OS_USER_DOMAIN_NAME: ${{ matrix.cloud-provider == 'openstack' && secrets.OS_USER_DOMAIN_NAME || '' }}
+          OS_APPLICATION_CREDENTIAL_ID: ${{ matrix.cloud-provider == 'openstack' && secrets.OS_APPLICATION_CREDENTIAL_ID || '' }}
+          OS_APPLICATION_CREDENTIAL_SECRET: ${{ matrix.cloud-provider == 'openstack' && secrets.OS_APPLICATION_CREDENTIAL_SECRET || '' }}
+          CB_IMAGE_OS: ${{ matrix.cloud-provider == 'openstack' && secrets.CB_IMAGE_OS || '' }}
+          CB_VM_TYPE_OS: ${{ matrix.cloud-provider == 'openstack' && secrets.CB_VM_TYPE_OS || '' }}
+          CB_PLACEMENT_OS: ${{ matrix.cloud-provider == 'openstack' && secrets.CB_PLACEMENT_OS || '' }}
+
+      - name: Create Build Status Badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@0e50b8bad39e7e1afd3e4e9c2b7dd145fad07501 # v1.8.0
+        with:
+          auth: ${{ secrets.BUILD_STATUS_GIST_SECRET }}
+          gistID: ${{ secrets.BUILD_STATUS_GIST_ID }}
+          filename: cloudbridge_py${{ matrix.python-version }}_${{ matrix.cloud-provider }}.json
+          label: ${{ matrix.cloud-provider }}
+          message: ${{ fromJSON('["passing", "failing"]')[steps.tox.outcome != 'success'] }}
+          color: ${{ fromJSON('["green", "red"]')[steps.tox.outcome != 'success'] }}
+
+      - name: Upload coverage to Coveralls
+        if: ${{ steps.tox.outcome == 'success' }}
+        uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          flag-name: run-${{ matrix.python-version }}-${{ matrix.cloud-provider }}
+          parallel: true
+          file: coverage.xml
+          format: cobertura
+
+  finish:
+    needs: cloud
+    if: ${{ always() && needs.cloud.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Coveralls Finished
+      uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b # v2.3.6
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        parallel-finished: true

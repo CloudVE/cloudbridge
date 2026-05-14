@@ -419,12 +419,22 @@ class OpenStackVolumeService(BaseVolumeService):
     @dispatch(event="provider.storage.volumes.list",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        cb_vols = [
-            OpenStackVolume(self.provider, vol)
-            for vol in self.provider.os_conn.block_storage.volumes(
+        try:
+            os_vols = list(self.provider.os_conn.block_storage.volumes(
                 limit=oshelpers.os_result_limit(self.provider, limit),
-                marker=marker)
-            if vol.availability_zone == self.provider.service_zone_name(self)]
+                marker=marker))
+        except NotFoundException:
+            # Cinder returns 404 when the supplied pagination marker
+            # refers to a volume that has since been deleted (e.g.,
+            # between the time a caller saw the volume in page N and
+            # asked for page N+1, or when a concurrent test deletes it).
+            # Fall back to a fresh listing.
+            if marker is None:
+                raise
+            os_vols = list(self.provider.os_conn.block_storage.volumes(
+                limit=oshelpers.os_result_limit(self.provider, limit)))
+        cb_vols = [OpenStackVolume(self.provider, vol) for vol in os_vols
+                   if vol.availability_zone == self.provider.service_zone_name(self)]
         return oshelpers.to_server_paged_list(self.provider, cb_vols, limit)
 
     @dispatch(event="provider.storage.volumes.create",

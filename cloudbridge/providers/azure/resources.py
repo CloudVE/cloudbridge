@@ -5,7 +5,7 @@ import collections
 import io
 import logging
 
-import pysftp
+import paramiko
 from cloudbridge.base.resources import (BaseAttachmentInfo, BaseBucket,
                                         BaseBucketObject, BaseFloatingIP,
                                         BaseInstance, BaseInternetGateway,
@@ -23,6 +23,8 @@ from cloudbridge.interfaces.resources import (Instance, MachineImageState,
 
 from azure.common import AzureException
 from azure.core.exceptions import ResourceNotFoundError
+from azure.mgmt.compute.models import (DataDisk, ManagedDiskParameters,
+                                       SubResource as ComputeSubResource)
 from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network.models import NetworkSecurityGroup
 
@@ -427,14 +429,12 @@ class AzureVolume(BaseVolume):
             Instance) else instance
         vm = self._provider.azure_client.get_vm(instance_id)
 
-        vm.storage_profile.data_disks.append({
-            'lun': len(vm.storage_profile.data_disks),
-            'name': self._volume.name,
-            'create_option': 'attach',
-            'managed_disk': {
-                'id': self.resource_id
-            }
-        })
+        vm.storage_profile.data_disks.append(DataDisk(
+            lun=len(vm.storage_profile.data_disks),
+            name=self._volume.name,
+            create_option='attach',
+            managed_disk=ManagedDiskParameters(id=self.resource_id)
+        ))
         self._provider.azure_client.update_vm(instance_id, vm)
 
     def detach(self, force=False):
@@ -609,7 +609,7 @@ class AzureMachineImage(BaseMachineImage):
         if self.is_gallery_image:
             return azure_helpers.generate_urn(self._image)
         else:
-            return self._image.id
+            return azure_helpers.normalize_rg_case(self._image.id)
 
     @property
     def name(self):
@@ -766,7 +766,7 @@ class AzureNetwork(BaseNetwork):
         self.assert_valid_resource_label(value)
         self._network.tags.update(Label=value or "")
         self._provider.azure_client. \
-            update_network_tags(self.id, self._network)
+            update_network_tags(self.id, self._network.tags)
 
     @property
     def external(self):
@@ -964,7 +964,7 @@ class AzureSubnet(BaseSubnet):
         kwargs = {self.tag_name: value or ""}
         az_network.tags.update(**kwargs)
         self._provider.azure_client.update_network_tags(
-            az_network.id, az_network)
+            az_network.id, az_network.tags)
 
     @property
     def tag_name(self):
@@ -1090,7 +1090,7 @@ class AzureInstance(BaseInstance):
         self.assert_valid_resource_label(value)
         self._vm.tags.update(Label=value or "")
         self._provider.azure_client. \
-            update_vm_tags(self.id, self._vm)
+            update_vm_tags(self.id, self._vm.tags)
 
     @property
     def public_ips(self):
@@ -1205,7 +1205,7 @@ class AzureInstance(BaseInstance):
         chines/linux/capture-image. In azure, we need to deprovision the VM
         before capturing.
         To deprovision, login to the VM and execute the `waagent deprovision`
-        command. To do this programmatically, use pysftp to ssh into the VM
+        command. To do this programmatically, use paramiko to ssh into the VM
         and executing deprovision command. To SSH into the VM programmatically
         however, we need to pass private key file path, so we have modified the
         CloudBridge interface to pass the private key file path
@@ -1225,9 +1225,7 @@ class AzureInstance(BaseInstance):
 
         create_params = {
             'location': self._provider.region_name,
-            'source_virtual_machine': {
-                'id': self.resource_id
-            },
+            'source_virtual_machine': ComputeSubResource(id=self.resource_id),
             'tags': {'Label': label}
         }
 
@@ -1236,16 +1234,18 @@ class AzureInstance(BaseInstance):
         return AzureMachineImage(self._provider, image)
 
     def _deprovision(self, private_key_path):
-        cnopts = pysftp.CnOpts()
-        cnopts.hostkeys = None
-        if private_key_path:
-            with pysftp.\
-                    Connection(self.public_ips[0],
-                               username=self._provider.vm_default_user_name,
-                               cnopts=cnopts,
-                               private_key=private_key_path) as sftp:
-                sftp.execute('sudo waagent -deprovision -force')
-                sftp.close()
+        if not private_key_path:
+            return
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        try:
+            client.connect(
+                hostname=self.public_ips[0],
+                username=self._provider.vm_default_user_name,
+                key_filename=private_key_path)
+            client.exec_command('sudo waagent -deprovision -force')
+        finally:
+            client.close()
 
     def add_floating_ip(self, floating_ip):
         """
@@ -1432,11 +1432,11 @@ class AzureKeyPair(BaseKeyPair):
 
     @property
     def id(self):
-        return self._key_pair.Name
+        return self._key_pair['Name']
 
     @property
     def name(self):
-        return self._key_pair.Name
+        return self._key_pair['Name']
 
 
 class AzureRouter(BaseRouter):
@@ -1477,7 +1477,7 @@ class AzureRouter(BaseRouter):
         self._route_table.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_route_table_tags(self._route_table.name,
-                                    self._route_table)
+                                    self._route_table.tags)
 
     def refresh(self):
         self._route_table = self._provider.azure_client. \

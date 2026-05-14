@@ -1,4 +1,22 @@
+import re
+
 from cloudbridge.interfaces.exceptions import InvalidValueException
+
+
+_RG_NAME_RE = re.compile(r'(/resourceGroups/)([^/]+)', re.IGNORECASE)
+
+
+def normalize_rg_case(azure_id):
+    # Microsoft.Compute/images list_by_resource_group returns the RG segment
+    # in a case that can differ from what create/get echo back (we've seen
+    # uppercase from list, lowercase from create/get for the same RG).
+    # Lowercase just the RG-name segment so that ids from any code path
+    # compare equal. Provider/type segments and the resource name itself are
+    # preserved.
+    if not azure_id:
+        return azure_id
+    return _RG_NAME_RE.sub(
+        lambda m: m.group(1) + m.group(2).lower(), azure_id)
 
 
 # def filter_by_tag(list_items, filters):

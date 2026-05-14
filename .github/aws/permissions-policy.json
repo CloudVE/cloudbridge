@@ -1,0 +1,32 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EC2FullAccessUsEast1",
+      "Effect": "Allow",
+      "Action": "ec2:*",
+      "Resource": "*",
+      "Condition": {
+        "StringEqualsIfExists": {
+          "ec2:Region": "us-east-1"
+        }
+      }
+    },
+    {
+      "Sid": "S3FullAccess",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "Route53FullAccess",
+      "Effect": "Allow",
+      "Action": [
+        "route53:*",
+        "route53domains:List*",
+        "route53domains:Get*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

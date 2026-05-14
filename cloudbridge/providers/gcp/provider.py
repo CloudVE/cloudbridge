@@ -126,6 +126,12 @@ class GCPResources(object):
             method = methods['get']
             parameters = method['parameterOrder']
 
+            # Skip resources using gRPC reserved-character placeholders
+            # ({+param}); string.Template can't handle them and cloudbridge
+            # does not address these resources.
+            if '{+' in method['path']:
+                continue
+
             # We would like to change a path like
             # {project}/regions/{region}/addresses/{address} to a pattern like
             # (PROJECT REGEX)/regions/(REGION REGEX)/addresses/(ADDRESS REGEX).
@@ -409,8 +415,11 @@ class GCPCloudProvider(BaseCloudProvider):
         try:
             return resource_url.get_resource()
         except googleapiclient.errors.HttpError as http_error:
-            if http_error.resp.status in [404]:
-                # 404 = not found
+            # 404: resource does not exist.
+            # 400: identifier failed server-side validation (e.g. a name
+            # whose format cannot match any real resource). Either way the
+            # answer to "fetch this resource" is no such resource.
+            if http_error.resp.status in (400, 404):
                 return None
             else:
                 raise

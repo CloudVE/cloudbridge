@@ -33,6 +33,15 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                      self.provider.compute.instances.
                                      _service_event_pattern))
 
+    # moto 5.x regression: DescribeInstances returns an empty list
+    # immediately after RunInstances completes, so the list-after-create
+    # check in standard_interface_tests.check_list fails. A secondary
+    # symptom shows in cleanup, where post-delete state remains
+    # "deleted" instead of becoming UNKNOWN. Last observed on moto
+    # 5.2.1. Tighten the specifier when an upstream fix lands.
+    @helpers.skipIfMockMotoVersion(
+        ">=5.0.0",
+        "moto 5.x RunInstances/DescribeInstances state-sync bug")
     @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
         label = "cb-instcrud-{0}".format(helpers.get_uuid())
