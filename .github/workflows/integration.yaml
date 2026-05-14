@@ -48,6 +48,9 @@ jobs:
     needs: lint
     # Set the type of machine to run on
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # required for AWS OIDC
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -74,14 +77,19 @@ jobs:
       - name: Install required packages
         run: pip install tox
 
+      - name: Configure AWS credentials via OIDC
+        if: matrix.cloud-provider == 'aws'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: us-east-1
+
       - name: Run tox
         id: tox
         run: tox -e py${{ matrix.python-version }}-${{ matrix.cloud-provider }}
         env:
           PYTHONUNBUFFERED: "True"
-          # aws
-          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
-          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          # aws — credentials provided by configure-aws-credentials step above (OIDC)
           CB_VM_TYPE_AWS: ${{ secrets.CB_VM_TYPE_AWS }}
           # azure
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
