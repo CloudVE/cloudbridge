@@ -215,6 +215,7 @@ class OpenStackVMType(BaseVMType):
     def __init__(self, provider, os_flavor):
         super(OpenStackVMType, self).__init__(provider)
         self._os_flavor = os_flavor
+        self._extra_data = None
 
     @property
     def id(self):
@@ -254,11 +255,17 @@ class OpenStackVMType(BaseVMType):
 
     @property
     def extra_data(self):
-        extras = self._os_flavor.get_keys()
-        extras['rxtx_factor'] = self._os_flavor.rxtx_factor
-        extras['swap'] = self._os_flavor.swap
-        extras['is_public'] = self._os_flavor.is_public
-        return extras
+        # get_keys() hits Nova's /flavors/<id>/os-extra_specs endpoint.
+        # Cache the result so repeat property accesses (and family, which
+        # delegates here) don't fan out to N concurrent API calls under
+        # pytest-xdist load.
+        if self._extra_data is None:
+            extras = self._os_flavor.get_keys()
+            extras['rxtx_factor'] = self._os_flavor.rxtx_factor
+            extras['swap'] = self._os_flavor.swap
+            extras['is_public'] = self._os_flavor.is_public
+            self._extra_data = extras
+        return self._extra_data
 
 
 class OpenStackInstance(BaseInstance):
