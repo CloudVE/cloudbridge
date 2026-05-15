@@ -2,6 +2,16 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "EC2ReadAnyRegion",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:Describe*",
+        "ec2:Get*",
+        "ec2:List*"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "EC2FullAccessUsEast1",
       "Effect": "Allow",
       "Action": "ec2:*",
