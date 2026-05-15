@@ -43,3 +43,21 @@ Repository hygiene
   ``openstack.txt``, ``docs2/``, ``script_test.py``, ``openstack.log``.
   Each likely belongs in ``.gitignore`` or in a developer's untracked
   workspace; investigate before either committing or deleting.
+
+Integration-test infrastructure
+-------------------------------
+
+* **Reap stale ``cb-*`` resources on the OpenStack DevStack target.**
+  When an integration test fails partway, its cleanup sometimes
+  doesn't run (e.g., cleanup itself errors), leaving orphan volumes,
+  servers, floating IPs, and networks named ``cb-<role>-<uuid>`` in
+  the demo project. They accumulate across CI runs and eventually
+  trip the project quotas (we hit ``VolumeLimitExceeded`` once
+  already). Quotas have been raised generously as a stopgap, but the
+  proper fix is a janitor: a small script that runs at the start of
+  each ``tox -e py3.13-openstack`` invocation (or as a host-side
+  systemd timer) and deletes any ``cb-*``-named resource older than
+  ~1 hour. Candidate hook: a ``setUp``-level fixture in
+  ``tests/helpers/__init__.py`` that nukes leftovers before the run,
+  scoped by the cloudbridge naming convention so it can't touch
+  unrelated tenants.
