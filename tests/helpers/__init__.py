@@ -5,6 +5,8 @@ import sys
 import unittest
 import uuid
 
+import tenacity
+
 from cloudbridge.base import helpers as cb_helpers
 from cloudbridge.factory import CloudProviderFactory
 from cloudbridge.interfaces import CloudProvider
@@ -158,9 +160,20 @@ def get_provider_test_data(provider, key):
     return None
 
 
+@tenacity.retry(
+    stop=tenacity.stop_after_attempt(10),
+    wait=tenacity.wait_fixed(5),
+    reraise=True,
+)
 def get_or_create_default_subnet(provider):
     """
-    Return the default subnet to be used for tests
+    Return the default subnet to be used for tests.
+
+    Multiple pytest-xdist workers can call this concurrently at cold-start
+    and race on the singleton default vnet/subnet (on Azure ARM that shows
+    up as AnotherOperationInProgress / cancelled-and-superseded / subnet
+    IP-range overlap). Retry with a short backoff so the loser re-runs the
+    find() and inherits whatever the winner just created.
     """
     return provider.networking.subnets.get_or_create_default()
 
