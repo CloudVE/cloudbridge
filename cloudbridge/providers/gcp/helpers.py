@@ -41,7 +41,6 @@ def __if_fingerprint_differs(e):
     if isinstance(e, HttpError):
         expected_message = 'Supplied fingerprint does not match current ' \
                            'metadata fingerprint.'
-        # str wrapper required for Python 2.7
         if expected_message in str(e.content):
             return True
     return False
@@ -155,7 +154,6 @@ def __if_label_fingerprint_differs(e):
     if isinstance(e, HttpError):
         expected_message = 'Labels fingerprint either invalid or ' \
                            'resource labels have changed'
-        # str wrapper required for Python 2.7
         if expected_message in str(e.content):
             return True
     return False
@@ -169,10 +167,6 @@ def __if_label_fingerprint_differs(e):
 def change_label(resource, key, value, res_att, request):
     resource.assert_valid_resource_label(value)
     labels = getattr(resource, res_att).get("labels", {})
-    # The returned value from above command yields a unicode dict key, which
-    # cannot be simply cast into a str for py2 so pop the key and re-add it
-    # The casting needs to be done for all labels, as to support both
-    # description and label setting
     labels[key] = str(value)
     for k in list(labels):
         labels[str(k)] = str(labels.pop(k))

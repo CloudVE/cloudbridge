@@ -147,8 +147,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             ip_address = test_instance.public_ips[0] \
                 if test_instance.public_ips and test_instance.public_ips[0] \
                 else ip_private
-            # Convert to unicode for py27 compatibility with ipaddress()
-            ip_address = u"{}".format(ip_address)
+            ip_address = str(ip_address)
             self.assertIsNotNone(
                 ip_address,
                 "Instance must have either a public IP or a private IP")

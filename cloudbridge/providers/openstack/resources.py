@@ -7,14 +7,9 @@ import logging
 import os
 import re
 
-try:
-    from urllib.parse import urlparse
-    from urllib.parse import urljoin
-except ImportError:  # python 2
-    from urlparse import urlparse
-    from urlparse import urljoin
-
 from datetime import datetime
+from urllib.parse import urljoin
+from urllib.parse import urlparse
 
 from keystoneclient.v3.regions import Region
 
