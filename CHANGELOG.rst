@@ -1,3 +1,47 @@
+4.0.0 - May 15, 2026 (sha 4963adc3f5f10cd885640138062800d7cd20e93a)
+---------------------------------------------------------------------
+
+## Release highlights
+This is a major release that brings the dependency stack up to date. The public CloudBridge API is unchanged —
+most users will not need any code changes. The version bump reflects the breadth of the underlying modernization
+rather than interface breakage.
+
+## What users should know
+Python 3.13 or higher is now required. Support for older Python versions, including 2.7 compatibility
+shims (``six``), has been removed. Earlier Python versions are no longer tested; the default test environment
+is Python 3.13.
+
+Azure public IPs now use the Standard SKU. Basic-SKU public IPs are being retired by Azure. Public IPs created
+by CloudBridge are now Standard SKU. Within a single virtual network, public IPs of different SKUs cannot be
+mixed (Azure restriction). If you have a network that already contains Basic-SKU IPs created by CloudBridge 3.x,
+plan to standardize on one SKU before letting 4.0 add new IPs to that network.
+
+Mock provider now requires moto >= 5.0. If you use MockAWSCloudProvider in your own test suite alongside direct
+moto usage, your test harness must be on moto 5. In moto 5, the per-service decorators (mock_ec2, mock_s3, …) were
+unified into a single mock_aws.
+
+If you pin cloud SDKs alongside CloudBridge, you may need to relax upper bounds. The biggest jumps:
+azure-mgmt-compute (up to <39), azure-mgmt-network (<31), openstacksdk (<5).
+
+### Under the hood (no action required)
+CloudBridge migrated off several abandoned Azure libraries (msrestazure, azure-cosmosdb-table, pysftp) and onto their
+maintained successors. The migration is transparent at the API level. Existing Azure resources created by
+3.x — including key pairs stored in Azure Table Storage — are read by 4.0 without migration.
+
+## Pull Requests
+* Update codecov badge by @nuwang in https://github.com/CloudVE/cloudbridge/pull/319
+* pull_request to pull_request_target for tests by @almahmoud in https://github.com/CloudVE/cloudbridge/pull/322
+* Azure - add AZURE_NETWORK_RESOURCE_GROUP to pick vnet from another ResourceGroup by @patchkez in https://github.com/CloudVE/cloudbridge/pull/321
+* Run in pull_request mode with approval by @nuwang in https://github.com/CloudVE/cloudbridge/pull/327
+* Upgrade azure, openstack sdks and moto to latest by @nuwang in https://github.com/CloudVE/cloudbridge/pull/323
+* Modernize project setup by @nuwang in https://github.com/CloudVE/cloudbridge/pull/328
+
+## New Contributors
+* @patchkez made their first contribution in https://github.com/CloudVE/cloudbridge/pull/321
+
+**Full Changelog**: https://github.com/CloudVE/cloudbridge/compare/v3.2.0...v4.0.0
+
+
 3.2.0 - September 06, 2023 (sha dd7ccbba9457232880da755ca66f8ae9d2e7dce4)
 ---------------------------------------------------------------------
 
