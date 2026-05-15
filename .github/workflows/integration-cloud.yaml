@@ -100,10 +100,12 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_SUBSCRIPTION_ID || '' }}
           AZURE_SECRET: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_SECRET || '' }}
           AZURE_TENANT: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_TENANT || '' }}
+          AZURE_REGION_NAME: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_REGION_NAME || '' }}
           AZURE_RESOURCE_GROUP: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_RESOURCE_GROUP || '' }}
           AZURE_STORAGE_ACCOUNT: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_STORAGE_ACCOUNT || '' }}
           CB_IMAGE_AZURE: ${{ matrix.cloud-provider == 'azure' && secrets.CB_IMAGE_AZURE || '' }}
           CB_VM_TYPE_AZURE: ${{ matrix.cloud-provider == 'azure' && secrets.CB_VM_TYPE_AZURE || '' }}
+          CB_PLACEMENT_AZURE: ${{ matrix.cloud-provider == 'azure' && secrets.CB_PLACEMENT_AZURE || '' }}
           # gcp
           GCP_SERVICE_CREDS_DICT: ${{ matrix.cloud-provider == 'gcp' && secrets.GCP_SERVICE_CREDS_DICT || '' }}
           CB_IMAGE_GCP: ${{ matrix.cloud-provider == 'gcp' && secrets.CB_IMAGE_GCP || '' }}
