@@ -7,8 +7,8 @@
       "Action": "ec2:*",
       "Resource": "*",
       "Condition": {
-        "StringEqualsIfExists": {
-          "ec2:Region": "us-east-1"
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1"
         }
       }
     },
