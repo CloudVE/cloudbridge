@@ -15,13 +15,12 @@ import sys
 
 sys.path.insert(0, os.path.abspath('../'))
 
-import sphinx_rtd_theme
 import cloudbridge
 
 # -- Project information -----------------------------------------------------
 
 project = 'cloudbridge'
-copyright = '2021, GVL and Galaxy Projects'
+copyright = '2015-2026, GVL and Galaxy Projects'
 author = 'GVL and Galaxy Projects'
 
 # The full version, including alpha/beta/rc tags
@@ -56,9 +55,6 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
-
-# Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
