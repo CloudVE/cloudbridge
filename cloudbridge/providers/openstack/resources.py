@@ -7,14 +7,9 @@ import logging
 import os
 import re
 
-try:
-    from urllib.parse import urlparse
-    from urllib.parse import urljoin
-except ImportError:  # python 2
-    from urlparse import urlparse
-    from urlparse import urljoin
-
 from datetime import datetime
+from urllib.parse import urljoin
+from urllib.parse import urlparse
 
 from keystoneclient.v3.regions import Region
 
@@ -333,20 +328,21 @@ class OpenStackInstance(BaseInstance):
     def _all_addresses(self):
         """All IP addresses associated with this instance.
 
-        Combines the addresses Nova reports (via server.addresses /
-        ``_os_instance.networks``, populated from Nova's info_cache) with
-        any floating IPs Neutron currently has bound to the instance's
-        ports. Nova's info_cache is refreshed by a periodic task on a
-        ~60s cadence and is not re-synced on a plain server-show, so a
-        FIP attached via the Neutron API (as add_floating_ip does)
-        otherwise wouldn't show up until the next sync.
+        Nova's info_cache (which backs ``server.addresses``) is refreshed
+        by a periodic task on a ~60s cadence and is not re-queried on a
+        plain server-show. That makes it lag both ways: a FIP just
+        attached via Neutron won't appear, and a FIP just detached via
+        Neutron will still appear. So we deliberately read only fixed
+        IPs from Nova and ask Neutron live for the current floating IPs.
         """
         addrs = set()
-        for _, network_addrs in self._os_instance.networks.items():
-            for address in network_addrs:
-                addrs.add(address)
-        # Query Neutron for any floating IPs bound to this instance's
-        # ports — these may not yet be reflected in Nova's cached view.
+        for _, addr_list in self._os_instance.addresses.items():
+            for entry in addr_list:
+                if entry.get('OS-EXT-IPS:type') == 'floating':
+                    continue
+                ip = entry.get('addr') or entry.get('OS-EXT-IPS-MAC:addr')
+                if ip:
+                    addrs.add(ip)
         try:
             for port in self._provider.os_conn.network.ports(
                     device_id=self.id):
@@ -524,13 +520,19 @@ class OpenStackInstance(BaseInstance):
         Remove a floating IP address from this instance.
 
         Same rationale as add_floating_ip; the Nova action endpoint is
-        gone, so detach by clearing port_id on the Neutron FIP.
+        gone, so detach by clearing port_id on the Neutron FIP. We go
+        through neutronclient directly rather than openstacksdk
+        Connection.network.update_ip(...) because some openstacksdk
+        versions drop ``None`` kwargs from the PUT body, which leaves
+        port_id unchanged on the server side.
         """
         log.debug("Removing floating IP adress: %s", floating_ip)
         fip = (floating_ip if isinstance(floating_ip, OpenStackFloatingIP)
                else self._get_fip(floating_ip))
-        # pylint:disable=protected-access
-        self._provider.os_conn.network.update_ip(fip._ip, port_id=None)
+        if fip is None:
+            return
+        self._provider.neutron.update_floatingip(
+            fip.id, {'floatingip': {'port_id': None}})
 
     def add_vm_firewall(self, firewall):
         """

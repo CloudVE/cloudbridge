@@ -10,8 +10,6 @@ import shutil
 import time
 import uuid
 
-import six
-
 from cloudbridge.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.interfaces.exceptions import InvalidLabelException
@@ -378,7 +376,7 @@ class BaseLaunchConfig(LaunchConfig):
             raise InvalidConfigurationException(
                 "Source must be a Snapshot, Volume, MachineImage, or None.")
         if size:
-            if not isinstance(size, six.integer_types) or not size > 0:
+            if not isinstance(size, int) or not size > 0:
                 log.exception("InvalidConfigurationException raised: "
                               "size argument must be an integer greater than "
                               "0. Got type %s and value %s.", type(size), size)

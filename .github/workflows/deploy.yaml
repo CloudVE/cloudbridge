@@ -23,11 +23,11 @@ jobs:
         python-version: 3.13
     - name: Install dependencies
       run: |
-        python3 -m pip install --upgrade pip setuptools
-        python3 -m pip install --upgrade twine wheel
+        python3 -m pip install --upgrade pip
+        python3 -m pip install --upgrade build twine
     - name: Create and check packages
       run: |
-        python3 setup.py sdist bdist_wheel
+        python3 -m build
         twine check dist/*
         ls -l dist
     - name: Publish distribution 📦 to Test PyPI

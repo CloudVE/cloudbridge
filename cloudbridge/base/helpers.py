@@ -3,7 +3,6 @@ import functools
 import logging
 import os
 import re
-import sys
 from contextlib import contextmanager
 
 from cryptography.hazmat.backends import default_backend
@@ -11,8 +10,6 @@ from cryptography.hazmat.primitives import serialization as crypt_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from deprecation import deprecated
-
-import six
 
 import cloudbridge
 
@@ -50,7 +47,7 @@ def filter_by(prop_name, kwargs, objs):
     """
     prop_val = kwargs.pop(prop_name, None)
     if prop_val:
-        if isinstance(prop_val, six.string_types):
+        if isinstance(prop_val, str):
             regex = fnmatch.translate(prop_val)
             results = [o for o in objs
                        if getattr(o, prop_name)
@@ -101,12 +98,11 @@ def cleanup_action(cleanup_func):
     try:
         yield
     except Exception:
-        ex_class, ex_val, ex_traceback = sys.exc_info()
         try:
             cleanup_func()
         except Exception:
             log.exception("Error during exception cleanup: ")
-        six.reraise(ex_class, ex_val, ex_traceback)
+        raise
     try:
         cleanup_func()
     except Exception:
@@ -117,11 +113,6 @@ def get_env(varname, default_value=None):
     """
     Return the value of the environment variable or default_value.
 
-    This is a helper method that wraps ``os.environ.get`` to ensure type
-    compatibility across py2 and py3. For py2, any value obtained from an
-    environment variable, ensure ``unicode`` type and ``str`` for py3. The
-    casting is done only for string variables.
-
     :type varname: ``str``
     :param varname: Name of the environment variable for which to check.
 
@@ -131,11 +122,7 @@ def get_env(varname, default_value=None):
     :return: Value of the supplied environment if found; value of
              ``default_value`` otherwise.
     """
-    value = os.environ.get(varname, default_value)
-    if isinstance(value, six.string_types) and not isinstance(
-            value, six.text_type):
-        return six.u(value)
-    return value
+    return os.environ.get(varname, default_value)
 
 
 # Alias deprecation decorator, following:

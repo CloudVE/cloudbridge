@@ -29,34 +29,34 @@ Build Status Tests
    :target: https://pypistats.org/packages/cloudbridge
    :alt: Download stats
 
-.. |aws-py38| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.8_aws.json
+.. |aws-py313| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.13_aws.json
+               :target: https://github.com/CloudVE/cloudbridge/actions/
+
+.. |azure-py313| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.13_azure.json
+                 :target: https://github.com/CloudVE/cloudbridge/actions/
+
+.. |gcp-py313| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.13_gcp.json
+               :target: https://github.com/CloudVE/cloudbridge/actions/
+
+.. |mock-py313| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.13_mock.json
+               :target: https://github.com/CloudVE/cloudbridge/actions/
+
+.. |os-py313| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.13_openstack.json
               :target: https://github.com/CloudVE/cloudbridge/actions/
 
-.. |azure-py38| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.8_azure.json
-                :target: https://github.com/CloudVE/cloudbridge/actions/
-
-.. |gcp-py38| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.8_gcp.json
-              :target: https://github.com/CloudVE/cloudbridge/actions/
-
-.. |mock-py38| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.8_mock.json
-              :target: https://github.com/CloudVE/cloudbridge/actions/
-
-.. |os-py38| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.8_openstack.json
-             :target: https://github.com/CloudVE/cloudbridge/actions/
-
-+---------------------------+----------------+
-| **Provider/Environment**  | **Python 3.8** |
-+---------------------------+----------------+
-| **Amazon Web Services**   | |aws-py38|     |
-+---------------------------+----------------+
-| **Google Cloud Platform** | |gcp-py38|     |
-+---------------------------+----------------+
-| **Microsoft Azure**       | |azure-py38|   |
-+---------------------------+----------------+
-| **OpenStack**             | |os-py38|      |
-+---------------------------+----------------+
-| **Mock Provider**         | |mock-py38|    |
-+---------------------------+----------------+
++---------------------------+-----------------+
+| **Provider/Environment**  | **Python 3.13** |
++---------------------------+-----------------+
+| **Amazon Web Services**   | |aws-py313|     |
++---------------------------+-----------------+
+| **Google Cloud Platform** | |gcp-py313|     |
++---------------------------+-----------------+
+| **Microsoft Azure**       | |azure-py313|   |
++---------------------------+-----------------+
+| **OpenStack**             | |os-py313|      |
++---------------------------+-----------------+
+| **Mock Provider**         | |mock-py313|    |
++---------------------------+-----------------+
 
 Installation
 ~~~~~~~~~~~~

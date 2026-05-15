@@ -1,8 +1,6 @@
 import datetime
 import ipaddress
 
-import six
-
 from cloudbridge.base import helpers as cb_helpers
 from cloudbridge.base.resources import BaseNetwork
 from cloudbridge.factory import ProviderList
@@ -37,11 +35,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     # immediately after RunInstances completes, so the list-after-create
     # check in standard_interface_tests.check_list fails. A secondary
     # symptom shows in cleanup, where post-delete state remains
-    # "deleted" instead of becoming UNKNOWN. Last observed on moto
-    # 5.2.1. Tighten the specifier when an upstream fix lands.
+    # "deleted" instead of becoming UNKNOWN. Pinned to the latest moto
+    # release where this was observed (5.2.1); newer releases re-run the
+    # test so we notice if it's fixed. Bump the pin if it's still broken.
     @helpers.skipIfMockMotoVersion(
-        ">=5.0.0",
-        "moto 5.x RunInstances/DescribeInstances state-sync bug")
+        "==5.2.1",
+        "moto 5.2.1 RunInstances/DescribeInstances state-sync bug")
     @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
         label = "cb-instcrud-{0}".format(helpers.get_uuid())
@@ -120,7 +119,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                              "Image id {0} is not equal to the expected id"
                              " {1}".format(test_instance.image_id, image_id))
             self.assertIsInstance(test_instance.zone_id,
-                                  six.string_types)
+                                  str)
             self.assertEqual(
                 test_instance.image_id,
                 helpers.get_provider_test_data(self.provider, "image"))
@@ -149,8 +148,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             ip_address = test_instance.public_ips[0] \
                 if test_instance.public_ips and test_instance.public_ips[0] \
                 else ip_private
-            # Convert to unicode for py27 compatibility with ipaddress()
-            ip_address = u"{}".format(ip_address)
+            ip_address = str(ip_address)
             self.assertIsNotNone(
                 ip_address,
                 "Instance must have either a public IP or a private IP")
@@ -158,7 +156,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 self._is_valid_ip(ip_address),
                 "Instance must have a valid IP address. Got: %s" % ip_address)
             self.assertIsInstance(test_instance.vm_type_id,
-                                  six.string_types)
+                                  str)
             vm_type = self.provider.compute.vm_types.get(
                 test_instance.vm_type_id)
             self.assertEqual(

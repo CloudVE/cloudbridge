@@ -1,8 +1,7 @@
 Installation
 ============
 
-**Prerequisites**: CloudBridge runs on Python 2.7 and higher. Python 3 is
-recommended.
+**Prerequisites**: CloudBridge requires Python 3.13 or higher.
 
 We highly recommend installing CloudBridge in a
 `virtualenv <http://virtualenv.readthedocs.org/>`_. Creating a new virtualenv

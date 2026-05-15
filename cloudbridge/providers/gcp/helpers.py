@@ -3,9 +3,7 @@ import collections
 import datetime
 import hashlib
 import re
-
-import six
-from six.moves.urllib.parse import quote
+from urllib.parse import quote
 
 from googleapiclient.errors import HttpError
 
@@ -43,7 +41,6 @@ def __if_fingerprint_differs(e):
     if isinstance(e, HttpError):
         expected_message = 'Supplied fingerprint does not match current ' \
                            'metadata fingerprint.'
-        # str wrapper required for Python 2.7
         if expected_message in str(e.content):
             return True
     return False
@@ -157,7 +154,6 @@ def __if_label_fingerprint_differs(e):
     if isinstance(e, HttpError):
         expected_message = 'Labels fingerprint either invalid or ' \
                            'resource labels have changed'
-        # str wrapper required for Python 2.7
         if expected_message in str(e.content):
             return True
     return False
@@ -171,10 +167,6 @@ def __if_label_fingerprint_differs(e):
 def change_label(resource, key, value, res_att, request):
     resource.assert_valid_resource_label(value)
     labels = getattr(resource, res_att).get("labels", {})
-    # The returned value from above command yields a unicode dict key, which
-    # cannot be simply cast into a str for py2 so pop the key and re-add it
-    # The casting needs to be done for all labels, as to support both
-    # description and label setting
     labels[key] = str(value)
     for k in list(labels):
         labels[str(k)] = str(labels.pop(k))
@@ -204,7 +196,10 @@ def generate_signed_url(credentials, bucket_name, object_name,
         # max allowed expiration time is 7 days
         expiration = 604800
 
-    escaped_object_name = quote(six.ensure_binary(object_name), safe=b'/~')
+    escaped_object_name = quote(
+        object_name.encode('utf-8') if isinstance(object_name, str)
+        else object_name,
+        safe=b'/~')
     canonical_uri = '/{}'.format(escaped_object_name)
 
     datetime_now = datetime.datetime.utcnow()

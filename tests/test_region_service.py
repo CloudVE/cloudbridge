@@ -1,5 +1,3 @@
-import six
-
 from cloudbridge.interfaces import Region
 
 from tests import helpers
@@ -61,7 +59,7 @@ class CloudRegionServiceTestCase(ProviderTestBase):
                 self.assertTrue(zone.name)
                 self.assertTrue(zone.region_name is None or
                                 isinstance(zone.region_name,
-                                           six.string_types))
+                                           str))
                 if test_zone == zone.name:
                     zone_find_count += 1
         # zone info cannot be repeated between regions

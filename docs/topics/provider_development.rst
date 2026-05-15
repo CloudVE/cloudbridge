@@ -45,12 +45,12 @@ This only requires that you register the provider's ID in the ``ProviderList``.
 Add GCP to the ``ProviderList`` class in ``cloudbridge/cloud/factory.py``.
 
 
-5. Run the test suite. We will get the tests passing on py27 first.
+5. Run the test suite.
 
 .. code-block:: bash
 
     export CB_TEST_PROVIDER=gcp
-    tox -e py27
+    tox -e py3.13
 
 You should see the tests fail with the following message:
 
@@ -195,13 +195,15 @@ tests pass.
     is up to the implementor, a general design we have followed is to have the
     cloud connection globally available within the provider.
 
-To add the sdk, we edit CloudBridge's main ``setup.py`` and list the
-dependencies.
+To add the sdk, we edit CloudBridge's main ``pyproject.toml`` and add the
+provider's dependencies under ``[project.optional-dependencies]``.
 
-.. code-block:: python
+.. code-block:: toml
 
-    gcp_reqs = ['google-api-python-client==1.4.2']
-    full_reqs = base_reqs + aws_reqs + openstack_reqs + gcp_reqs
+    [project.optional-dependencies]
+    gcp = [
+        "google-api-python-client>=2.0,<3.0.0",
+    ]
 
 We will also register the provider in ``cloudbridge/cloud/factory.py``'s
 provider list.

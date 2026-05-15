@@ -40,10 +40,9 @@ This will run all the tests for all the environments defined in file
 
 Specific environment and infrastructure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-If you’d like to run the tests on a specific environment only, say Python 2.7,
-against a specific infrastructure, say aws, use a command like this:
-``tox -e py27-aws``. The available provider names are listed in the
-`ProviderList`_ class (e.g., ``aws`` or ``openstack``).
+To run the tests against a specific infrastructure, say aws, use a command
+like this: ``tox -e py3.13-aws``. The available provider names are listed in
+the `ProviderList`_ class (e.g., ``aws`` or ``openstack``).
 
 Specific test cases
 ~~~~~~~~~~~~~~~~~~~~
@@ -51,19 +50,17 @@ You can run a specific test case, as follows:
 ``tox -- tests/test_image_service.py:CloudImageServiceTestCase.test_create_and_list_imag``
 
 It can also be restricted to a particular environment as follows:
-``tox -e "py27-aws" -- tests/test_cloud_factory.py:CloudFactoryTestCase``
+``tox -e "py3.13-aws" -- tests/test_cloud_factory.py:CloudFactoryTestCase``
 
-See nosetest documentation for other parameters that can be passed in.
-
-Using unittest directly
+Running pytest directly
 ~~~~~~~~~~~~~~~~~~~~~~~
 You can also run the tests against your active virtual environment directly
-with ``python setup.py test``. You will need to set the ``CB_TEST_PROVIDER``
+with ``pytest tests/``. You will need to set the ``CB_TEST_PROVIDER``
 environment variable prior to running the tests, or they will default to
 ``CB_TEST_PROVIDER=aws``.
 
-You can also run a specific test case, as follows:
-``python setup.py test -s tests.test_cloud_factory.CloudFactoryTestCase``
+To run a specific test case:
+``pytest tests/test_cloud_factory.py::CloudFactoryTestCase``
 
 Using a mock provider
 ~~~~~~~~~~~~~~~~~~~~~
@@ -74,7 +71,7 @@ will simulate AWS resources. You can use ``CB_TEST_PROVIDER=mock`` to run tests
 against the mock provider only, which will provide faster feedback times.
 
 Alternatively you can run the mock tests through tox.
-``tox -e "py27-mock"``
+``tox -e "py3.13-mock"``
 
 .. _design goals: https://github.com/CloudVE/cloudbridge/
    blob/main/README.rst

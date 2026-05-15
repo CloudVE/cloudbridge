@@ -1,3 +1,2 @@
-# https://github.yuuza.net/sphinx-doc/sphinx/issues/9727
-sphinx>=4.2.0
-sphinx_rtd_theme>=1.0.0
+sphinx>=8.0
+sphinx_rtd_theme>=3.0

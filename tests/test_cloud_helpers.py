@@ -1,7 +1,5 @@
 import itertools
 
-import six
-
 from cloudbridge.base.helpers import get_env
 from cloudbridge.base.resources import ClientPagedResultList
 from cloudbridge.base.resources import ServerPagedResultList
@@ -84,7 +82,7 @@ class CloudHelpersTestCase(ProviderTestBase):
         self.provider.config['text_type_check'] = 'test-text'
         # pylint:disable=protected-access
         config_value = self.provider._get_config_value('text_type_check', None)
-        self.assertIsInstance(config_value, six.string_types)
+        self.assertIsInstance(config_value, str)
 
         # pylint:disable=protected-access
         none_value = self.provider._get_config_value(

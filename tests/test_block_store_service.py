@@ -1,7 +1,5 @@
 import time
 
-import six
-
 from cloudbridge.base import helpers as cb_helpers
 from cloudbridge.factory import ProviderList
 from cloudbridge.interfaces import SnapshotState
@@ -107,13 +105,13 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             with cb_helpers.cleanup_action(lambda: test_vol.delete()):
                 test_vol.wait_till_ready()
                 self.assertTrue(
-                    isinstance(test_vol.size, six.integer_types) and
+                    isinstance(test_vol.size, int) and
                     test_vol.size >= 0,
                     "Volume.size must be a positive number, but got %s"
                     % test_vol.size)
                 self.assertTrue(
                     test_vol.description is None or
-                    isinstance(test_vol.description, six.string_types),
+                    isinstance(test_vol.description, str),
                     "Volume.description must be None or a string. Got: %s"
                     % test_vol.description)
                 self.assertIsNone(test_vol.source)
@@ -207,14 +205,14 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
             with cb_helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
                 test_snap.wait_till_ready()
-                self.assertTrue(isinstance(test_vol.size, six.integer_types))
+                self.assertTrue(isinstance(test_vol.size, int))
                 self.assertEqual(
                     test_snap.size, test_vol.size,
                     "Snapshot.size must match original volume's size: %s"
                     " but is: %s" % (test_vol.size, test_snap.size))
                 self.assertTrue(
                     test_vol.description is None or
-                    isinstance(test_vol.description, six.string_types),
+                    isinstance(test_vol.description, str),
                     "Snapshot.description must be None or a string. Got: %s"
                     % test_vol.description)
                 self.assertEqual(test_vol.id, test_snap.volume_id)
