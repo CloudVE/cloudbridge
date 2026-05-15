@@ -188,8 +188,19 @@ class AzureClient(object):
 
         log.debug("azure subscription : %s", self.subscription_id)
 
+    # Storage account creation transitions through Creating -> ResolvingDns
+    # -> Succeeded. ResolvingDns alone is typically 30-60s for the public
+    # blob endpoint; the original retry config (5 attempts, no wait) gave
+    # up in ~100ms and surfaced as WaitStateException on any cold start.
+    # Allow ~1.5 minutes total with a fixed backoff, and only retry on the
+    # not-yet-ready signal so genuine errors fail fast.
     @property
-    @tenacity.retry(stop=tenacity.stop.stop_after_attempt(5), reraise=True)
+    @tenacity.retry(
+        stop=tenacity.stop.stop_after_attempt(9),
+        wait=tenacity.wait_fixed(10),
+        retry=tenacity.retry_if_exception_type(WaitStateException),
+        reraise=True,
+    )
     def access_key_result(self):
         if not self._access_key_result:
             storage_account = self.storage_account
