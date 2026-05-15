@@ -388,7 +388,6 @@ class AzureVolumeService(BaseVolumeService):
         disk_name = AzureVolume._generate_name_from_label(label, "cb-vol")
         tags = {'Label': label}
 
-        zone_name = self.provider.zone_name
         snapshot = (self.provider.storage.snapshots.get(snapshot)
                     if snapshot and isinstance(snapshot, str) else snapshot)
 
@@ -397,7 +396,7 @@ class AzureVolumeService(BaseVolumeService):
 
         if snapshot:
             params = {
-                'location': zone_name,
+                'location': self.provider.region_name,
                 'creation_data': CreationData(
                     create_option=DiskCreateOption.copy,
                     source_uri=snapshot.resource_id,
@@ -410,7 +409,7 @@ class AzureVolumeService(BaseVolumeService):
 
         else:
             params = {
-                'location': zone_name,
+                'location': self.provider.region_name,
                 'disk_size_gb': size,
                 'creation_data': CreationData(
                     create_option=DiskCreateOption.empty,
