@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write  # Required for trusted publishing to PyPI
 
 jobs:
   build-n-publish:
@@ -33,11 +34,8 @@ jobs:
     - name: Publish distribution 📦 to Test PyPI
       uses: pypa/gh-action-pypi-publish@v1.14.0
       with:
-        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
         repository_url: https://test.pypi.org/legacy/
         skip_existing: true
     - name: Publish distribution 📦 to PyPI
       if: github.event_name == 'release'
       uses: pypa/gh-action-pypi-publish@v1.14.0
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
