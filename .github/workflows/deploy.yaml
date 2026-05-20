@@ -6,13 +6,9 @@ on:
     tags:
       - '*'
 
-permissions:
-  contents: read
-  id-token: write  # Required for trusted publishing to PyPI
-
 jobs:
-  build-n-publish:
-    name: Build and publish Python 🐍 distributions 📦 to PyPI and TestPyPI
+  build_packages:
+    name: Build Python 🐍 distributions 📦
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
@@ -31,6 +27,23 @@ jobs:
         python3 -m build
         twine check dist/*
         ls -l dist
+    - uses: actions/upload-artifact@v7
+      with:
+        name: packages
+        path: dist/
+
+  publish:
+    name: Publish distributions 📦 to PyPI and TestPyPI
+    needs: [build_packages]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # Required for trusted publishing to PyPI
+    steps:
+    - uses: actions/download-artifact@v8
+      with:
+        name: packages
+        path: dist
     - name: Publish distribution 📦 to Test PyPI
       uses: pypa/gh-action-pypi-publish@v1.14.0
       with:
