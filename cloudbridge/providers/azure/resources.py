@@ -7,7 +7,8 @@ import logging
 
 import paramiko
 from cloudbridge.base.resources import (BaseAttachmentInfo, BaseBucket,
-                                        BaseBucketObject, BaseFloatingIP,
+                                        BaseBucketObject, BaseDnsRecord,
+                                        BaseDnsZone, BaseFloatingIP,
                                         BaseInstance, BaseInternetGateway,
                                         BaseKeyPair, BaseLaunchConfig,
                                         BaseMachineImage, BaseNetwork,
@@ -30,6 +31,7 @@ from azure.mgmt.network.models import NetworkSecurityGroup
 
 from . import helpers as azure_helpers
 from .subservices import (AzureBucketObjectSubService,
+                          AzureDnsRecordSubService,
                           AzureFloatingIPSubService, AzureGatewaySubService,
                           AzureSubnetSubService, AzureVMFirewallRuleSubService)
 
@@ -1554,3 +1556,116 @@ class AzureInternetGateway(BaseInternetGateway):
     @property
     def floating_ips(self):
         return self._fips_container
+
+
+# Map Azure record-set type suffix (e.g. 'Microsoft.Network/dnszones/A')
+# to cloudbridge DnsRecordType. Used to expose record data in a normalized form.
+_AZURE_RECORD_TYPE_ATTR = {
+    'A': 'a_records',
+    'AAAA': 'aaaa_records',
+    'CNAME': 'cname_record',
+    'MX': 'mx_records',
+    'NS': 'ns_records',
+    'PTR': 'ptr_records',
+    'SRV': 'srv_records',
+    'TXT': 'txt_records',
+}
+
+
+def _azure_record_type(raw_record):
+    """Return the bare type (e.g. 'A') from an Azure RecordSet."""
+    rec_type = raw_record.type or ''
+    # Azure formats: 'Microsoft.Network/dnszones/A' or bare 'A'
+    return rec_type.split('/')[-1] if '/' in rec_type else rec_type
+
+
+def _azure_record_data(raw_record):
+    """Extract the data values from an Azure RecordSet as a list of strings."""
+    rt = _azure_record_type(raw_record)
+    attr = _AZURE_RECORD_TYPE_ATTR.get(rt)
+    if not attr:
+        return []
+    value = getattr(raw_record, attr, None)
+    if value is None:
+        return []
+    if rt == 'A':
+        return [r.ipv4_address for r in value]
+    if rt == 'AAAA':
+        return [r.ipv6_address for r in value]
+    if rt == 'CNAME':
+        return [value.cname]
+    if rt == 'MX':
+        return ['{0} {1}'.format(r.preference, r.exchange) for r in value]
+    if rt == 'NS':
+        return [r.nsdname for r in value]
+    if rt == 'PTR':
+        return [r.ptrdname for r in value]
+    if rt == 'SRV':
+        return ['{0} {1} {2} {3}'.format(r.priority, r.weight, r.port,
+                                         r.target) for r in value]
+    if rt == 'TXT':
+        # Each TXT record carries a list of strings; join with spaces by convention
+        return [' '.join(r.value) if isinstance(r.value, list) else r.value
+                for r in value]
+    return []
+
+
+class AzureDnsZone(BaseDnsZone):
+
+    def __init__(self, provider, dns_zone):
+        super(AzureDnsZone, self).__init__(provider)
+        self._dns_zone = dns_zone
+        self._dns_record_container = AzureDnsRecordSubService(provider, self)
+
+    @property
+    def id(self):
+        return self._dns_zone.name
+
+    @property
+    def name(self):
+        return self._dns_zone.name
+
+    @property
+    def admin_email(self):
+        tags = self._dns_zone.tags or {}
+        return tags.get('admin_email')
+
+    @property
+    def records(self):
+        return self._dns_record_container
+
+
+class AzureDnsRecord(BaseDnsRecord):
+
+    def __init__(self, provider, dns_zone, dns_record):
+        super(AzureDnsRecord, self).__init__(provider)
+        self._dns_zone = dns_zone
+        self._dns_rec = dns_record
+
+    @property
+    def id(self):
+        return self.name + ":" + self.type
+
+    @property
+    def name(self):
+        return self._dns_rec.name
+
+    @property
+    def zone_id(self):
+        return self._dns_zone.id
+
+    @property
+    def type(self):
+        return _azure_record_type(self._dns_rec)
+
+    @property
+    def data(self):
+        return _azure_record_data(self._dns_rec)
+
+    @property
+    def ttl(self):
+        return self._dns_rec.ttl
+
+    def delete(self):
+        # pylint:disable=protected-access
+        return self._provider.dns._records.delete(self._dns_zone, self)

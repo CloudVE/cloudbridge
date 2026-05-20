@@ -15,6 +15,7 @@ from cloudbridge.interfaces.exceptions import ProviderConnectionException
 from cloudbridge.providers.azure.azure_client import AzureClient
 
 from .services import AzureComputeService
+from .services import AzureDnsService
 from .services import AzureNetworkingService
 from .services import AzureSecurityService
 from .services import AzureStorageService
@@ -79,6 +80,7 @@ class AzureCloudProvider(BaseCloudProvider):
         self._storage = AzureStorageService(self)
         self._compute = AzureComputeService(self)
         self._networking = AzureNetworkingService(self)
+        self._dns = AzureDnsService(self)
 
     def __get_deprecated_username(self, default):
         username = self._get_config_value(
@@ -115,7 +117,7 @@ class AzureCloudProvider(BaseCloudProvider):
 
     @property
     def dns(self):
-        raise NotImplementedError()
+        return self._dns
 
     @property
     def azure_client(self):
