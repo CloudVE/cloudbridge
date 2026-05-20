@@ -18,6 +18,8 @@ from azure.mgmt.compute.models import (CreationData, Disk, DiskUpdate, Image,
                                        ImageUpdate, Snapshot, SnapshotUpdate,
                                        VirtualMachine, VirtualMachineUpdate)
 from azure.mgmt.devtestlabs.models import GalleryImageReference
+from azure.mgmt.dns import DnsManagementClient
+from azure.mgmt.dns.models import Zone
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.network.models import (NetworkInterface,
                                        NetworkSecurityGroup, PublicIPAddress,
@@ -180,6 +182,7 @@ class AzureClient(object):
         self._network_management_client = None
         self._subscription_client = None
         self._compute_client = None
+        self._dns_client = None
         self._access_key_result = None
         self._block_blob_service = None
         self._table_service_client = None
@@ -277,6 +280,13 @@ class AzureClient(object):
             self._network_management_client = NetworkManagementClient(
                 self._credentials, self.subscription_id)
         return self._network_management_client
+
+    @property
+    def dns_client(self):
+        if not self._dns_client:
+            self._dns_client = DnsManagementClient(
+                self._credentials, self.subscription_id)
+        return self._dns_client
 
     @property
     def blob_service(self):
@@ -985,3 +995,38 @@ class AzureClient(object):
         self.network_management_client.route_tables.update_tags(
             self.resource_group, route_table_name,
             TagsObject(tags=tags))
+
+    # DNS operations
+    def get_dns_zone(self, zone_name):
+        return self.dns_client.zones.get(self.resource_group, zone_name)
+
+    def list_dns_zones(self):
+        return list(self.dns_client.zones.list_by_resource_group(
+            self.resource_group))
+
+    def create_dns_zone(self, zone_name, params):
+        return self.dns_client.zones.create_or_update(
+            self.resource_group, zone_name, Zone(**params))
+
+    def delete_dns_zone(self, zone_name):
+        self.dns_client.zones.begin_delete(
+            self.resource_group, zone_name).wait()
+
+    def get_dns_record(self, zone_name, relative_record_name, record_type):
+        return self.dns_client.record_sets.get(
+            self.resource_group, zone_name, relative_record_name, record_type)
+
+    def list_dns_records(self, zone_name):
+        return list(self.dns_client.record_sets.list_all_by_dns_zone(
+            self.resource_group, zone_name))
+
+    def create_dns_record(self, zone_name, relative_record_name,
+                          record_type, params):
+        from azure.mgmt.dns.models import RecordSet
+        return self.dns_client.record_sets.create_or_update(
+            self.resource_group, zone_name, relative_record_name,
+            record_type, RecordSet(**params))
+
+    def delete_dns_record(self, zone_name, relative_record_name, record_type):
+        self.dns_client.record_sets.delete(
+            self.resource_group, zone_name, relative_record_name, record_type)

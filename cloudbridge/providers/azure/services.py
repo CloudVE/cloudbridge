@@ -8,6 +8,8 @@ from cloudbridge.base.resources import (ClientPagedResultList,
                                         ServerPagedResultList)
 from cloudbridge.base.services import (BaseBucketObjectService,
                                        BaseBucketService, BaseComputeService,
+                                       BaseDnsRecordService, BaseDnsService,
+                                       BaseDnsZoneService,
                                        BaseFloatingIPService,
                                        BaseGatewayService, BaseImageService,
                                        BaseInstanceService, BaseKeyPairService,
@@ -40,10 +42,11 @@ from azure.mgmt.network.models import (AddressSpace,
                                        PublicIPAddressSku,
                                        PublicIPAddressSkuName, SubResource)
 
-from .resources import (AzureBucket, AzureBucketObject, AzureFloatingIP,
-                        AzureInstance, AzureInternetGateway, AzureKeyPair,
-                        AzureLaunchConfig, AzureMachineImage, AzureNetwork,
-                        AzureRegion, AzureRouter, AzureSnapshot, AzureSubnet,
+from .resources import (AzureBucket, AzureBucketObject, AzureDnsRecord,
+                        AzureDnsZone, AzureFloatingIP, AzureInstance,
+                        AzureInternetGateway, AzureKeyPair, AzureLaunchConfig,
+                        AzureMachineImage, AzureNetwork, AzureRegion,
+                        AzureRouter, AzureSnapshot, AzureSubnet,
                         AzureVMFirewall, AzureVMFirewallRule, AzureVMType,
                         AzureVolume)
 
@@ -1375,3 +1378,192 @@ class AzureFloatingIPService(BaseFloatingIPService):
     def delete(self, gateway, fip):
         fip_id = fip.id if isinstance(fip, AzureFloatingIP) else fip
         self.provider.azure_client.delete_floating_ip(fip_id)
+
+
+def _strip_trailing_dot(name):
+    return name[:-1] if name and name.endswith('.') else name
+
+
+def _to_relative_record_name(fqdn, zone_name):
+    """Translate a cloudbridge FQDN record name to Azure's relative form.
+
+    Azure's record set API works with names relative to the zone (e.g.
+    ``foo`` inside ``example.com``) plus the special ``@`` token for the
+    zone apex. cloudbridge callers pass either the bare zone (apex) or a
+    dotted FQDN such as ``foo.example.com.``.
+    """
+    name = _strip_trailing_dot(fqdn) if fqdn else ''
+    zone = _strip_trailing_dot(zone_name) if zone_name else ''
+    if not name or name == zone:
+        return '@'
+    suffix = '.' + zone
+    if name.endswith(suffix):
+        return name[: -len(suffix)] or '@'
+    return name
+
+
+class AzureDnsService(BaseDnsService):
+
+    def __init__(self, provider):
+        super(AzureDnsService, self).__init__(provider)
+
+        # Initialize provider services
+        self._zone_svc = AzureDnsZoneService(self.provider)
+        self._record_svc = AzureDnsRecordService(self.provider)
+
+    @property
+    def host_zones(self):
+        return self._zone_svc
+
+    @property
+    def _records(self):
+        return self._record_svc
+
+
+class AzureDnsZoneService(BaseDnsZoneService):
+
+    def __init__(self, provider):
+        super(AzureDnsZoneService, self).__init__(provider)
+
+    @dispatch(event="provider.dns.host_zones.get",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def get(self, dns_zone_id):
+        try:
+            zone = self.provider.azure_client.get_dns_zone(
+                _strip_trailing_dot(dns_zone_id))
+            return AzureDnsZone(self.provider, zone)
+        except ResourceNotFoundError:
+            return None
+
+    @dispatch(event="provider.dns.host_zones.list",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
+        zones = [AzureDnsZone(self.provider, z)
+                 for z in self.provider.azure_client.list_dns_zones()]
+        return ClientPagedResultList(self.provider, zones, limit, marker)
+
+    @dispatch(event="provider.dns.host_zones.find",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, self)
+        return ClientPagedResultList(self.provider, list(matches),
+                                     limit=None, marker=None)
+
+    @dispatch(event="provider.dns.host_zones.create",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def create(self, name, admin_email):
+        AzureDnsZone.assert_valid_resource_name(name)
+        zone_name = _strip_trailing_dot(name)
+        params = {
+            # DNS zones in Azure are global resources but the API still
+            # requires location='global'.
+            'location': 'global',
+            'tags': {'admin_email': admin_email},
+        }
+        zone = self.provider.azure_client.create_dns_zone(zone_name, params)
+        return AzureDnsZone(self.provider, zone)
+
+    @dispatch(event="provider.dns.host_zones.delete",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def delete(self, dns_zone):
+        zone_name = (dns_zone.id if isinstance(dns_zone, AzureDnsZone)
+                     else dns_zone)
+        self.provider.azure_client.delete_dns_zone(
+            _strip_trailing_dot(zone_name))
+
+
+class AzureDnsRecordService(BaseDnsRecordService):
+
+    def __init__(self, provider):
+        super(AzureDnsRecordService, self).__init__(provider)
+
+    def _to_record_params(self, rec_type, data, ttl):
+        """Translate cloudbridge data to Azure record-set parameters."""
+        # Local imports keep the module importable when azure-mgmt-dns
+        # isn't installed (e.g. on AWS-only test environments).
+        from azure.mgmt.dns.models import (AaaaRecord, ARecord, CnameRecord,
+                                           MxRecord, NsRecord, PtrRecord,
+                                           SrvRecord, TxtRecord)
+
+        values = data if isinstance(data, list) else [data]
+        params = {'ttl': ttl or 300}
+
+        if rec_type == 'A':
+            params['a_records'] = [ARecord(ipv4_address=v) for v in values]
+        elif rec_type == 'AAAA':
+            params['aaaa_records'] = [
+                AaaaRecord(ipv6_address=v) for v in values]
+        elif rec_type == 'CNAME':
+            # CNAME is a single-valued record in Azure.
+            params['cname_record'] = CnameRecord(
+                cname=self._standardize_record(values[0], rec_type))
+        elif rec_type == 'MX':
+            mx = []
+            for v in values:
+                preference, exchange = v.split(' ', 1)
+                mx.append(MxRecord(
+                    preference=int(preference),
+                    exchange=self._standardize_record(exchange.strip(),
+                                                      rec_type)))
+            params['mx_records'] = mx
+        elif rec_type == 'NS':
+            params['ns_records'] = [NsRecord(nsdname=v) for v in values]
+        elif rec_type == 'PTR':
+            params['ptr_records'] = [PtrRecord(ptrdname=v) for v in values]
+        elif rec_type == 'SRV':
+            srv = []
+            for v in values:
+                priority, weight, port, target = v.split(' ', 3)
+                srv.append(SrvRecord(
+                    priority=int(priority), weight=int(weight),
+                    port=int(port), target=target))
+            params['srv_records'] = srv
+        elif rec_type == 'TXT':
+            params['txt_records'] = [
+                TxtRecord(value=v if isinstance(v, list) else [v])
+                for v in values]
+        else:
+            raise InvalidParamException(
+                "Unsupported DNS record type: %s" % rec_type)
+        return params
+
+    def get(self, dns_zone, rec_id):
+        if not rec_id or ':' not in rec_id:
+            return None
+        rec_name, rec_type = rec_id.split(':', 1)
+        try:
+            rec = self.provider.azure_client.get_dns_record(
+                dns_zone.id, rec_name, rec_type)
+            return AzureDnsRecord(self.provider, dns_zone, rec)
+        except ResourceNotFoundError:
+            return None
+
+    def list(self, dns_zone, limit=None, marker=None):
+        records = [AzureDnsRecord(self.provider, dns_zone, r)
+                   for r in self.provider.azure_client.list_dns_records(
+                       dns_zone.id)]
+        return ClientPagedResultList(self.provider, records, limit, marker)
+
+    def find(self, dns_zone, **kwargs):
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, dns_zone.records)
+        return ClientPagedResultList(self.provider, list(matches),
+                                     limit=None, marker=None)
+
+    def create(self, dns_zone, name, type, data, ttl=None):
+        AzureDnsRecord.assert_valid_resource_name(name)
+        relative_name = _to_relative_record_name(name, dns_zone.id)
+        params = self._to_record_params(type, data, ttl)
+        self.provider.azure_client.create_dns_record(
+            dns_zone.id, relative_name, type, params)
+        return self.get(dns_zone, relative_name + ':' + type)
+
+    def delete(self, dns_zone, record):
+        if isinstance(record, AzureDnsRecord):
+            rec_name = record.name
+            rec_type = record.type
+        else:
+            rec_name, rec_type = record.split(':', 1)
+        self.provider.azure_client.delete_dns_record(
+            dns_zone.id, rec_name, rec_type)
