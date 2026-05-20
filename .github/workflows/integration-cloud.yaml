@@ -26,8 +26,18 @@ name: Cloud integration tests
 on:
   pull_request_target:
     types: [labeled]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+    - '**.rst'
+    - LICENSE
   push:
     branches: [main]
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+    - '**.rst'
+    - LICENSE
   workflow_dispatch: {}
 
 permissions:

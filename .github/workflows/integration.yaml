@@ -12,9 +12,19 @@ on:
   push:
     branches:
     - main
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+    - '**.rst'
+    - LICENSE
   pull_request:
     branches:
       - main
+    paths-ignore:
+    - 'docs/**'
+    - '**.md'
+    - '**.rst'
+    - LICENSE
   workflow_dispatch: {}
 
 permissions:
