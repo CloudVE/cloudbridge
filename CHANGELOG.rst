@@ -1,3 +1,33 @@
+4.1.0 - June 15, 2026 (sha 4d7999ac8785bececaa62964d25f4f552df7c3a0)
+---------------------------------------------------------------------
+
+## Release highlights
+This minor release adds Azure DNS support and modernizes the release pipeline. The public CloudBridge
+API is backward compatible with 4.0 — no code changes are required.
+
+## What's new
+* **Azure DNS support.** The Azure provider can now manage DNS zones and records, bringing it in line
+  with the DNS service already offered by the other providers. This adds ``azure-mgmt-dns`` to the
+  Azure dependency set.
+
+## Fixes and maintenance
+* Azure disks now use the region name (not the zone name) when resolving their location.
+* Test reliability: retry default-subnet creation, and allow storage-account creation enough time to
+  resolve DNS.
+
+## Build and CI
+* PyPI releases now use a trusted publisher (PyPI OIDC) from GitHub Actions instead of a stored API
+  token. The deploy workflow is split into separate build and publish jobs, and integration runs are
+  skipped on docs-only changes.
+
+## Pull Requests
+* Use a trusted publisher when publishing to PyPI by @ksuderman in https://github.com/CloudVE/cloudbridge/pull/330
+* Add Azure DNS support by @nuwang in https://github.com/CloudVE/cloudbridge/pull/331
+* CI hygiene: split deploy job + dedicated env, skip CI on docs-only changes by @nuwang in https://github.com/CloudVE/cloudbridge/pull/332
+
+**Full Changelog**: https://github.com/CloudVE/cloudbridge/compare/v4.0.0...v4.1.0
+
+
 4.0.0 - May 15, 2026 (sha 4963adc3f5f10cd885640138062800d7cd20e93a)
 ---------------------------------------------------------------------
 
