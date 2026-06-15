@@ -45,6 +45,12 @@ jobs:
         name: packages
         path: dist
     - name: Publish distribution 📦 to Test PyPI
+      # Only on tag pushes, not on releases. Running both publish steps in the
+      # same job shares one dist/, and the Test PyPI step writes
+      # *.publish.attestation files that make the subsequent PyPI step fail
+      # ("distributions already have publish attestations"). Each event now
+      # publishes to exactly one index.
+      if: github.event_name != 'release'
       uses: pypa/gh-action-pypi-publish@v1.14.0
       with:
         repository_url: https://test.pypi.org/legacy/
