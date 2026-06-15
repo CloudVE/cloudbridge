@@ -1,10 +1,25 @@
 Release Process
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+
+CloudBridge is published to PyPI automatically by the `deploy workflow
+<https://github.com/CloudVE/cloudbridge/blob/main/.github/workflows/deploy.yaml>`_
+using PyPI `trusted publishing <https://docs.pypi.org/trusted-publishers/>`_
+(OIDC). There is no stored API token and no manual ``twine upload`` step. Two
+events drive the workflow:
+
+* **Pushing a tag** (e.g. ``v4.1.0``) builds the distributions and publishes
+  them to **TestPyPI** (already-uploaded files are skipped).
+* **Publishing a GitHub Release** for that tag publishes the distributions to
+  **production PyPI**.
+
+Because the ``release`` event reads the workflow definition from the commit the
+tag points to, always create the tag on a commit that already contains the
+current ``deploy.yaml``.
 
 1. Make sure all tests pass on the `GitHub Actions workflows
    <https://github.com/CloudVE/cloudbridge/actions>`_.
 
-2. Increment version number in ``cloudbridge/__init__.py`` as per
+2. Increment the version number in ``cloudbridge/__init__.py`` as per
    `semver rules <https://semver.org/>`_.
 
 3. Freeze all library dependencies in ``pyproject.toml`` and commit.
@@ -17,31 +32,30 @@ Release Process
    directly. For all other general purpose libraries, our strategy is to make
    compatibility as broad and unrestricted as possible.
 
-4. Add release notes to ``CHANGELOG.rst``. Also add last commit hash to
-   changelog. List of commits can be obtained using
-   ``git shortlog <last release hash>..HEAD``
+4. Add release notes to ``CHANGELOG.rst``. Also add the last commit hash to the
+   changelog. The list of commits can be obtained using
+   ``git shortlog <last release hash>..HEAD``.
 
-5. Release to PyPi.
-   (make sure you have run ``pip install build twine``)
-   First, test release with PyPI staging server as described in:
-   https://hynek.me/articles/sharing-your-labor-of-love-pypi-quick-and-dirty/
-
-   Once tested, run:
+5. Commit the version bump and changelog, and push to ``main``.
 
 .. code-block:: bash
 
-   # remove stale files or wheel might package them
-   rm -r build dist
-   python -m build
-   twine upload -r pypi dist/cloudbridge-3.0.0*
+   git commit -am "Release 4.1.0"
+   git push origin main
 
-6. Tag release and make a GitHub release.
+6. Tag the release commit and push the tag. This triggers the deploy workflow,
+   which publishes to TestPyPI. Optionally verify the staged release at
+   https://test.pypi.org/project/cloudbridge/ before continuing.
 
 .. code-block:: bash
 
-   git tag -a v3.0.0 -m "Release 3.0.0"
-   git push
-   git push --tags
+   git tag -a v4.1.0 -m "Release 4.1.0"
+   git push origin v4.1.0
 
-7. Increment version number in ``cloudbridge/__init__.py`` to ``version-dev``
-   to indicate the development cycle, commit, and push the changes.
+7. Create a GitHub Release for the tag. Publishing the release triggers the
+   deploy workflow, which publishes to production PyPI. Confirm the upload at
+   https://pypi.org/project/cloudbridge/.
+
+.. code-block:: bash
+
+   gh release create v4.1.0 --title "4.1.0" --notes-file <release-notes>
