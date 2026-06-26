@@ -5,6 +5,8 @@ import hashlib
 import inspect
 import logging
 
+from boto3.s3.transfer import TransferConfig
+
 from botocore.exceptions import ClientError
 
 import tenacity
@@ -876,6 +878,16 @@ class AWSBucketObject(BaseBucketObject):
 
     def _upload_single_shot(self, data):
         self._obj.put(Body=data)
+
+    def _upload_multipart(self, stream):
+        # boto3's TransferManager uploads parts concurrently with a thread-safe
+        # client, so the transparent multipart path delegates to it rather than
+        # CloudBridge's generic clone-pool driver.
+        config = TransferConfig(
+            multipart_threshold=self._multipart_part_size,
+            multipart_chunksize=self._multipart_part_size,
+            max_concurrency=self._multipart_max_concurrency)
+        self._obj.upload_fileobj(stream, Config=config)
 
     def upload_from_file(self, path):
         # boto3's upload_file already streams large files in parts via its

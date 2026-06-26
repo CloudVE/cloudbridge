@@ -6,10 +6,14 @@ import io
 import itertools
 import logging
 import os
+import queue
 import re
 import shutil
 import time
 import uuid
+from concurrent.futures import FIRST_COMPLETED
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import wait
 
 from cloudbridge.interfaces.exceptions import \
     InvalidConfigurationException
@@ -773,6 +777,9 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     # Portable floor: S3 and Swift reject non-final parts smaller than 5 MiB,
     # so part sizes below this are rejected up-front.
     CB_MULTIPART_MIN_PART_SIZE = 5 * 1024 * 1024
+    # Number of parts uploaded in parallel by the transparent multipart path.
+    CB_MULTIPART_MAX_CONCURRENCY = int(os.environ.get(
+        'CB_MULTIPART_MAX_CONCURRENCY', 5))
 
     def __init__(self, provider):
         super(BaseBucketObject, self).__init__(provider)
@@ -806,6 +813,12 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
         # pylint:disable=protected-access
         return int(self._provider._get_config_value(
             'multipart_part_size', self.CB_MULTIPART_PART_SIZE))
+
+    @property
+    def _multipart_max_concurrency(self):
+        # pylint:disable=protected-access
+        return int(self._provider._get_config_value(
+            'multipart_max_concurrency', self.CB_MULTIPART_MAX_CONCURRENCY))
 
     @staticmethod
     def _data_size(data):
@@ -851,27 +864,100 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     def _upload_multipart(self, stream):
         """
         Drive the explicit multipart lifecycle over a stream, reading it one
-        part at a time so the whole payload is never held in memory. Any
-        failure aborts the upload to avoid leaking staged parts.
+        part at a time so the whole payload is never held in memory.
+
+        Parts are uploaded across a bounded thread pool. To stay safe even on
+        providers whose SDK client/connection is not thread-safe, each worker
+        uploads through its own cloned provider (see :meth:`.CloudProvider.
+        clone`), so no provider state is shared between threads. Any failure
+        aborts the upload to avoid leaking staged parts.
+
+        Providers with an efficient, thread-safe native uploader (e.g. AWS via
+        boto3's ``upload_fileobj``) override this method to use it directly.
         """
         part_size = self._multipart_part_size
         if part_size < self.CB_MULTIPART_MIN_PART_SIZE:
             raise InvalidValueException('multipart_part_size', part_size)
 
+        concurrency = max(1, self._multipart_max_concurrency)
         upload = self.create_multipart_upload()
-        parts = []
         try:
-            part_number = 1
-            while True:
-                chunk = stream.read(part_size)
-                if not chunk:
-                    break
-                parts.append(upload.upload_part(part_number, chunk))
-                part_number += 1
+            if concurrency == 1:
+                parts = self._upload_parts_serially(upload, stream, part_size)
+            else:
+                parts = self._upload_parts_concurrently(
+                    upload, stream, part_size, concurrency)
             return upload.complete(parts)
         except Exception:
             upload.abort()
             raise
+
+    def _upload_parts_serially(self, upload, stream, part_size):
+        parts = []
+        part_number = 1
+        while True:
+            chunk = self._read_part(stream, part_size)
+            if not chunk:
+                break
+            parts.append(upload.upload_part(part_number, chunk))
+            part_number += 1
+        return parts
+
+    def _upload_parts_concurrently(self, upload, stream, part_size,
+                                   concurrency):
+        # A pool of cloned bucket-object services, one per worker, so each
+        # thread touches an isolated provider/connection.
+        clones = queue.Queue()
+        for _ in range(concurrency):
+            # pylint:disable=protected-access
+            clones.put(self._provider.clone().storage._bucket_objects)
+
+        def upload_one(part_number, chunk):
+            service = clones.get()
+            try:
+                return service.upload_part(
+                    upload.bucket, upload, part_number, chunk)
+            finally:
+                clones.put(service)
+
+        parts = []
+        in_flight = set()
+        part_number = 1
+        depleted = False
+        with ThreadPoolExecutor(max_workers=concurrency) as executor:
+            while not depleted or in_flight:
+                # Keep the pool fed but never read more than ``concurrency``
+                # parts ahead, bounding memory to ~concurrency * part_size.
+                while not depleted and len(in_flight) < concurrency:
+                    chunk = self._read_part(stream, part_size)
+                    if not chunk:
+                        depleted = True
+                        break
+                    in_flight.add(
+                        executor.submit(upload_one, part_number, chunk))
+                    part_number += 1
+                if not in_flight:
+                    break
+                done, in_flight = wait(
+                    in_flight, return_when=FIRST_COMPLETED)
+                for future in done:
+                    parts.append(future.result())
+        return parts
+
+    @staticmethod
+    def _read_part(stream, part_size):
+        """
+        Read exactly ``part_size`` bytes from ``stream`` (fewer only at EOF),
+        coalescing short reads so non-final parts always meet the provider
+        minimum part size.
+        """
+        buffer = bytearray()
+        while len(buffer) < part_size:
+            chunk = stream.read(part_size - len(buffer))
+            if not chunk:
+                break
+            buffer.extend(chunk)
+        return bytes(buffer)
 
     def _upload_from_file_single_shot(self, path):
         """

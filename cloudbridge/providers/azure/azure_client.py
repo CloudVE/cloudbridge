@@ -469,9 +469,11 @@ class AzureClient(object):
         container_client = self.get_container(container_name)
         return container_client.list_blobs(name_starts_with=prefix, include=include)
 
-    def upload_blob(self, container_name, blob_name, data, length=None):
+    def upload_blob(self, container_name, blob_name, data, length=None,
+                    max_concurrency=1):
         blob_client = self.blob_client(container_name, blob_name)
-        blob_client.upload_blob(data=data, length=length, overwrite=True)
+        blob_client.upload_blob(data=data, length=length, overwrite=True,
+                                max_concurrency=max_concurrency)
 
     def stage_block(self, container_name, blob_name, block_id, data):
         blob_client = self.blob_client(container_name, blob_name)

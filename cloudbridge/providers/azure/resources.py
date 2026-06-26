@@ -247,6 +247,19 @@ class AzureBucketObject(BaseBucketObject):
             log.exception(azureEx)
             return False
 
+    def _upload_multipart(self, stream):
+        # The Azure SDK's upload_blob stages blocks concurrently (max_concurrency
+        # workers) over a thread-safe client, so the transparent multipart path
+        # delegates to it rather than CloudBridge's generic clone-pool driver.
+        try:
+            self._provider.azure_client.upload_blob(
+                self._container.id, self.id, stream,
+                max_concurrency=self._multipart_max_concurrency)
+            return True
+        except AzureException as azureEx:
+            log.exception(azureEx)
+            return False
+
     def delete(self):
         """
         Delete this object.

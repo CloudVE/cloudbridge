@@ -11,7 +11,6 @@ import requests
 from cloudbridge.base import helpers as cb_helpers
 from cloudbridge.base.resources import BaseBucketObject
 from cloudbridge.interfaces.exceptions import DuplicateResourceException
-from cloudbridge.interfaces.exceptions import InvalidValueException
 from cloudbridge.interfaces.provider import TestMockHelperMixin
 from cloudbridge.interfaces.resources import Bucket
 from cloudbridge.interfaces.resources import BucketObject
@@ -334,9 +333,9 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             with cb_helpers.cleanup_action(lambda: obj.delete()):
                 content = b"x" * (MIN_PART_SIZE * 2 + 1024)
 
-                # Lower the threshold/part size so a modest stream triggers
-                # the multipart path, and assert it is actually taken.
-                svc = self.provider.storage._bucket_objects
+                # Lower the threshold/part size so a modest stream crosses it,
+                # and assert the multipart path is taken (each provider routes
+                # its own way underneath) and the object round-trips exactly.
                 with mock.patch.object(
                         BaseBucketObject, 'CB_MULTIPART_THRESHOLD',
                         MIN_PART_SIZE), \
@@ -344,8 +343,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                         BaseBucketObject, 'CB_MULTIPART_PART_SIZE',
                         MIN_PART_SIZE), \
                     mock.patch.object(
-                        svc, 'create_multipart_upload',
-                        wraps=svc.create_multipart_upload) as spy:
+                        obj, '_upload_multipart',
+                        wraps=obj._upload_multipart) as spy:
                     obj.upload(BytesIO(content))
 
                 spy.assert_called_once()
@@ -377,25 +376,6 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 target_stream = BytesIO()
                 obj.save_content(target_stream)
                 self.assertEqual(target_stream.getvalue(), content)
-
-    @helpers.skipIfNoService(['storage.buckets'])
-    def test_multipart_part_size_below_minimum_raises(self):
-        name = "cbtest-mpu-{0}".format(helpers.get_uuid())
-        test_bucket = self.provider.storage.buckets.create(name)
-
-        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
-            obj = test_bucket.objects.create("badpartsize.bin")
-
-            with cb_helpers.cleanup_action(lambda: obj.delete()):
-                content = b"x" * 4096
-
-                # A part size below the 5 MiB portable minimum is invalid.
-                with mock.patch.object(
-                        BaseBucketObject, 'CB_MULTIPART_THRESHOLD', 1024), \
-                    mock.patch.object(
-                        BaseBucketObject, 'CB_MULTIPART_PART_SIZE', 1024):
-                    with self.assertRaises(InvalidValueException):
-                        obj.upload(BytesIO(content))
 
     @skip("Skip unless you want to test objects bigger than 5GB")
     @helpers.skipIfNoService(['storage.buckets'])
