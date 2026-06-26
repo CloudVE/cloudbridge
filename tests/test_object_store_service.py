@@ -312,14 +312,19 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             obj_name = "mpu-abort.bin"
             obj = test_bucket.objects.create(obj_name)
 
-            upload = obj.create_multipart_upload()
-            upload.upload_part(1, b"a" * MIN_PART_SIZE)
-            upload.abort()
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                upload = obj.create_multipart_upload()
+                upload.upload_part(1, b"a" * MIN_PART_SIZE)
+                upload.abort()
 
-            # Aborting must not materialise the target object.
-            self.assertIsNone(
-                test_bucket.objects.get(obj_name),
-                "Object should not exist after a multipart upload is aborted")
+                # Aborting must not commit any part data. Some providers
+                # pre-materialise an empty placeholder on objects.create(), so
+                # the target may be absent or empty afterwards -- but it must
+                # never hold the uploaded part.
+                stored = test_bucket.objects.get(obj_name)
+                self.assertTrue(
+                    stored is None or stored.size == 0,
+                    "Aborted multipart upload must not commit any part data")
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_transparent_upload_large_stream_uses_multipart(self):
