@@ -9,6 +9,8 @@ import googleapiclient
 
 from cloudbridge.base import helpers as cb_helpers
 from cloudbridge.base.middleware import dispatch
+from cloudbridge.base.resources import BaseMultipartUpload
+from cloudbridge.base.resources import BaseUploadPart
 from cloudbridge.base.resources import ClientPagedResultList
 from cloudbridge.base.resources import ServerPagedResultList
 from cloudbridge.base.services import BaseBucketObjectService
@@ -1496,6 +1498,122 @@ class GCPBucketObjectService(BaseBucketObjectService):
         return GCPBucketObject(self._provider,
                                bucket,
                                response) if response else None
+
+    # GCS has no independent "upload part" API, so multipart is emulated by
+    # uploading each part as a temporary object and assembling them with the
+    # compose API. ``compose`` accepts at most this many source objects per
+    # call, so larger uploads are composed in chained batches.
+    _MAX_COMPOSE_SOURCES = 32
+
+    @staticmethod
+    def _temp_prefix(upload):
+        return ".cb-mpu/{0}/{1}/".format(upload.object_name, upload.id)
+
+    @classmethod
+    def _temp_part_name(cls, upload, part_number):
+        return "{0}part-{1:05d}".format(cls._temp_prefix(upload), part_number)
+
+    @dispatch(event="provider.storage._bucket_objects.create_multipart_upload",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def create_multipart_upload(self, bucket, object_name):
+        # No server-side initiation; the upload id namespaces this upload's
+        # temporary part objects.
+        return BaseMultipartUpload(self.provider, bucket, object_name,
+                                   uuid.uuid4().hex)
+
+    @dispatch(event="provider.storage._bucket_objects.upload_part",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def upload_part(self, bucket, upload, part_number, data):
+        if isinstance(data, str):
+            data = data.encode()
+        if isinstance(data, (bytes, bytearray)):
+            data = io.BytesIO(data)
+        media_body = googleapiclient.http.MediaIoBaseUpload(
+            data, mimetype='application/octet-stream')
+        temp_name = self._temp_part_name(upload, part_number)
+        self._create_object_with_media_body(bucket, temp_name, media_body)
+        return BaseUploadPart(part_number, temp_name)
+
+    @dispatch(event="provider.storage._bucket_objects."
+                    "complete_multipart_upload",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def complete_multipart_upload(self, bucket, upload, parts):
+        ordered = sorted(parts, key=lambda p: p.part_number)
+        sources = [p.etag for p in ordered]
+        intermediates = self._compose(bucket, upload, upload.object_name,
+                                      sources)
+        # The temporary part objects and any compose intermediates are real,
+        # billable objects, so remove them once assembled.
+        self._delete_objects(bucket, sources + intermediates,
+                             ignore_missing=True)
+        return self.get(bucket, upload.object_name)
+
+    @dispatch(event="provider.storage._bucket_objects.abort_multipart_upload",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def abort_multipart_upload(self, bucket, upload):
+        self._delete_objects(bucket, self._list_temp_objects(bucket, upload),
+                             ignore_missing=True)
+
+    def _compose(self, bucket, upload, destination, sources):
+        """
+        Compose ``sources`` into ``destination``, chaining through
+        intermediate objects when there are more than ``_MAX_COMPOSE_SOURCES``.
+        Returns the list of intermediate object names created (to be cleaned
+        up by the caller).
+        """
+        intermediates = []
+        level = sources
+        batch = 0
+        while len(level) > self._MAX_COMPOSE_SOURCES:
+            next_level = []
+            for i in range(0, len(level), self._MAX_COMPOSE_SOURCES):
+                group = level[i:i + self._MAX_COMPOSE_SOURCES]
+                name = "{0}compose-{1:05d}".format(
+                    self._temp_prefix(upload), batch)
+                self._compose_once(bucket, name, group)
+                intermediates.append(name)
+                next_level.append(name)
+                batch += 1
+            level = next_level
+        self._compose_once(bucket, destination, level)
+        return intermediates
+
+    def _compose_once(self, bucket, destination, sources):
+        (self.provider
+             .gcp_storage
+             .objects()
+             .compose(destinationBucket=bucket.name,
+                      destinationObject=destination,
+                      body={'sourceObjects': [{'name': s} for s in sources]})
+             .execute())
+
+    def _list_temp_objects(self, bucket, upload):
+        prefix = self._temp_prefix(upload)
+        names = []
+        page_token = None
+        while True:
+            response = (self.provider
+                            .gcp_storage
+                            .objects()
+                            .list(bucket=bucket.name, prefix=prefix,
+                                  pageToken=page_token)
+                            .execute())
+            names.extend(o['name'] for o in response.get('items', []))
+            page_token = response.get('nextPageToken')
+            if not page_token:
+                return names
+
+    def _delete_objects(self, bucket, names, ignore_missing=False):
+        for name in names:
+            try:
+                (self.provider
+                     .gcp_storage
+                     .objects()
+                     .delete(bucket=bucket.name, object=name)
+                     .execute())
+            except googleapiclient.errors.HttpError:
+                if not ignore_missing:
+                    raise
 
 
 class GCPGatewayService(BaseGatewayService):

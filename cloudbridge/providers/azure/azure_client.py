@@ -30,8 +30,8 @@ from azure.mgmt.resource.resources.models import ResourceGroup
 from azure.mgmt.storage import StorageManagementClient
 from azure.mgmt.storage.models import Sku, StorageAccountCreateParameters
 from azure.mgmt.subscription import SubscriptionClient
-from azure.storage.blob import (BlobSasPermissions, BlobServiceClient,
-                                generate_blob_sas)
+from azure.storage.blob import (BlobBlock, BlobSasPermissions,
+                                BlobServiceClient, generate_blob_sas)
 
 from . import helpers as azure_helpers
 
@@ -473,21 +473,18 @@ class AzureClient(object):
         blob_client = self.blob_client(container_name, blob_name)
         blob_client.upload_blob(data=data, length=length, overwrite=True)
 
+    def stage_block(self, container_name, blob_name, block_id, data):
+        blob_client = self.blob_client(container_name, blob_name)
+        blob_client.stage_block(block_id, data)
+
+    def commit_block_list(self, container_name, blob_name, block_ids):
+        blob_client = self.blob_client(container_name, blob_name)
+        block_list = [BlobBlock(block_id=block_id) for block_id in block_ids]
+        blob_client.commit_block_list(block_list)
+
     def get_blob(self, container_name, blob_name):
         blob_client = self.blob_client(container_name, blob_name)
         return blob_client.get_blob_properties(container_name, blob_name)
-
-    def create_blob_from_text(self, container_name, blob_name, text):
-        if isinstance(text, bytes):
-            length = len(text)
-        else:
-            length = len(text.encode())
-        self.upload_blob(container_name, blob_name, text, length)
-
-    def create_blob_from_file(self, container_name, blob_name, file_path, length=None):
-        with open(file_path, 'rb') as data:
-            data = data.read()
-            self.upload_blob(container_name, blob_name, data, len(data))
 
     def delete_blob(self, container_name, blob_name, delete_snapshots="include"):
         blob_client = self.blob_client(container_name, blob_name)

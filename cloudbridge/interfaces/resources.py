@@ -2125,6 +2125,118 @@ class VMFirewallRule(CloudResource):
         pass
 
 
+class UploadPart(object):
+    """
+    A handle for a single part uploaded as part of a multipart upload.
+
+    Returned by :meth:`.MultipartUpload.upload_part`. Callers must retain the
+    parts they receive and pass them to :meth:`.MultipartUpload.complete`.
+    The handle is a simple, serializable value object so that parts may be
+    collected across threads or processes when uploading in parallel.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def part_number(self):
+        """
+        The 1-based index of this part within the upload.
+
+        :rtype: ``int``
+        :return: The part number supplied to ``upload_part``.
+        """
+        pass
+
+    @abstractproperty
+    def etag(self):
+        """
+        Opaque provider handle identifying the stored part.
+
+        Its concrete form varies by provider (e.g. an S3 ETag, an Azure block
+        id, a GCS temp-object name, or a Swift segment descriptor) and should
+        not be interpreted by clients.
+
+        :rtype: ``object``
+        :return: The provider-specific part handle.
+        """
+        pass
+
+
+class MultipartUpload(CloudResource):
+    """
+    Represents an in-progress, multi-part upload to a :class:`.BucketObject`.
+
+    Created via :meth:`.BucketObject.create_multipart_upload`. Parts are
+    uploaded with :meth:`upload_part` (in any order, optionally in parallel)
+    and the upload is finalized with :meth:`complete` or cancelled with
+    :meth:`abort`.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def bucket(self):
+        """
+        The bucket this upload targets.
+
+        :rtype: :class:`.Bucket`
+        :return: The target Bucket.
+        """
+        pass
+
+    @abstractproperty
+    def object_name(self):
+        """
+        The key of the object being uploaded.
+
+        :rtype: ``str``
+        :return: The target object name.
+        """
+        pass
+
+    @abstractmethod
+    def upload_part(self, part_number, data):
+        """
+        Upload a single part of this multipart upload.
+
+        :type part_number: ``int``
+        :param part_number: 1-based index that determines the part's position
+            in the final object. Part numbers must be unique within an upload.
+
+        :type data: ``bytes`` or file-like object
+        :param data: The part payload. Every part except the last must be at
+            least the provider minimum part size (5 MiB on S3).
+
+        :rtype: :class:`.UploadPart`
+        :return: A part handle that MUST be retained and passed to
+            :meth:`complete`.
+        """
+        pass
+
+    @abstractmethod
+    def complete(self, parts):
+        """
+        Finalize the upload, assembling parts in ascending ``part_number``.
+
+        :type parts: ``list`` of :class:`.UploadPart`
+        :param parts: The handles returned by :meth:`upload_part`. They may be
+            supplied in any order.
+
+        :rtype: :class:`.BucketObject`
+        :return: The completed object.
+        """
+        pass
+
+    @abstractmethod
+    def abort(self):
+        """
+        Cancel the upload, releasing any staged parts or temporary objects.
+
+        ``abort`` is idempotent and safe to call after a partial upload. On
+        Azure it is best-effort: there is no server-side cancel, so uncommitted
+        blocks are left to expire (after ~7 days) rather than being deleted.
+        """
+        pass
+
+
 class BucketObject(CloudResource):
     """
     Represents an object stored within a bucket.
@@ -2199,8 +2311,32 @@ class BucketObject(CloudResource):
         """
         Store the contents of the file pointed by the "path" variable.
 
+        Files larger than the configured multipart threshold are streamed to
+        the provider in parts, so the whole file is never held in memory.
+
         :type path: ``str``
         :param path: Absolute path to the file to be uploaded to S3.
+        """
+        pass
+
+    @abstractmethod
+    def create_multipart_upload(self):
+        """
+        Begin an explicit, multi-part upload to this object.
+
+        Returns a :class:`.MultipartUpload` handle whose lifecycle is::
+
+            upload = obj.create_multipart_upload()
+            parts = [upload.upload_part(n, chunk) for n, chunk in ...]
+            upload.complete(parts)   # or upload.abort()
+
+        Parts may be uploaded in any order and in parallel; every part except
+        the last must be at least the provider minimum part size (5 MiB on
+        S3). :meth:`.MultipartUpload.complete` assembles them in ascending
+        ``part_number`` order.
+
+        :rtype: :class:`.MultipartUpload`
+        :return: An in-progress multipart upload handle for this object.
         """
         pass
 

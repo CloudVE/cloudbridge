@@ -3,12 +3,15 @@ import os
 import tempfile
 from datetime import datetime
 from io import BytesIO
+from unittest import mock
 from unittest import skip
 
 import requests
 
 from cloudbridge.base import helpers as cb_helpers
+from cloudbridge.base.resources import BaseBucketObject
 from cloudbridge.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.interfaces.exceptions import InvalidValueException
 from cloudbridge.interfaces.provider import TestMockHelperMixin
 from cloudbridge.interfaces.resources import Bucket
 from cloudbridge.interfaces.resources import BucketObject
@@ -16,6 +19,10 @@ from cloudbridge.interfaces.resources import BucketObject
 from tests import helpers
 from tests.helpers import ProviderTestBase
 from tests.helpers import standard_interface_tests as sit
+
+# S3 (and Swift) require every part except the last to be >= 5 MiB. Tests use
+# this size so they remain valid against real cloud providers, not just moto.
+MIN_PART_SIZE = 5 * 1024 * 1024
 
 
 class CloudObjectStoreServiceTestCase(ProviderTestBase):
@@ -239,6 +246,156 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 obj.save_content(target_stream)
                 with open(test_file, 'rb') as f:
                     self.assertEqual(target_stream.getvalue(), f.read())
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_explicit_multipart_upload_roundtrip(self):
+        name = "cbtest-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "mpu-roundtrip.bin"
+            obj = test_bucket.objects.create(obj_name)
+
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                part1 = b"a" * MIN_PART_SIZE
+                part2 = b"b" * MIN_PART_SIZE
+                part3 = b"c" * 1024  # final part may be smaller than the min
+                expected = part1 + part2 + part3
+
+                upload = obj.create_multipart_upload()
+                parts = [upload.upload_part(1, part1),
+                         upload.upload_part(2, part2),
+                         upload.upload_part(3, part3)]
+                upload.complete(parts)
+
+                stored = test_bucket.objects.get(obj_name)
+                self.assertIsNotNone(
+                    stored, "Object should exist after multipart completion")
+                self.assertEqual(stored.size, len(expected))
+                target_stream = BytesIO()
+                stored.save_content(target_stream)
+                self.assertEqual(target_stream.getvalue(), expected)
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_multipart_upload_out_of_order_parts(self):
+        name = "cbtest-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "mpu-ooo.bin"
+            obj = test_bucket.objects.create(obj_name)
+
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                part1 = b"1" * MIN_PART_SIZE
+                part2 = b"2" * MIN_PART_SIZE
+                part3 = b"3" * 1024
+                expected = part1 + part2 + part3
+
+                upload = obj.create_multipart_upload()
+                # Upload and collect parts out of order; complete must
+                # assemble them in ascending part-number order regardless.
+                p3 = upload.upload_part(3, part3)
+                p1 = upload.upload_part(1, part1)
+                p2 = upload.upload_part(2, part2)
+                upload.complete([p3, p1, p2])
+
+                stored = test_bucket.objects.get(obj_name)
+                target_stream = BytesIO()
+                stored.save_content(target_stream)
+                self.assertEqual(target_stream.getvalue(), expected)
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_multipart_upload_abort(self):
+        name = "cbtest-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "mpu-abort.bin"
+            obj = test_bucket.objects.create(obj_name)
+
+            upload = obj.create_multipart_upload()
+            upload.upload_part(1, b"a" * MIN_PART_SIZE)
+            upload.abort()
+
+            # Aborting must not materialise the target object.
+            self.assertIsNone(
+                test_bucket.objects.get(obj_name),
+                "Object should not exist after a multipart upload is aborted")
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_transparent_upload_large_stream_uses_multipart(self):
+        name = "cbtest-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "transparent.bin"
+            obj = test_bucket.objects.create(obj_name)
+
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                content = b"x" * (MIN_PART_SIZE * 2 + 1024)
+
+                # Lower the threshold/part size so a modest stream triggers
+                # the multipart path, and assert it is actually taken.
+                svc = self.provider.storage._bucket_objects
+                with mock.patch.object(
+                        BaseBucketObject, 'CB_MULTIPART_THRESHOLD',
+                        MIN_PART_SIZE), \
+                    mock.patch.object(
+                        BaseBucketObject, 'CB_MULTIPART_PART_SIZE',
+                        MIN_PART_SIZE), \
+                    mock.patch.object(
+                        svc, 'create_multipart_upload',
+                        wraps=svc.create_multipart_upload) as spy:
+                    obj.upload(BytesIO(content))
+
+                spy.assert_called_once()
+                stored = test_bucket.objects.get(obj_name)
+                self.assertEqual(stored.size, len(content))
+                target_stream = BytesIO()
+                stored.save_content(target_stream)
+                self.assertEqual(target_stream.getvalue(), content)
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_small_upload_stays_single_shot(self):
+        name = "cbtest-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj = test_bucket.objects.create("small.txt")
+
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                content = b"a small payload below the multipart threshold"
+
+                # A payload below the threshold must not trigger multipart.
+                svc = self.provider.storage._bucket_objects
+                with mock.patch.object(
+                        svc, 'create_multipart_upload',
+                        wraps=svc.create_multipart_upload) as spy:
+                    obj.upload(content)
+
+                spy.assert_not_called()
+                target_stream = BytesIO()
+                obj.save_content(target_stream)
+                self.assertEqual(target_stream.getvalue(), content)
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_multipart_part_size_below_minimum_raises(self):
+        name = "cbtest-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj = test_bucket.objects.create("badpartsize.bin")
+
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                content = b"x" * 4096
+
+                # A part size below the 5 MiB portable minimum is invalid.
+                with mock.patch.object(
+                        BaseBucketObject, 'CB_MULTIPART_THRESHOLD', 1024), \
+                    mock.patch.object(
+                        BaseBucketObject, 'CB_MULTIPART_PART_SIZE', 1024):
+                    with self.assertRaises(InvalidValueException):
+                        obj.upload(BytesIO(content))
 
     @skip("Skip unless you want to test objects bigger than 5GB")
     @helpers.skipIfNoService(['storage.buckets'])

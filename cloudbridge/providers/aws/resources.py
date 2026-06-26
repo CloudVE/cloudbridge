@@ -866,13 +866,21 @@ class AWSBucketObject(BaseBucketObject):
     def last_modified(self):
         return self._obj.last_modified.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
+    @property
+    def bucket(self):
+        return AWSBucket(self._provider,
+                         self._provider.s3_conn.Bucket(self._obj.bucket_name))
+
     def iter_content(self):
         return self.BucketObjIterator(self._obj.get().get('Body'))
 
-    def upload(self, data):
+    def _upload_single_shot(self, data):
         self._obj.put(Body=data)
 
     def upload_from_file(self, path):
+        # boto3's upload_file already streams large files in parts via its
+        # TransferManager, so it is used directly rather than CloudBridge's
+        # multipart driver.
         self._obj.upload_file(path)
 
     def delete(self):

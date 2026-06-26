@@ -1,7 +1,9 @@
 """
 Services implemented by the OpenStack provider.
 """
+import json
 import logging
+import uuid
 
 from neutronclient.common.exceptions import NeutronClientException
 from neutronclient.common.exceptions import PortNotFoundClient
@@ -18,6 +20,8 @@ from swiftclient import ClientException as SwiftClientException
 import cloudbridge.base.helpers as cb_helpers
 from cloudbridge.base.middleware import dispatch
 from cloudbridge.base.resources import BaseLaunchConfig
+from cloudbridge.base.resources import BaseMultipartUpload
+from cloudbridge.base.resources import BaseUploadPart
 from cloudbridge.base.resources import ClientPagedResultList
 from cloudbridge.base.services import BaseBucketObjectService
 from cloudbridge.base.services import BaseBucketService
@@ -652,6 +656,61 @@ class OpenStackBucketObjectService(BaseBucketObjectService):
     def create(self, bucket, object_name):
         self.provider.swift.put_object(bucket.name, object_name, None)
         return self.get(bucket, object_name)
+
+    @staticmethod
+    def _segment_prefix(upload):
+        return "{0}/slo/{1}/".format(upload.object_name, upload.id)
+
+    @classmethod
+    def _segment_name(cls, upload, part_number):
+        return "{0}{1:08d}".format(cls._segment_prefix(upload), part_number)
+
+    @dispatch(event="provider.storage._bucket_objects.create_multipart_upload",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def create_multipart_upload(self, bucket, object_name):
+        # Swift has no server-side initiation; the upload id namespaces this
+        # upload's Static Large Object segments.
+        return BaseMultipartUpload(self.provider, bucket, object_name,
+                                   uuid.uuid4().hex)
+
+    @dispatch(event="provider.storage._bucket_objects.upload_part",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def upload_part(self, bucket, upload, part_number, data):
+        if isinstance(data, str):
+            data = data.encode()
+        if not isinstance(data, (bytes, bytearray)):
+            data = data.read()
+        segment_name = self._segment_name(upload, part_number)
+        etag = self.provider.swift.put_object(
+            bucket.name, segment_name, data)
+        # Retain the manifest entry needed to assemble the SLO on complete.
+        return BaseUploadPart(part_number, {
+            'path': "/{0}/{1}".format(bucket.name, segment_name),
+            'etag': etag,
+            'size_bytes': len(data)})
+
+    @dispatch(event="provider.storage._bucket_objects."
+                    "complete_multipart_upload",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def complete_multipart_upload(self, bucket, upload, parts):
+        ordered = sorted(parts, key=lambda p: p.part_number)
+        manifest = [p.etag for p in ordered]
+        self.provider.swift.put_object(
+            bucket.name, upload.object_name, json.dumps(manifest),
+            query_string='multipart-manifest=put')
+        return self.get(bucket, upload.object_name)
+
+    @dispatch(event="provider.storage._bucket_objects.abort_multipart_upload",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def abort_multipart_upload(self, bucket, upload):
+        prefix = self._segment_prefix(upload)
+        _, object_list = self.provider.swift.get_container(
+            bucket.name, prefix=prefix)
+        for obj in object_list:
+            try:
+                self.provider.swift.delete_object(bucket.name, obj.get('name'))
+            except SwiftClientException:
+                pass  # idempotent: ignore already-deleted segments
 
 
 class OpenStackComputeService(BaseComputeService):

@@ -2,6 +2,7 @@
 Base implementation for data objects exposed through a provider or service
 """
 import inspect
+import io
 import itertools
 import logging
 import os
@@ -14,6 +15,7 @@ from cloudbridge.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.interfaces.exceptions import InvalidLabelException
 from cloudbridge.interfaces.exceptions import InvalidNameException
+from cloudbridge.interfaces.exceptions import InvalidValueException
 from cloudbridge.interfaces.exceptions import WaitStateException
 from cloudbridge.interfaces.resources import AttachmentInfo
 from cloudbridge.interfaces.resources import Bucket
@@ -31,6 +33,7 @@ from cloudbridge.interfaces.resources import KeyPair
 from cloudbridge.interfaces.resources import LaunchConfig
 from cloudbridge.interfaces.resources import MachineImage
 from cloudbridge.interfaces.resources import MachineImageState
+from cloudbridge.interfaces.resources import MultipartUpload
 from cloudbridge.interfaces.resources import Network
 from cloudbridge.interfaces.resources import NetworkState
 from cloudbridge.interfaces.resources import ObjectLifeCycleMixin
@@ -43,6 +46,7 @@ from cloudbridge.interfaces.resources import Snapshot
 from cloudbridge.interfaces.resources import SnapshotState
 from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import SubnetState
+from cloudbridge.interfaces.resources import UploadPart
 from cloudbridge.interfaces.resources import VMFirewall
 from cloudbridge.interfaces.resources import VMFirewallRule
 from cloudbridge.interfaces.resources import VMType
@@ -680,6 +684,76 @@ class BaseRegion(BaseCloudResource, Region):
         return next(iter(self.zones))
 
 
+class BaseUploadPart(UploadPart):
+    """
+    A simple, serializable handle for a single uploaded part. Concrete
+    providers return these from ``upload_part`` and consume them in
+    ``complete_multipart_upload``.
+    """
+
+    def __init__(self, part_number, etag):
+        self._part_number = part_number
+        self._etag = etag
+
+    @property
+    def part_number(self):
+        return self._part_number
+
+    @property
+    def etag(self):
+        return self._etag
+
+    def __repr__(self):
+        return "<CB-{0}: {1} ({2})>".format(
+            self.__class__.__name__, self._part_number, self._etag)
+
+
+class BaseMultipartUpload(BaseCloudResource, MultipartUpload):
+    """
+    Base implementation of an in-progress multipart upload. It is a thin
+    handle that delegates the actual work to the provider's bucket-object
+    service, mirroring how other base resources delegate to their service
+    (e.g. ``BaseBucket.delete``).
+    """
+
+    def __init__(self, provider, bucket, object_name, upload_id):
+        super(BaseMultipartUpload, self).__init__(provider)
+        self._bucket = bucket
+        self._object_name = object_name
+        self._upload_id = upload_id
+
+    @property
+    def id(self):
+        return self._upload_id
+
+    @property
+    def name(self):
+        return self._object_name
+
+    @property
+    def bucket(self):
+        return self._bucket
+
+    @property
+    def object_name(self):
+        return self._object_name
+
+    def upload_part(self, part_number, data):
+        # pylint:disable=protected-access
+        return self._provider.storage._bucket_objects.upload_part(
+            self._bucket, self, part_number, data)
+
+    def complete(self, parts):
+        # pylint:disable=protected-access
+        return self._provider.storage._bucket_objects\
+            .complete_multipart_upload(self._bucket, self, parts)
+
+    def abort(self):
+        # pylint:disable=protected-access
+        return self._provider.storage._bucket_objects\
+            .abort_multipart_upload(self._bucket, self)
+
+
 class BaseBucketObject(BaseCloudResource, BucketObject):
 
     # Regular expression for valid bucket keys.
@@ -689,6 +763,16 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     # Note: The following regex is based on: https://stackoverflow.com/question
     # s/537772/what-is-the-most-correct-regular-expression-for-a-unix-file-path
     CB_NAME_PATTERN = re.compile(r"[^\0]+")
+
+    # Uploads larger than this many bytes are split into parts.
+    CB_MULTIPART_THRESHOLD = int(os.environ.get(
+        'CB_MULTIPART_THRESHOLD', 100 * 1024 * 1024))   # 100 MiB
+    # The size of each part for multipart uploads.
+    CB_MULTIPART_PART_SIZE = int(os.environ.get(
+        'CB_MULTIPART_PART_SIZE', 50 * 1024 * 1024))    # 50 MiB
+    # Portable floor: S3 and Swift reject non-final parts smaller than 5 MiB,
+    # so part sizes below this are rejected up-front.
+    CB_MULTIPART_MIN_PART_SIZE = 5 * 1024 * 1024
 
     def __init__(self, provider):
         super(BaseBucketObject, self).__init__(provider)
@@ -710,6 +794,98 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
 
     def save_content(self, target_stream):
         shutil.copyfileobj(self.iter_content(), target_stream)
+
+    @property
+    def _multipart_threshold(self):
+        # pylint:disable=protected-access
+        return int(self._provider._get_config_value(
+            'multipart_threshold', self.CB_MULTIPART_THRESHOLD))
+
+    @property
+    def _multipart_part_size(self):
+        # pylint:disable=protected-access
+        return int(self._provider._get_config_value(
+            'multipart_part_size', self.CB_MULTIPART_PART_SIZE))
+
+    @staticmethod
+    def _data_size(data):
+        """
+        Best-effort size of an upload payload, or ``None`` if it cannot be
+        determined without consuming the data (e.g. a non-seekable stream).
+        """
+        if isinstance(data, str):
+            return len(data.encode('utf-8'))
+        if isinstance(data, (bytes, bytearray)):
+            return len(data)
+        if hasattr(data, 'seek') and hasattr(data, 'tell'):
+            try:
+                pos = data.tell()
+                data.seek(0, os.SEEK_END)
+                size = data.tell()
+                data.seek(pos)
+                return size
+            except (OSError, ValueError):
+                return None
+        return None
+
+    @staticmethod
+    def _as_stream(data):
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        if isinstance(data, (bytes, bytearray)):
+            return io.BytesIO(data)
+        return data
+
+    def upload(self, data):
+        size = self._data_size(data)
+        if size is not None and size > self._multipart_threshold:
+            return self._upload_multipart(self._as_stream(data))
+        return self._upload_single_shot(data)
+
+    def upload_from_file(self, path):
+        if os.path.getsize(path) > self._multipart_threshold:
+            with open(path, 'rb') as f:
+                return self._upload_multipart(f)
+        return self._upload_from_file_single_shot(path)
+
+    def _upload_multipart(self, stream):
+        """
+        Drive the explicit multipart lifecycle over a stream, reading it one
+        part at a time so the whole payload is never held in memory. Any
+        failure aborts the upload to avoid leaking staged parts.
+        """
+        part_size = self._multipart_part_size
+        if part_size < self.CB_MULTIPART_MIN_PART_SIZE:
+            raise InvalidValueException('multipart_part_size', part_size)
+
+        upload = self.create_multipart_upload()
+        parts = []
+        try:
+            part_number = 1
+            while True:
+                chunk = stream.read(part_size)
+                if not chunk:
+                    break
+                parts.append(upload.upload_part(part_number, chunk))
+                part_number += 1
+            return upload.complete(parts)
+        except Exception:
+            upload.abort()
+            raise
+
+    def _upload_from_file_single_shot(self, path):
+        """
+        Default small-file upload: read the file and hand it to the provider's
+        single-shot upload. Providers with a more efficient native file upload
+        (e.g. AWS ``upload_file``) override :meth:`upload_from_file` directly.
+        """
+        with open(path, 'rb') as f:
+            return self._upload_single_shot(f)
+
+    def create_multipart_upload(self):
+        # pylint:disable=protected-access
+        return self._provider.storage._bucket_objects.create_multipart_upload(
+            self.bucket, self.name)
 
     def __eq__(self, other):
         return (isinstance(other, BucketObject) and

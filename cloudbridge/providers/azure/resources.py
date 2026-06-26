@@ -228,26 +228,20 @@ class AzureBucketObject(BaseBucketObject):
 
         return iterable_to_stream(blob_iterator())
 
-    def upload(self, data):
-        """
-        Set the contents of this object to the data read from the source
-        string.
-        """
-        try:
-            self._provider.azure_client.create_blob_from_text(
-                self._container.id, self.id, data)
-            return True
-        except AzureException as azureEx:
-            log.exception(azureEx)
-            return False
+    @property
+    def bucket(self):
+        return self._container
 
-    def upload_from_file(self, path):
+    def _upload_single_shot(self, data):
         """
-        Store the contents of the file pointed by the "path" variable.
+        Upload the object in a single request. ``data`` may be text, bytes or
+        a file-like object; the Azure SDK streams file-like data rather than
+        buffering it all in memory. Larger uploads are handled transparently
+        by the base class via the multipart path.
         """
         try:
-            self._provider.azure_client.create_blob_from_file(
-                self._container.name, self.name, path)
+            self._provider.azure_client.upload_blob(
+                self._container.id, self.id, data)
             return True
         except AzureException as azureEx:
             log.exception(azureEx)

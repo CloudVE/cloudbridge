@@ -4,7 +4,8 @@ import uuid
 
 import cloudbridge.base.helpers as cb_helpers
 from cloudbridge.base.middleware import dispatch
-from cloudbridge.base.resources import (ClientPagedResultList,
+from cloudbridge.base.resources import (BaseMultipartUpload, BaseUploadPart,
+                                        ClientPagedResultList,
                                         ServerPagedResultList)
 from cloudbridge.base.services import (BaseBucketObjectService,
                                        BaseBucketService, BaseComputeService,
@@ -592,6 +593,48 @@ class AzureBucketObjectService(BaseBucketObjectService):
         blob_client = bucket._bucket.get_blob_client(name)
         blob_client.upload_blob('')
         return AzureBucketObject(self.provider, bucket, blob_client.get_blob_properties())
+
+    @staticmethod
+    def _block_id(upload_id, part_number):
+        # Azure requires every block id for a blob to be the same length and
+        # base64-encoded. The upload id is a fixed-length uuid hex, so the
+        # encoded ids are always equal length.
+        raw = "{0}-{1:08d}".format(upload_id, part_number)
+        return base64.b64encode(raw.encode()).decode()
+
+    @dispatch(event="provider.storage._bucket_objects.create_multipart_upload",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def create_multipart_upload(self, bucket, object_name):
+        # Azure block blobs have no server-side "initiate" step; the upload id
+        # only namespaces this upload's block ids.
+        return BaseMultipartUpload(self.provider, bucket, object_name,
+                                   uuid.uuid4().hex)
+
+    @dispatch(event="provider.storage._bucket_objects.upload_part",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def upload_part(self, bucket, upload, part_number, data):
+        block_id = self._block_id(upload.id, part_number)
+        self.provider.azure_client.stage_block(
+            bucket.name, upload.object_name, block_id, data)
+        return BaseUploadPart(part_number, block_id)
+
+    @dispatch(event="provider.storage._bucket_objects."
+                    "complete_multipart_upload",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def complete_multipart_upload(self, bucket, upload, parts):
+        ordered = sorted(parts, key=lambda p: p.part_number)
+        self.provider.azure_client.commit_block_list(
+            bucket.name, upload.object_name, [p.etag for p in ordered])
+        return self.get(bucket, upload.object_name)
+
+    @dispatch(event="provider.storage._bucket_objects.abort_multipart_upload",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def abort_multipart_upload(self, bucket, upload):
+        # Azure has no server-side abort: uncommitted blocks are garbage
+        # collected automatically (after ~7 days), so there is nothing to do.
+        log.debug("Azure has no multipart abort; uncommitted blocks for "
+                  "%s/%s will expire automatically.",
+                  bucket.name, upload.object_name)
 
 
 class AzureComputeService(BaseComputeService):
