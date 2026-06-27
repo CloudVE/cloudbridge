@@ -1,8 +1,9 @@
 -e ".[dev]"
 
-# Temporary: pin moto to the fix for the describe_instances availability-zone
-# filter bug (https://github.com/getmoto/moto/pull/10066). Released moto
-# (<= 5.2.2) returns an empty list when CloudBridge filters instances by AZ,
-# which breaks test_crud_instance against the mock provider. Drop this line and
-# bump the moto floor in pyproject.toml's [dev] extra once the fix is released.
-moto[ec2,s3] @ git+https://github.com/CloudVE/moto@fix-describe-instances-az-filter
+# Temporary: install moto from upstream master, which includes the fix for the
+# describe_instances availability-zone filter bug
+# (https://github.com/getmoto/moto/pull/10066). Released moto (<= 5.2.2) returns
+# an empty list when CloudBridge filters instances by AZ, which breaks
+# test_crud_instance against the mock provider. Drop this line and bump the moto
+# floor in pyproject.toml's [dev] extra to >=5.2.3 once that release is out.
+moto[ec2,s3] @ git+https://github.com/getmoto/moto.git@master

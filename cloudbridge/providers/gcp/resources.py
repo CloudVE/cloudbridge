@@ -1700,12 +1700,11 @@ class GCPVolume(BaseVolume):
         # disk. In cloudbridge, volume usage pattern is that a disk is attached
         # to a single instance in a read-write mode. Therefore, we only check
         # the first user of a disk.
-        if 'users' in self._volume and len(self._volume) > 0:
-            if len(self._volume) > 1:
+        users = self._volume.get('users', [])
+        if users:
+            if len(users) > 1:
                 log.warning("This volume is attached to multiple instances")
-            return BaseAttachmentInfo(self,
-                                      self._volume.get('users')[0],
-                                      None)
+            return BaseAttachmentInfo(self, users[0], None)
         else:
             return None
 
@@ -1726,14 +1725,18 @@ class GCPVolume(BaseVolume):
         }
         if not isinstance(instance, GCPInstance):
             instance = self._provider.get_resource('instances', instance)
-        (self._provider
-             .gcp_compute
-             .instances()
-             .attachDisk(project=self._provider.project_name,
-                         zone=instance.zone_name,
-                         instance=instance.name,
-                         body=attach_disk_body)
-             .execute())
+        response = (self._provider
+                    .gcp_compute
+                    .instances()
+                    .attachDisk(project=self._provider.project_name,
+                                zone=instance.zone_name,
+                                instance=instance.name,
+                                body=attach_disk_body)
+                    .execute())
+        # attachDisk is asynchronous; wait for it to finish so the disk is
+        # actually attached (and the instance's disk list is consistent)
+        # before returning.
+        self._provider.wait_for_operation(response, zone=instance.zone_name)
 
     def detach(self, force=False):
         """
@@ -1754,14 +1757,17 @@ class GCPVolume(BaseVolume):
                 device_name = disk['deviceName']
         if not device_name:
             return
-        (self._provider
-             .gcp_compute
-             .instances()
-             .detachDisk(project=self._provider.project_name,
-                         zone=self.zone_name,
-                         instance=instance_data.get('name'),
-                         deviceName=device_name)
-             .execute())
+        response = (self._provider
+                    .gcp_compute
+                    .instances()
+                    .detachDisk(project=self._provider.project_name,
+                                zone=self.zone_name,
+                                instance=instance_data.get('name'),
+                                deviceName=device_name)
+                    .execute())
+        # detachDisk is asynchronous; wait for it to finish so the disk is
+        # actually released before returning.
+        self._provider.wait_for_operation(response, zone=self.zone_name)
 
     def create_snapshot(self, label, description=None):
         """
