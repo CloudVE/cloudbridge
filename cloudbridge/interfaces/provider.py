@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from pyeventsystem.middleware import MiddlewareManager
 
     from cloudbridge.interfaces.resources import Configuration
+    from cloudbridge.interfaces.resources import Instance
     from cloudbridge.interfaces.resources import PlacementZone
     from cloudbridge.interfaces.services import ComputeService
     from cloudbridge.interfaces.services import DnsService
@@ -327,11 +328,11 @@ class ContainerProvider(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def create_container(self) -> Any:
+    def create_container(self) -> None:
         pass
 
     @abstractmethod
-    def delete_container(self) -> Any:
+    def delete_container(self) -> None:
         pass
 
 
@@ -343,7 +344,7 @@ class DeploymentProvider(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def deploy(self, target: Any) -> Any:
+    def deploy(self, target: Instance) -> None:
         """
         Deploys on given target, where target is an Instance or Container
         """

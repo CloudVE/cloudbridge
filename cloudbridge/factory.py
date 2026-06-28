@@ -4,7 +4,6 @@ import logging
 import pkgutil
 from collections import defaultdict
 from typing import Any
-from typing import cast
 
 from cloudbridge import providers
 from cloudbridge.interfaces import CloudProvider
@@ -29,7 +28,8 @@ class CloudProviderFactory(object):
     """
 
     def __init__(self) -> None:
-        self.provider_list: defaultdict[str, dict[str, Any]] = defaultdict(dict)
+        self.provider_list: defaultdict[str, dict[str, type[CloudProvider]]] \
+            = defaultdict(dict)
         log.debug("Providers List: %s", self.provider_list)
 
     def register_provider_class(self, cls: type) -> None:
@@ -90,7 +90,7 @@ class CloudProviderFactory(object):
             log.debug("Registering the provider: %s", cls)
             self.register_provider_class(cls)
 
-    def list_providers(self) -> dict[str, dict[str, Any]]:
+    def list_providers(self) -> dict[str, dict[str, type[CloudProvider]]]:
         """
         Get a list of available providers.
 
@@ -153,7 +153,7 @@ class CloudProviderFactory(object):
         impl = self.list_providers().get(name)
         if impl:
             log.debug("Returning provider class for %s", name)
-            return cast("type[CloudProvider]", impl["class"])
+            return impl["class"]
         else:
             log.debug("Provider with the name: %s not found", name)
             return None

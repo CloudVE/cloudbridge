@@ -165,7 +165,7 @@ class LabeledCloudResource(CloudResource):
         pass
 
 
-class Configuration(dict):
+class Configuration(dict[str, Any]):
     """
     Represents a CloudBridge configuration object
     """

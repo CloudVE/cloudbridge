@@ -124,14 +124,16 @@ files = ["cloudbridge"]
 ignore_missing_imports = true   # untyped cloud SDKs (boto3, azure-*, ...) -> Any
 namespace_packages = true
 warn_unused_configs = true
-# Strict baseline: applies to every module NOT exempted below.
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-no_implicit_optional = true
-check_untyped_defs = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_return_any = true
+# Full strict baseline (applies to every module NOT exempted below), with two
+# documented exceptions that don't fit this codebase:
+strict = true
+# interfaces/__init__.py re-exports the public names without an __all__; keep
+# implicit re-export so `from cloudbridge.interfaces import CloudProvider`
+# keeps working for factory.py and downstream consumers.
+implicit_reexport = true
+# Cross-class property setters (@LabeledCloudResource.label.setter) and the
+# `deprecation` library's decorators are untyped; don't fail the build on them.
+disallow_untyped_decorators = false
 
 # Gradual-typing exemptions. Remove a module from this list once it is fully
 # annotated; it then falls under the strict baseline above.
