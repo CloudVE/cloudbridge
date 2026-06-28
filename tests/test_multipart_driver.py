@@ -16,6 +16,7 @@ from cloudbridge.base.resources import BaseBucketObject
 from cloudbridge.base.resources import BaseMultipartUpload
 from cloudbridge.base.resources import BaseUploadPart
 from cloudbridge.interfaces.exceptions import InvalidValueException
+from cloudbridge.interfaces.resources import UploadConfig
 
 
 class _Recorder:
@@ -118,12 +119,14 @@ class _DriverObject(BaseBucketObject):
     def bucket(self):
         return "BUCKET"
 
-    @property
-    def _multipart_part_size(self):
+    def _multipart_part_size(self, config=None):
+        if config is not None and config.part_size is not None:
+            return config.part_size
         return self._part_size
 
-    @property
-    def _multipart_max_concurrency(self):
+    def _multipart_max_concurrency(self, config=None):
+        if config is not None and config.max_concurrency is not None:
+            return config.max_concurrency
         return self._concurrency
 
 
@@ -183,6 +186,17 @@ class MultipartDriverTestCase(unittest.TestCase):
         driver._upload_multipart(BytesIO(b"abcdefghij"))
         self.assertEqual(recorder.clone_count, 0)
         self.assertEqual(recorder.max_active, 1)
+
+    def test_per_call_config_overrides_concurrency(self):
+        recorder = _Recorder()
+        # The driver's default concurrency is 1 (no clones); a per-call config
+        # bumps it to 3, engaging the clone-per-worker pool.
+        driver = self._driver(recorder, part_size=1, concurrency=1)
+        driver._upload_multipart(BytesIO(b"0123456789ab"),
+                                 UploadConfig(max_concurrency=3))
+        self.assertEqual(recorder.clone_count, 3)
+        self.assertGreater(recorder.max_active, 1)
+        self.assertLessEqual(recorder.max_active, 3)
 
     def test_aborts_and_raises_on_part_failure(self):
         recorder = _Recorder()

@@ -802,20 +802,26 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     def save_content(self, target_stream):
         shutil.copyfileobj(self.iter_content(), target_stream)
 
-    @property
-    def _multipart_threshold(self):
+    # The three resolvers below pick, in order of precedence: an explicit
+    # per-call UploadConfig field, the provider/global config, then the class
+    # default constant.
+    def _multipart_threshold(self, config=None):
+        if config is not None and config.threshold is not None:
+            return int(config.threshold)
         # pylint:disable=protected-access
         return int(self._provider._get_config_value(
             'multipart_threshold', self.CB_MULTIPART_THRESHOLD))
 
-    @property
-    def _multipart_part_size(self):
+    def _multipart_part_size(self, config=None):
+        if config is not None and config.part_size is not None:
+            return int(config.part_size)
         # pylint:disable=protected-access
         return int(self._provider._get_config_value(
             'multipart_part_size', self.CB_MULTIPART_PART_SIZE))
 
-    @property
-    def _multipart_max_concurrency(self):
+    def _multipart_max_concurrency(self, config=None):
+        if config is not None and config.max_concurrency is not None:
+            return int(config.max_concurrency)
         # pylint:disable=protected-access
         return int(self._provider._get_config_value(
             'multipart_max_concurrency', self.CB_MULTIPART_MAX_CONCURRENCY))
@@ -849,19 +855,19 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
             return io.BytesIO(data)
         return data
 
-    def upload(self, data):
+    def upload(self, data, config=None):
         size = self._data_size(data)
-        if size is not None and size > self._multipart_threshold:
-            return self._upload_multipart(self._as_stream(data))
+        if size is not None and size > self._multipart_threshold(config):
+            return self._upload_multipart(self._as_stream(data), config)
         return self._upload_single_shot(data)
 
-    def upload_from_file(self, path):
-        if os.path.getsize(path) > self._multipart_threshold:
+    def upload_from_file(self, path, config=None):
+        if os.path.getsize(path) > self._multipart_threshold(config):
             with open(path, 'rb') as f:
-                return self._upload_multipart(f)
+                return self._upload_multipart(f, config)
         return self._upload_from_file_single_shot(path)
 
-    def _upload_multipart(self, stream):
+    def _upload_multipart(self, stream, config=None):
         """
         Drive the explicit multipart lifecycle over a stream, reading it one
         part at a time so the whole payload is never held in memory.
@@ -875,11 +881,11 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
         Providers with an efficient, thread-safe native uploader (e.g. AWS via
         boto3's ``upload_fileobj``) override this method to use it directly.
         """
-        part_size = self._multipart_part_size
+        part_size = self._multipart_part_size(config)
         if part_size < self.CB_MULTIPART_MIN_PART_SIZE:
             raise InvalidValueException('multipart_part_size', part_size)
 
-        concurrency = max(1, self._multipart_max_concurrency)
+        concurrency = max(1, self._multipart_max_concurrency(config))
         upload = self.create_multipart_upload()
         try:
             if concurrency == 1:

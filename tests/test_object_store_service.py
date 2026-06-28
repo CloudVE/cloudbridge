@@ -14,6 +14,7 @@ from cloudbridge.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.interfaces.provider import TestMockHelperMixin
 from cloudbridge.interfaces.resources import Bucket
 from cloudbridge.interfaces.resources import BucketObject
+from cloudbridge.interfaces.resources import UploadConfig
 
 from tests import helpers
 from tests.helpers import ProviderTestBase
@@ -415,6 +416,35 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 self.assertIsInstance(config, TransferConfig)
                 self.assertEqual(config.multipart_chunksize, 7 * 1024 * 1024)
                 self.assertEqual(config.max_concurrency, 3)
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_per_call_upload_config_overrides_defaults(self):
+        # A per-call UploadConfig takes precedence over the global knobs.
+        if self.provider.PROVIDER_ID not in ('aws', 'mock'):
+            self.skipTest("TransferConfig wiring is specific to AWS")
+        from boto3.s3.transfer import TransferConfig
+
+        name = "cbtest-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj = test_bucket.objects.create("percall.bin")
+
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                test_file = os.path.join(
+                    helpers.get_test_fixtures_folder(), 'logo.jpg')
+                cfg = UploadConfig(part_size=8 * 1024 * 1024,
+                                   max_concurrency=2)
+                # pylint:disable=protected-access
+                with mock.patch.object(
+                        obj._obj, 'upload_file',
+                        wraps=obj._obj.upload_file) as spy:
+                    obj.upload_from_file(test_file, config=cfg)
+
+                config = spy.call_args.kwargs['Config']
+                self.assertIsInstance(config, TransferConfig)
+                self.assertEqual(config.multipart_chunksize, 8 * 1024 * 1024)
+                self.assertEqual(config.max_concurrency, 2)
 
     @skip("Skip unless you want to test objects bigger than 5GB")
     @helpers.skipIfNoService(['storage.buckets'])

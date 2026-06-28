@@ -1974,9 +1974,13 @@ class GCPBucketObject(BaseBucketObject):
         if response:
             self._obj = response
 
-    def upload_from_file(self, path):
+    def upload_from_file(self, path, config=None):
         """
         Upload a binary file.
+
+        GCP uses a resumable upload here, which streams the file in chunks on a
+        single session; the ``config`` argument is accepted for interface
+        consistency but does not affect this path.
         """
         with open(path, 'rb') as f:
             media_body = googleapiclient.http.MediaIoBaseUpload(

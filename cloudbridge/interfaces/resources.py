@@ -2125,6 +2125,39 @@ class VMFirewallRule(CloudResource):
         pass
 
 
+class UploadConfig(object):
+    """
+    Provider-agnostic, per-call tuning for an object upload.
+
+    Passed optionally to :meth:`.BucketObject.upload` and
+    :meth:`.BucketObject.upload_from_file`. Any field left as ``None`` falls
+    back to the provider/global configuration (the ``CB_MULTIPART_*`` settings).
+    Each provider maps these fields onto its native transfer mechanism.
+    """
+
+    def __init__(self, threshold=None, part_size=None, max_concurrency=None):
+        """
+        :type threshold: ``int``
+        :param threshold: Size in bytes above which the upload is split into
+            multiple parts.
+
+        :type part_size: ``int``
+        :param part_size: Size in bytes of each part. Must be at least the
+            provider minimum (5 MiB on S3) for all but the final part.
+
+        :type max_concurrency: ``int``
+        :param max_concurrency: Maximum number of parts to upload in parallel.
+        """
+        self.threshold = threshold
+        self.part_size = part_size
+        self.max_concurrency = max_concurrency
+
+    def __repr__(self):
+        return ("<CB-UploadConfig: threshold={0}, part_size={1}, "
+                "max_concurrency={2}>".format(
+                    self.threshold, self.part_size, self.max_concurrency))
+
+
 class UploadPart(object):
     """
     A handle for a single part uploaded as part of a multipart upload.
@@ -2297,9 +2330,14 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def upload(self, source_stream):
+    def upload(self, source_stream, config=None):
         """
         Set the contents of the object to the data read from the source stream.
+
+        :type config: :class:`.UploadConfig`
+        :param config: Optional per-call upload tuning (multipart threshold,
+            part size, concurrency). Any field left unset falls back to the
+            provider/global configuration.
 
         :rtype: ``bool``
         :return: ``True`` if successful.
@@ -2307,7 +2345,7 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def upload_from_file(self, path):
+    def upload_from_file(self, path, config=None):
         """
         Store the contents of the file pointed by the "path" variable.
 
@@ -2316,6 +2354,11 @@ class BucketObject(CloudResource):
 
         :type path: ``str``
         :param path: Absolute path to the file to be uploaded to S3.
+
+        :type config: :class:`.UploadConfig`
+        :param config: Optional per-call upload tuning (multipart threshold,
+            part size, concurrency). Any field left unset falls back to the
+            provider/global configuration.
         """
         pass
 
