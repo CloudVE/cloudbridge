@@ -91,6 +91,7 @@ dev = [
     "pydevd",
     "flake8>=3.3.0",
     "flake8-import-order>=0.12",
+    "mypy>=1.11",
 ]
 
 [tool.setuptools.dynamic]
@@ -100,6 +101,10 @@ version = { attr = "cloudbridge.__version__" }
 include = ["cloudbridge*"]
 exclude = ["tests*"]
 
+[tool.setuptools.package-data]
+# Ship the PEP 561 marker so downstream consumers pick up our type hints.
+cloudbridge = ["py.typed"]
+
 [tool.coverage.run]
 branch = true
 source = ["cloudbridge"]
@@ -108,3 +113,28 @@ omit = [
     "cloudbridge/__init__.py",
 ]
 parallel = true
+
+[tool.mypy]
+# CloudBridge is typed gradually. The public API (the interface layer and the
+# factory) is held to a strict baseline so downstream users get a fully-typed
+# API; the base implementations and providers (which wrap untyped cloud SDKs)
+# are temporarily exempted below and ratcheted to strict module-by-module.
+python_version = "3.13"
+files = ["cloudbridge"]
+ignore_missing_imports = true   # untyped cloud SDKs (boto3, azure-*, ...) -> Any
+namespace_packages = true
+warn_unused_configs = true
+# Strict baseline: applies to every module NOT exempted below.
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+
+# Gradual-typing exemptions. Remove a module from this list once it is fully
+# annotated; it then falls under the strict baseline above.
+[[tool.mypy.overrides]]
+module = ["cloudbridge.base.*", "cloudbridge.providers.*"]
+ignore_errors = true

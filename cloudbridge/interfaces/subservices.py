@@ -1,17 +1,31 @@
+from __future__ import annotations
+
+import builtins
 from abc import ABCMeta
 from abc import abstractmethod
+from typing import Any
 
+from cloudbridge.interfaces.resources import BucketObject
+from cloudbridge.interfaces.resources import DnsRecord
+from cloudbridge.interfaces.resources import FloatingIP
+from cloudbridge.interfaces.resources import Gateway
+from cloudbridge.interfaces.resources import InternetGateway
 from cloudbridge.interfaces.resources import PageableObjectMixin
+from cloudbridge.interfaces.resources import ResultList
+from cloudbridge.interfaces.resources import Subnet
+from cloudbridge.interfaces.resources import TrafficDirection
+from cloudbridge.interfaces.resources import VMFirewall
+from cloudbridge.interfaces.resources import VMFirewallRule
 
 
-class BucketObjectSubService(PageableObjectMixin):
+class BucketObjectSubService(PageableObjectMixin[BucketObject]):
     """
     A container service for objects within a bucket.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, name):
+    def get(self, name: str) -> BucketObject | None:
         """
         Retrieve a given object from this bucket.
 
@@ -25,7 +39,8 @@ class BucketObjectSubService(PageableObjectMixin):
 
     @abstractmethod
     # pylint:disable=arguments-differ
-    def list(self, limit=None, marker=None, prefix=None):
+    def list(self, limit: int | None = None, marker: str | None = None,
+             prefix: str | None = None) -> ResultList[BucketObject]:
         """
         List objects in this bucket.
 
@@ -44,7 +59,7 @@ class BucketObjectSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[BucketObject]:
         """
         Search for an object by a given list of attributes.
 
@@ -62,7 +77,7 @@ class BucketObjectSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def create(self, name):
+    def create(self, name: str) -> BucketObject:
         """
         Create a new object within this bucket.
 
@@ -72,14 +87,14 @@ class BucketObjectSubService(PageableObjectMixin):
         pass
 
 
-class GatewaySubService(PageableObjectMixin):
+class GatewaySubService(PageableObjectMixin[InternetGateway]):
     """
     Manage internet gateway resources.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_or_create(self):
+    def get_or_create(self) -> InternetGateway:
         """
         Creates new or returns an existing internet gateway for a network.
 
@@ -92,7 +107,7 @@ class GatewaySubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def delete(self, gateway):
+    def delete(self, gateway: Gateway) -> None:
         """
         Delete a gateway.
 
@@ -102,7 +117,8 @@ class GatewaySubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[InternetGateway]:
         """
         List all available internet gateways.
 
@@ -112,14 +128,14 @@ class GatewaySubService(PageableObjectMixin):
         pass
 
 
-class FloatingIPSubService(PageableObjectMixin):
+class FloatingIPSubService(PageableObjectMixin[FloatingIP]):
     """
     Base interface for a FloatingIP Service.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, fip_id):
+    def get(self, fip_id: str) -> FloatingIP | None:
         """
         Returns a FloatingIP given its ID or ``None`` if not found.
 
@@ -132,7 +148,8 @@ class FloatingIPSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[FloatingIP]:
         """
         List floating (i.e., static) IP addresses.
 
@@ -142,7 +159,7 @@ class FloatingIPSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[FloatingIP]:
         """
         Searches for a FloatingIP by a given list of attributes.
 
@@ -162,7 +179,7 @@ class FloatingIPSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def create(self):
+    def create(self) -> FloatingIP:
         """
         Allocate a new floating (i.e., static) IP address.
 
@@ -172,7 +189,7 @@ class FloatingIPSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def delete(self, fip_id):
+    def delete(self, fip_id: FloatingIP | str) -> None:
         """
         Delete an existing FloatingIP.
 
@@ -182,14 +199,14 @@ class FloatingIPSubService(PageableObjectMixin):
         pass
 
 
-class VMFirewallRuleSubService(PageableObjectMixin):
+class VMFirewallRuleSubService(PageableObjectMixin[VMFirewallRule]):
     """
     Base interface for Firewall rules.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, rule_id):
+    def get(self, rule_id: str) -> VMFirewallRule | None:
         """
         Return a firewall rule given its ID.
 
@@ -212,7 +229,8 @@ class VMFirewallRuleSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[VMFirewallRule]:
         """
         List all firewall rules associated with this firewall.
 
@@ -222,8 +240,10 @@ class VMFirewallRuleSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def create(self, direction, protocol=None, from_port=None,
-               to_port=None, cidr=None, src_dest_fw=None):
+    def create(self, direction: TrafficDirection, protocol: str | None = None,
+               from_port: int | None = None, to_port: int | None = None,
+               cidr: str | builtins.list[str] | None = None,
+               src_dest_fw: VMFirewall | None = None) -> VMFirewallRule:
         """
         Create a VM firewall rule.
 
@@ -274,7 +294,7 @@ class VMFirewallRuleSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[VMFirewallRule]:
         """
         Find a firewall rule filtered by the given parameters.
 
@@ -310,7 +330,7 @@ class VMFirewallRuleSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def delete(self, rule_id):
+    def delete(self, rule_id: str) -> None:
         """
         Delete an existing VMFirewall rule.
 
@@ -320,14 +340,14 @@ class VMFirewallRuleSubService(PageableObjectMixin):
         pass
 
 
-class SubnetSubService(PageableObjectMixin):
+class SubnetSubService(PageableObjectMixin[Subnet]):
     """
     Base interface for a Subnet Service.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, subnet_id):
+    def get(self, subnet_id: str) -> Subnet | None:
         """
         Returns a Subnet given its ID or ``None`` if not found.
 
@@ -340,7 +360,8 @@ class SubnetSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Subnet]:
         """
         List subnets within the network holding this subservice.
 
@@ -350,7 +371,7 @@ class SubnetSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Subnet]:
         """
         Searches for a Subnet by a given list of attributes.
 
@@ -370,7 +391,7 @@ class SubnetSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def create(self, label, cidr_block):
+    def create(self, label: str, cidr_block: str) -> Subnet:
         """
         Create a new subnet within the network holding this subservice.
 
@@ -387,7 +408,7 @@ class SubnetSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def delete(self, subnet_id):
+    def delete(self, subnet_id: Subnet | str) -> None:
         """
         Delete an existing Subnet.
 
@@ -397,14 +418,14 @@ class SubnetSubService(PageableObjectMixin):
         pass
 
 
-class DnsRecordSubService(PageableObjectMixin):
+class DnsRecordSubService(PageableObjectMixin[DnsRecord]):
     """
     Base interface for a Dns Record Service.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, record_id):
+    def get(self, record_id: str) -> DnsRecord | None:
         """
         Returns a Dns Record given its ID or ``None`` if not found.
 
@@ -417,7 +438,8 @@ class DnsRecordSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[DnsRecord]:
         """
         List Dns Records within the Dns Zone holding this subservice.
 
@@ -427,7 +449,7 @@ class DnsRecordSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[DnsRecord]:
         """
         Searches for a DnsRecord by a given list of attributes.
 
@@ -447,7 +469,8 @@ class DnsRecordSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def create(self, label, type, data, ttl=None):
+    def create(self, label: str, type: str, data: str,
+               ttl: int | None = None) -> DnsRecord:
         """
         Create a new DnsRecord within the Dns Zone holding this subservice.
 
@@ -469,7 +492,7 @@ class DnsRecordSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def delete(self, record_id):
+    def delete(self, record_id: DnsRecord | str) -> None:
         """
         Delete an existing DnsRecord.
 

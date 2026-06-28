@@ -3,6 +3,8 @@ import inspect
 import logging
 import pkgutil
 from collections import defaultdict
+from typing import Any
+from typing import cast
 
 from cloudbridge import providers
 from cloudbridge.interfaces import CloudProvider
@@ -26,11 +28,11 @@ class CloudProviderFactory(object):
     Get info and handle on the available cloud provider implementations.
     """
 
-    def __init__(self):
-        self.provider_list = defaultdict(dict)
+    def __init__(self) -> None:
+        self.provider_list: defaultdict[str, dict[str, Any]] = defaultdict(dict)
         log.debug("Providers List: %s", self.provider_list)
 
-    def register_provider_class(self, cls):
+    def register_provider_class(self, cls: type) -> None:
         """
         Registers a provider class with the factory. The class must
         inherit from cloudbridge.interfaces.CloudProvider
@@ -61,7 +63,7 @@ class CloudProviderFactory(object):
             log.debug("Class: %s does not implement the CloudProvider"
                       "  interface. Ignoring...", cls)
 
-    def discover_providers(self):
+    def discover_providers(self) -> None:
         """
         Discover all available providers within the
         ``cloudbridge.providers`` package.
@@ -74,7 +76,7 @@ class CloudProviderFactory(object):
             except Exception as e:
                 log.debug("Could not import provider: %s", e)
 
-    def _import_provider(self, module_name):
+    def _import_provider(self, module_name: str) -> None:
         """
         Imports and registers providers from the given module name.
         Raises an ImportError if the import does not succeed.
@@ -88,7 +90,7 @@ class CloudProviderFactory(object):
             log.debug("Registering the provider: %s", cls)
             self.register_provider_class(cls)
 
-    def list_providers(self):
+    def list_providers(self) -> dict[str, dict[str, Any]]:
         """
         Get a list of available providers.
 
@@ -108,7 +110,8 @@ class CloudProviderFactory(object):
         log.debug("List of available providers: %s", self.provider_list)
         return self.provider_list
 
-    def create_provider(self, name, config):
+    def create_provider(self, name: str,
+                        config: dict[str, Any]) -> CloudProvider:
         """
         Searches all available providers for a CloudProvider interface with the
         given name, and instantiates it based on the given config dictionary,
@@ -138,7 +141,7 @@ class CloudProviderFactory(object):
         log.debug("Created '%s' provider", name)
         return provider_class(config)
 
-    def get_provider_class(self, name):
+    def get_provider_class(self, name: str) -> type[CloudProvider] | None:
         """
         Return a class for the requested provider.
 
@@ -150,12 +153,13 @@ class CloudProviderFactory(object):
         impl = self.list_providers().get(name)
         if impl:
             log.debug("Returning provider class for %s", name)
-            return impl["class"]
+            return cast("type[CloudProvider]", impl["class"])
         else:
             log.debug("Provider with the name: %s not found", name)
             return None
 
-    def get_all_provider_classes(self, ignore_mocks=False):
+    def get_all_provider_classes(
+            self, ignore_mocks: bool = False) -> list[type[CloudProvider]]:
         """
         Returns a list of classes for all available provider implementations
 
@@ -167,7 +171,7 @@ class CloudProviderFactory(object):
         :return: A list of all available provider classes or an empty list
         if none found.
         """
-        all_providers = []
+        all_providers: list[type[CloudProvider]] = []
         for impl in self.list_providers().values():
             if ignore_mocks:
                 if not issubclass(impl["class"], TestMockHelperMixin):

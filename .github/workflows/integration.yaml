@@ -60,6 +60,9 @@ jobs:
       - name: Run tox
         run: tox -e lint
 
+      - name: Run mypy
+        run: tox -e mypy
+
   mock:
     name: Mock-provider tests
     runs-on: ubuntu-latest

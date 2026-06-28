@@ -1,9 +1,41 @@
 """
 Specifications for services available through a provider
 """
-from abc import ABCMeta, abstractmethod, abstractproperty
+from __future__ import annotations
 
+import builtins
+from abc import ABCMeta, abstractmethod, abstractproperty
+from collections.abc import Iterator
+from typing import Any, IO, TYPE_CHECKING
+
+from cloudbridge.interfaces.resources import Bucket
+from cloudbridge.interfaces.resources import BucketObject
+from cloudbridge.interfaces.resources import DnsRecord
+from cloudbridge.interfaces.resources import DnsZone
+from cloudbridge.interfaces.resources import FloatingIP
+from cloudbridge.interfaces.resources import Gateway
+from cloudbridge.interfaces.resources import Instance
+from cloudbridge.interfaces.resources import InternetGateway
+from cloudbridge.interfaces.resources import KeyPair
+from cloudbridge.interfaces.resources import LaunchConfig
+from cloudbridge.interfaces.resources import MachineImage
+from cloudbridge.interfaces.resources import MultipartUpload
+from cloudbridge.interfaces.resources import Network
 from cloudbridge.interfaces.resources import PageableObjectMixin
+from cloudbridge.interfaces.resources import Region
+from cloudbridge.interfaces.resources import ResultList
+from cloudbridge.interfaces.resources import Router
+from cloudbridge.interfaces.resources import Snapshot
+from cloudbridge.interfaces.resources import Subnet
+from cloudbridge.interfaces.resources import TrafficDirection
+from cloudbridge.interfaces.resources import UploadPart
+from cloudbridge.interfaces.resources import VMFirewall
+from cloudbridge.interfaces.resources import VMFirewallRule
+from cloudbridge.interfaces.resources import VMType
+from cloudbridge.interfaces.resources import Volume
+
+if TYPE_CHECKING:
+    from cloudbridge.interfaces.provider import CloudProvider
 
 
 class CloudService(object):
@@ -16,7 +48,7 @@ class CloudService(object):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def provider(self):
+    def provider(self) -> CloudProvider:
         """
         Returns the provider instance associated with this service.
 
@@ -37,7 +69,7 @@ class ComputeService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def images(self):
+    def images(self) -> ImageService:
         """
         Provides access to all Image related services in this provider.
         (e.g. Glance in OpenStack)
@@ -64,7 +96,7 @@ class ComputeService(CloudService):
         pass
 
     @abstractproperty
-    def vm_types(self):
+    def vm_types(self) -> VMTypeService:
         """
         Provides access to all VM type related services in this provider.
 
@@ -86,7 +118,7 @@ class ComputeService(CloudService):
         pass
 
     @abstractproperty
-    def instances(self):
+    def instances(self) -> InstanceService:
         """
         Provides access to all Instance related services in this provider.
 
@@ -106,7 +138,7 @@ class ComputeService(CloudService):
         pass
 
     @abstractproperty
-    def regions(self):
+    def regions(self) -> RegionService:
         """
         Provides access to all Region related services in this provider.
 
@@ -125,7 +157,7 @@ class ComputeService(CloudService):
         pass
 
 
-class InstanceService(PageableObjectMixin, CloudService):
+class InstanceService(PageableObjectMixin[Instance], CloudService):
     """
     Provides access to instances in a provider, including creating,
     listing and deleting instances.
@@ -133,7 +165,7 @@ class InstanceService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Instance]:
         """
         Iterate through the  list of instances.
 
@@ -149,7 +181,7 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def get(self, instance_id):
+    def get(self, instance_id: str) -> Instance | None:
         """
         Returns an instance given its id. Returns None
         if the object does not exist.
@@ -160,7 +192,7 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Instance]:
         """
         Searches for an instance by a given list of attributes.
 
@@ -178,7 +210,8 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Instance]:
         """
         List available instances.
 
@@ -213,9 +246,13 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, image, vm_type, subnet, key_pair=None,
-               vm_firewalls=None, user_data=None, launch_config=None,
-               **kwargs):
+    def create(self, label: str, image: MachineImage | str,
+               vm_type: VMType | str, subnet: Subnet | str,
+               key_pair: KeyPair | str | None = None,
+               vm_firewalls: builtins.list[VMFirewall] | builtins.list[str] | None = None,
+               user_data: str | None = None,
+               launch_config: LaunchConfig | None = None,
+               **kwargs: Any) -> Instance:
         """
         Creates a new virtual machine instance.
 
@@ -273,7 +310,8 @@ class InstanceService(PageableObjectMixin, CloudService):
         """
         pass
 
-    def create_launch_config(self):
+    @abstractmethod
+    def create_launch_config(self) -> LaunchConfig:
         """
         Creates a ``LaunchConfig`` object which can be used
         to set additional options when launching an instance, such as
@@ -285,14 +323,14 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
 
-class VolumeService(PageableObjectMixin, CloudService):
+class VolumeService(PageableObjectMixin[Volume], CloudService):
     """
     Base interface for a Volume Service.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, volume_id):
+    def get(self, volume_id: str) -> Volume | None:
         """
         Returns a volume given its id.
 
@@ -302,7 +340,7 @@ class VolumeService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Volume]:
         """
         Searches for a volume by a given list of attributes.
 
@@ -314,7 +352,8 @@ class VolumeService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Volume]:
         """
         List all volumes.
 
@@ -324,7 +363,8 @@ class VolumeService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, size, snapshot=None, description=None):
+    def create(self, label: str, size: int, snapshot: Snapshot | str | None = None,
+               description: str | None = None) -> Volume:
         """
         Creates a new volume.
 
@@ -348,7 +388,7 @@ class VolumeService(PageableObjectMixin, CloudService):
         """
         pass
 
-    def delete(self, volume):
+    def delete(self, volume: Volume | str) -> None:
         """
         Delete an existing volume.
 
@@ -358,14 +398,14 @@ class VolumeService(PageableObjectMixin, CloudService):
         pass
 
 
-class SnapshotService(PageableObjectMixin, CloudService):
+class SnapshotService(PageableObjectMixin[Snapshot], CloudService):
     """
     Base interface for a Snapshot Service.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, snapshot_id):
+    def get(self, snapshot_id: str) -> Snapshot | None:
         """
         Returns a snapshot given its id.
 
@@ -375,7 +415,7 @@ class SnapshotService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Snapshot]:
         """
         Searches for a snapshot by a given list of attributes.
 
@@ -387,7 +427,8 @@ class SnapshotService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Snapshot]:
         """
         List all snapshots.
 
@@ -397,7 +438,8 @@ class SnapshotService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, volume, description=None):
+    def create(self, label: str, volume: Volume | str,
+               description: str | None = None) -> Snapshot:
         """
         Creates a new snapshot off a volume.
 
@@ -417,7 +459,7 @@ class SnapshotService(PageableObjectMixin, CloudService):
         """
         pass
 
-    def delete(self, snapshot):
+    def delete(self, snapshot: Snapshot | str) -> None:
         """
         Delete an existing snapshot.
 
@@ -437,7 +479,7 @@ class StorageService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def volumes(self):
+    def volumes(self) -> VolumeService:
         """
         Provides access to volumes (i.e., block storage) for this provider.
 
@@ -459,7 +501,7 @@ class StorageService(CloudService):
         pass
 
     @abstractproperty
-    def snapshots(self):
+    def snapshots(self) -> SnapshotService:
         """
         Provides access to volume snapshots for this provider.
 
@@ -481,7 +523,7 @@ class StorageService(CloudService):
         pass
 
     @abstractproperty
-    def buckets(self):
+    def buckets(self) -> BucketService:
         """
         Provides access to object storage services in this provider.
 
@@ -503,7 +545,7 @@ class StorageService(CloudService):
         pass
 
 
-class ImageService(PageableObjectMixin, CloudService):
+class ImageService(PageableObjectMixin[MachineImage], CloudService):
 
     """
     Base interface for an Image Service
@@ -511,7 +553,7 @@ class ImageService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, image_id):
+    def get(self, image_id: str) -> MachineImage | None:
         """
         Returns an Image given its id. Returns None if the Image does not
         exist.
@@ -522,7 +564,7 @@ class ImageService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[MachineImage]:
         """
         Searches for an image by a given list of attributes
 
@@ -534,7 +576,11 @@ class ImageService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, filter_by_owner=True, limit=None, marker=None):
+    # Intentionally extends the base list() with a leading filter_by_owner
+    # parameter (see the matching arguments-differ suppression elsewhere).
+    def list(self,  # type: ignore[override]
+             filter_by_owner: bool = True, limit: int | None = None,
+             marker: str | None = None) -> ResultList[MachineImage]:
         """
         List all images.
 
@@ -561,7 +607,7 @@ class NetworkingService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def networks(self):
+    def networks(self) -> NetworkService:
         """
         Provides access to all Network related services.
 
@@ -571,7 +617,7 @@ class NetworkingService(CloudService):
         pass
 
     @abstractproperty
-    def subnets(self):
+    def subnets(self) -> SubnetService:
         """
         Provides access to all Subnet related services.
 
@@ -581,7 +627,7 @@ class NetworkingService(CloudService):
         pass
 
     @abstractproperty
-    def routers(self):
+    def routers(self) -> RouterService:
         """
         Provides access to all Router related services.
 
@@ -591,7 +637,7 @@ class NetworkingService(CloudService):
         pass
 
     @abstractproperty
-    def _floating_ips(self):
+    def _floating_ips(self) -> FloatingIPService:
         """
         Provides access to floating ips for this provider.
         This service is not iterable.
@@ -602,7 +648,7 @@ class NetworkingService(CloudService):
         pass
 
     @abstractproperty
-    def _gateways(self):
+    def _gateways(self) -> GatewayService:
         """
         Provides access to internet gateways for this provider.
         This service is not iterable.
@@ -613,7 +659,7 @@ class NetworkingService(CloudService):
         pass
 
 
-class NetworkService(PageableObjectMixin, CloudService):
+class NetworkService(PageableObjectMixin[Network], CloudService):
 
     """
     Base interface for a Network Service.
@@ -621,7 +667,7 @@ class NetworkService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, network_id):
+    def get(self, network_id: str) -> Network | None:
         """
         Returns a Network given its ID or ``None`` if not found.
 
@@ -634,7 +680,8 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Network]:
         """
         List all networks.
 
@@ -644,7 +691,7 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Network]:
         """
         Searches for a network by a given list of attributes.
 
@@ -656,7 +703,7 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, cidr_block):
+    def create(self, label: str, cidr_block: str) -> Network:
         """
         Create a new network.
 
@@ -679,7 +726,7 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, network):
+    def delete(self, network: Network | str) -> None:
         """
         Delete an existing Network.
 
@@ -689,7 +736,7 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractproperty
-    def subnets(self):
+    def subnets(self) -> SubnetService:
         """
         Provides access to subnets.
 
@@ -711,7 +758,7 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
 
-class SubnetService(PageableObjectMixin, CloudService):
+class SubnetService(PageableObjectMixin[Subnet], CloudService):
 
     """
     Base interface for a Subnet Service.
@@ -719,7 +766,7 @@ class SubnetService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, subnet_id):
+    def get(self, subnet_id: str) -> Subnet | None:
         """
         Returns a Subnet given its ID or ``None`` if not found.
 
@@ -733,7 +780,10 @@ class SubnetService(PageableObjectMixin, CloudService):
 
     @abstractmethod
     # pylint:disable=arguments-differ
-    def list(self, network=None, limit=None, marker=None):
+    def list(self,  # type: ignore[override]
+             network: Network | str | None = None,
+             limit: int | None = None,
+             marker: str | None = None) -> ResultList[Subnet]:
         """
         List all subnets or filter them by the supplied network ID.
 
@@ -746,7 +796,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Subnet]:
         """
         Searches for a subnet by a given list of attributes.
 
@@ -758,7 +808,8 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, network, cidr_block):
+    def create(self, label: str, network: Network | str,
+               cidr_block: str) -> Subnet:
         """
         Create a new subnet within the supplied network.
 
@@ -778,7 +829,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def get_or_create_default(self):
+    def get_or_create_default(self) -> Subnet:
         """
         Return a default subnet for the account or create one if not found.
         This provides a convenience method for obtaining a network if you
@@ -793,7 +844,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, subnet):
+    def delete(self, subnet: Subnet | str) -> None:
         """
         Delete an existing Subnet.
 
@@ -803,14 +854,14 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
 
-class RouterService(PageableObjectMixin, CloudService):
+class RouterService(PageableObjectMixin[Router], CloudService):
     """
     Manage networking router actions and resources.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, router_id):
+    def get(self, router_id: str) -> Router | None:
         """
         Returns a Router object given its ID.
 
@@ -823,7 +874,8 @@ class RouterService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Router]:
         """
         List all routers.
 
@@ -833,7 +885,7 @@ class RouterService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Router]:
         """
         Searches for a router by a given list of attributes.
 
@@ -845,7 +897,7 @@ class RouterService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, network):
+    def create(self, label: str, network: Network | str) -> Router:
         """
         Create a new router.
 
@@ -861,7 +913,7 @@ class RouterService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, router):
+    def delete(self, router: Router | str) -> None:
         """
         Delete an existing Router.
 
@@ -881,7 +933,7 @@ class DnsService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def host_zones(self):
+    def host_zones(self) -> DnsZoneService:
         """
         Provides access to all dns zones.
 
@@ -891,7 +943,7 @@ class DnsService(CloudService):
         pass
 
     @abstractproperty
-    def _records(self):
+    def _records(self) -> DnsRecordService:
         """
         Provides access to dns records for this service.
         This service is not iterable.
@@ -902,7 +954,7 @@ class DnsService(CloudService):
         pass
 
 
-class DnsZoneService(PageableObjectMixin, CloudService):
+class DnsZoneService(PageableObjectMixin[DnsZone], CloudService):
     """
     Manage DNS Zone actions and resources. This service is optional and
     the :func:`CloudProvider.has_service()` method should be used to verify its
@@ -911,7 +963,7 @@ class DnsZoneService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, dns_zone_id):
+    def get(self, dns_zone_id: str) -> DnsZone | None:
         """
         Returns a DnsZone object given its ID.
 
@@ -924,7 +976,8 @@ class DnsZoneService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[DnsZone]:
         """
         List all host zones.
 
@@ -934,7 +987,7 @@ class DnsZoneService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[DnsZone]:
         """
         Searches for a host zone by a given list of attributes.
 
@@ -946,7 +999,7 @@ class DnsZoneService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, admin_email):
+    def create(self, label: str, admin_email: str) -> DnsZone:
         """
         Create a new host zone.
 
@@ -962,7 +1015,7 @@ class DnsZoneService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, dns_zone):
+    def delete(self, dns_zone: DnsZone | str) -> None:
         """
         Delete an existing DnsHostZone.
 
@@ -981,7 +1034,8 @@ class DnsRecordService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, dns_zone, rec_id):
+    def get(self, dns_zone: DnsZone | str,
+            rec_id: str) -> DnsRecord | None:
         """
         Returns a record given its ID and the dns_zone containing
         it. Returns ``None`` if the record does not exist.
@@ -992,7 +1046,8 @@ class DnsRecordService(CloudService):
         pass
 
     @abstractmethod
-    def list(self, dns_zone, limit=None, marker=None):
+    def list(self, dns_zone: DnsZone | str, limit: int | None = None,
+             marker: str | None = None) -> ResultList[DnsRecord]:
         """
         List all records within a dns zone.
 
@@ -1002,7 +1057,8 @@ class DnsRecordService(CloudService):
         pass
 
     @abstractmethod
-    def create(self, dns_zone, name, type, data, ttl=None):
+    def create(self, dns_zone: DnsZone | str, name: str, type: str,
+               data: str, ttl: int | None = None) -> DnsRecord:
         """
         Create a new record within a zone.
 
@@ -1027,7 +1083,7 @@ class DnsRecordService(CloudService):
         pass
 
 
-class BucketService(PageableObjectMixin, CloudService):
+class BucketService(PageableObjectMixin[Bucket], CloudService):
 
     """
     The Bucket Service interface provides access to the underlying
@@ -1038,7 +1094,7 @@ class BucketService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, bucket_id):
+    def get(self, bucket_id: str) -> Bucket | None:
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist. On some providers, such as AWS and OpenStack,
@@ -1057,7 +1113,7 @@ class BucketService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Bucket]:
         """
         Searches for a bucket by a given list of attributes.
 
@@ -1077,7 +1133,8 @@ class BucketService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Bucket]:
         """
         List all buckets.
 
@@ -1095,7 +1152,7 @@ class BucketService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, location=None):
+    def create(self, name: str, location: Region | str | None = None) -> Bucket:
         """
         Create a new bucket.
 
@@ -1133,7 +1190,8 @@ class BucketObjectService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, bucket, object_id):
+    def get(self, bucket: Bucket | str,
+            object_id: str) -> BucketObject | None:
         """
         Returns a bucket object given its ID and the ID of bucket containing
         it. Returns ``None`` if the bucket object or bucket does not exist.
@@ -1156,7 +1214,8 @@ class BucketObjectService(CloudService):
         pass
 
     @abstractmethod
-    def find(self, bucket, **kwargs):
+    def find(self, bucket: Bucket | str,
+             **kwargs: Any) -> ResultList[BucketObject]:
         """
         Searches for a bucket object in a bucket by a given list of attributes.
 
@@ -1179,7 +1238,9 @@ class BucketObjectService(CloudService):
         pass
 
     @abstractmethod
-    def list(self, bucket, prefix=None, limit=None, marker=None):
+    def list(self, bucket: Bucket | str, prefix: str | None = None,
+             limit: int | None = None,
+             marker: str | None = None) -> ResultList[BucketObject]:
         """
         List all bucket objects within a bucket.
 
@@ -1199,7 +1260,8 @@ class BucketObjectService(CloudService):
         pass
 
     @abstractmethod
-    def create(self, bucket, object_name):
+    def create(self, bucket: Bucket | str,
+               object_name: str) -> BucketObject:
         """
         Create a new bucket object within a bucket.
 
@@ -1226,7 +1288,8 @@ class BucketObjectService(CloudService):
         pass
 
     @abstractmethod
-    def create_multipart_upload(self, bucket, object_name):
+    def create_multipart_upload(self, bucket: Bucket | str,
+                                object_name: str) -> MultipartUpload:
         """
         Begin an explicit, multi-part upload of an object to a bucket.
 
@@ -1242,7 +1305,8 @@ class BucketObjectService(CloudService):
         pass
 
     @abstractmethod
-    def upload_part(self, bucket, upload, part_number, data):
+    def upload_part(self, bucket: Bucket | str, upload: MultipartUpload,
+                    part_number: int, data: bytes | IO[bytes]) -> UploadPart:
         """
         Upload a single part of an in-progress multipart upload.
 
@@ -1265,7 +1329,9 @@ class BucketObjectService(CloudService):
         pass
 
     @abstractmethod
-    def complete_multipart_upload(self, bucket, upload, parts):
+    def complete_multipart_upload(self, bucket: Bucket | str,
+                                  upload: MultipartUpload,
+                                  parts: builtins.list[UploadPart]) -> BucketObject:
         """
         Finalize a multipart upload, assembling parts in part-number order.
 
@@ -1284,7 +1350,8 @@ class BucketObjectService(CloudService):
         pass
 
     @abstractmethod
-    def abort_multipart_upload(self, bucket, upload):
+    def abort_multipart_upload(self, bucket: Bucket | str,
+                               upload: MultipartUpload) -> None:
         """
         Cancel a multipart upload and release any staged parts.
 
@@ -1306,7 +1373,7 @@ class SecurityService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def key_pairs(self):
+    def key_pairs(self) -> KeyPairService:
         """
         Provides access to key pairs for this provider.
 
@@ -1328,7 +1395,7 @@ class SecurityService(CloudService):
         pass
 
     @abstractproperty
-    def vm_firewalls(self):
+    def vm_firewalls(self) -> VMFirewallService:
         """
         Provides access to firewalls (security groups) for this provider.
 
@@ -1350,7 +1417,7 @@ class SecurityService(CloudService):
         pass
 
     @abstractproperty
-    def _vm_firewall_rules(self):
+    def _vm_firewall_rules(self) -> VMFirewallRuleService:
         """
         Provides access to firewall (security group) rules for this provider.
         This service is not iterable.
@@ -1361,7 +1428,7 @@ class SecurityService(CloudService):
         pass
 
 
-class KeyPairService(PageableObjectMixin, CloudService):
+class KeyPairService(PageableObjectMixin[KeyPair], CloudService):
 
     """
     Base interface for key pairs.
@@ -1369,7 +1436,7 @@ class KeyPairService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, key_pair_id):
+    def get(self, key_pair_id: str) -> KeyPair | None:
         """
         Return a KeyPair given its ID or ``None`` if not found.
 
@@ -1389,7 +1456,8 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[KeyPair]:
         """
         List all key pairs associated with this account.
 
@@ -1399,7 +1467,7 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[KeyPair]:
         """
         Searches for a key pair by a given list of attributes.
 
@@ -1411,7 +1479,8 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, public_key_material=None):
+    def create(self, name: str,
+               public_key_material: str | None = None) -> KeyPair:
         """
         Create a new key pair or raise an exception if one already exists.
         If the public_key_material is provided, the material will be imported
@@ -1431,7 +1500,7 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, key_pair):
+    def delete(self, key_pair: KeyPair | str) -> bool:
         """
         Delete an existing keypair.
 
@@ -1446,7 +1515,7 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
 
-class VMFirewallService(PageableObjectMixin, CloudService):
+class VMFirewallService(PageableObjectMixin[VMFirewall], CloudService):
 
     """
     Base interface for VM firewalls.
@@ -1454,7 +1523,7 @@ class VMFirewallService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, vm_firewall_id):
+    def get(self, vm_firewall_id: str) -> VMFirewall | None:
         """
         Returns a VMFirewall given its ID. Returns ``None`` if the
         VMFirewall does not exist.
@@ -1472,7 +1541,8 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[VMFirewall]:
         """
         List all VM firewalls associated with this account.
 
@@ -1482,7 +1552,8 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, network, description=None):
+    def create(self, label: str, network: Network | str,
+               description: str | None = None) -> VMFirewall:
         """
         Create a new VMFirewall.
 
@@ -1501,7 +1572,7 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[VMFirewall]:
         """
         Get VM firewalls associated with your account filtered by name.
 
@@ -1517,7 +1588,7 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, vm_firewall):
+    def delete(self, vm_firewall: VMFirewall | str) -> None:
         """
         Delete an existing VMFirewall.
 
@@ -1534,7 +1605,8 @@ class VMFirewallRuleService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, firewall, rule_id):
+    def get(self, firewall: VMFirewall,
+            rule_id: str) -> VMFirewallRule | None:
         """
         Return a firewall rule given its ID.
 
@@ -1560,7 +1632,8 @@ class VMFirewallRuleService(CloudService):
         pass
 
     @abstractmethod
-    def list(self, firewall, limit=None, marker=None):
+    def list(self, firewall: VMFirewall, limit: int | None = None,
+             marker: str | None = None) -> ResultList[VMFirewallRule]:
         """
         List all firewall rules associated with this firewall.
 
@@ -1573,8 +1646,11 @@ class VMFirewallRuleService(CloudService):
         pass
 
     @abstractmethod
-    def create(self, firewall,  direction, protocol=None, from_port=None,
-               to_port=None, cidr=None, src_dest_fw=None):
+    def create(self, firewall: VMFirewall, direction: TrafficDirection,
+               protocol: str | None = None, from_port: int | None = None,
+               to_port: int | None = None,
+               cidr: str | builtins.list[str] | None = None,
+               src_dest_fw: VMFirewall | None = None) -> VMFirewallRule:
         """
         Create a VM firewall rule.
 
@@ -1628,7 +1704,8 @@ class VMFirewallRuleService(CloudService):
         pass
 
     @abstractmethod
-    def find(self, firewall, **kwargs):
+    def find(self, firewall: VMFirewall,
+             **kwargs: Any) -> ResultList[VMFirewallRule]:
         """
         Find a firewall rule filtered by the given parameters.
 
@@ -1667,7 +1744,7 @@ class VMFirewallRuleService(CloudService):
         pass
 
     @abstractmethod
-    def delete(self, firewall, rule_id):
+    def delete(self, firewall: VMFirewall, rule_id: str) -> None:
         """
         Delete an existing VMFirewall rule.
 
@@ -1680,11 +1757,11 @@ class VMFirewallRuleService(CloudService):
         pass
 
 
-class VMTypeService(PageableObjectMixin, CloudService):
+class VMTypeService(PageableObjectMixin[VMType], CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, vm_type_id):
+    def get(self, vm_type_id: str) -> VMType | None:
         """
         Returns an VMType given its ID. Returns ``None`` if the
         VMType does not exist.
@@ -1702,7 +1779,8 @@ class VMTypeService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[VMType]:
         """
         List all VM types.
 
@@ -1712,7 +1790,7 @@ class VMTypeService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[VMType]:
         """
         Searches for instances by a given list of attributes.
 
@@ -1724,7 +1802,7 @@ class VMTypeService(PageableObjectMixin, CloudService):
         pass
 
 
-class RegionService(PageableObjectMixin, CloudService):
+class RegionService(PageableObjectMixin[Region], CloudService):
 
     """
     Base interface for a Region service
@@ -1732,7 +1810,7 @@ class RegionService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def current(self):
+    def current(self) -> Region | None:
         """
         Returns the current region that this provider is connected to.
 
@@ -1744,7 +1822,7 @@ class RegionService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def get(self, region_id):
+    def get(self, region_id: str) -> Region | None:
         """
         Returns a region given its id. Returns None if the region
         does not exist.
@@ -1755,7 +1833,8 @@ class RegionService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Region]:
         """
         List all regions.
 
@@ -1765,7 +1844,7 @@ class RegionService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Region]:
         """
         Searches for a region by a given list of attributes.
 
@@ -1784,7 +1863,7 @@ class GatewayService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_or_create(self, network):
+    def get_or_create(self, network: Network | str) -> InternetGateway:
         """
         Creates new or returns an existing internet gateway for a network.
 
@@ -1800,7 +1879,7 @@ class GatewayService(CloudService):
         pass
 
     @abstractmethod
-    def delete(self, network, gateway):
+    def delete(self, network: Network | str, gateway: Gateway) -> None:
         """
         Delete a gateway.
 
@@ -1813,7 +1892,8 @@ class GatewayService(CloudService):
         pass
 
     @abstractmethod
-    def list(self, network, limit=None, marker=None):
+    def list(self, network: Network | str, limit: int | None = None,
+             marker: str | None = None) -> ResultList[InternetGateway]:
         """
         List all available internet gateways.
 
@@ -1833,7 +1913,7 @@ class FloatingIPService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, gateway, fip_id):
+    def get(self, gateway: Gateway, fip_id: str) -> FloatingIP | None:
         """
         Returns a FloatingIP given its ID or ``None`` if not found.
 
@@ -1849,7 +1929,8 @@ class FloatingIPService(CloudService):
         pass
 
     @abstractmethod
-    def list(self, gateway, limit=None, marker=None):
+    def list(self, gateway: Gateway, limit: int | None = None,
+             marker: str | None = None) -> ResultList[FloatingIP]:
         """
         List floating (i.e., static) IP addresses.
 
@@ -1862,7 +1943,8 @@ class FloatingIPService(CloudService):
         pass
 
     @abstractmethod
-    def find(self, gateway, **kwargs):
+    def find(self, gateway: Gateway,
+             **kwargs: Any) -> ResultList[FloatingIP]:
         """
         Searches for a FloatingIP by a given list of attributes.
 
@@ -1884,7 +1966,7 @@ class FloatingIPService(CloudService):
         pass
 
     @abstractmethod
-    def create(self, gateway):
+    def create(self, gateway: Gateway) -> FloatingIP:
         """
         Allocate a new floating (i.e., static) IP address.
 
@@ -1897,7 +1979,7 @@ class FloatingIPService(CloudService):
         pass
 
     @abstractmethod
-    def delete(self, gateway, fip):
+    def delete(self, gateway: Gateway, fip: FloatingIP | str) -> None:
         """
         Delete an existing FloatingIP.
 

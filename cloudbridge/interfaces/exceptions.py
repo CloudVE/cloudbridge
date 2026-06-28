@@ -54,7 +54,7 @@ class InvalidNameException(CloudBridgeBaseException):
     letters, which are not allowed in a resource name.
     """
 
-    def __init__(self, msg):
+    def __init__(self, msg: str) -> None:
         super(InvalidNameException, self).__init__(msg)
 
 
@@ -68,7 +68,7 @@ class InvalidLabelException(InvalidNameException):
     identical.
     """
 
-    def __init__(self, msg):
+    def __init__(self, msg: str) -> None:
         super(InvalidLabelException, self).__init__(msg)
 
 
@@ -79,7 +79,7 @@ class InvalidValueException(CloudBridgeBaseException):
     direction of a firewall rule other than TrafficDirection.INBOUND or
     TrafficDirection.OUTBOUND.
     """
-    def __init__(self, param, value):
+    def __init__(self, param: str, value: object) -> None:
         super(InvalidValueException, self).__init__(
             "Param %s has been given an unrecognised value %s" %
             (param, value))
@@ -100,5 +100,5 @@ class InvalidParamException(InvalidNameException):
     to a service.find() method.
     """
 
-    def __init__(self, msg):
+    def __init__(self, msg: str) -> None:
         super(InvalidParamException, self).__init__(msg)

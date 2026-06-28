@@ -1,9 +1,24 @@
 """
 Specification for a provider interface
 """
+from __future__ import annotations
+
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
+from typing import Any
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyeventsystem.middleware import MiddlewareManager
+
+    from cloudbridge.interfaces.resources import Configuration
+    from cloudbridge.interfaces.resources import PlacementZone
+    from cloudbridge.interfaces.services import ComputeService
+    from cloudbridge.interfaces.services import DnsService
+    from cloudbridge.interfaces.services import NetworkingService
+    from cloudbridge.interfaces.services import SecurityService
+    from cloudbridge.interfaces.services import StorageService
 
 
 class CloudProvider(object):
@@ -13,7 +28,7 @@ class CloudProvider(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def __init__(self, config):
+    def __init__(self, config: dict[str, Any]) -> None:
         """
         Create a new provider instance given a dictionary of
         configuration attributes.
@@ -31,7 +46,7 @@ class CloudProvider(object):
         pass
 
     @abstractproperty
-    def config(self):
+    def config(self) -> Configuration:
         """
         Returns the config object associated with this provider. This object
         is a subclass of :class:`dict` and will contain the properties
@@ -58,7 +73,7 @@ class CloudProvider(object):
         pass
 
     @abstractproperty
-    def middleware(self):
+    def middleware(self) -> MiddlewareManager:
         """
         Returns the middleware manager associated with this provider. The
         middleware manager can be used to add or remove middleware from
@@ -72,7 +87,7 @@ class CloudProvider(object):
         pass
 
     @abstractmethod
-    def clone(self, zone=None):
+    def clone(self, zone: PlacementZone | None = None) -> CloudProvider:
         """
         Create a clone of this provider. An optional `zone` parameter can be
         used to clone the provider to use a different zone.
@@ -101,7 +116,7 @@ class CloudProvider(object):
         pass
 
     @abstractmethod
-    def authenticate(self):
+    def authenticate(self) -> bool:
         """
         Checks whether a provider can be successfully authenticated with the
         configured settings. Clients are *not* required to call this method
@@ -127,7 +142,7 @@ class CloudProvider(object):
         pass
 
     @abstractmethod
-    def has_service(self, service_type):
+    def has_service(self, service_type: str) -> bool:
         """
         Checks whether this provider supports a given service.
 
@@ -149,7 +164,7 @@ class CloudProvider(object):
         pass
 
     @abstractproperty
-    def region_name(self):
+    def region_name(self) -> str:
         """
         Returns the region that this provider is connected to.
         All provider operations will take place within this region.
@@ -160,7 +175,7 @@ class CloudProvider(object):
         pass
 
     @abstractproperty
-    def zone_name(self):
+    def zone_name(self) -> str | None:
         """
         Returns the placement zone that this provider is connected to.
         All provider operations will take place within this zone. Placement
@@ -183,7 +198,7 @@ class CloudProvider(object):
 #         pass
 
     @abstractproperty
-    def compute(self):
+    def compute(self) -> ComputeService:
         """
         Provides access to all compute related services in this provider.
 
@@ -206,7 +221,7 @@ class CloudProvider(object):
         pass
 
     @abstractproperty
-    def networking(self):
+    def networking(self) -> NetworkingService:
         """
         Provide access to all network related services in this provider.
 
@@ -223,7 +238,7 @@ class CloudProvider(object):
         """
 
     @abstractproperty
-    def security(self):
+    def security(self) -> SecurityService:
         """
         Provides access to key pair management and firewall control
 
@@ -241,7 +256,7 @@ class CloudProvider(object):
         pass
 
     @abstractproperty
-    def storage(self):
+    def storage(self) -> StorageService:
         """
         Provides access to storage related services in this provider.
         This includes the volume, snapshot and bucket services,
@@ -262,7 +277,7 @@ class CloudProvider(object):
         pass
 
     @abstractproperty
-    def dns(self):
+    def dns(self) -> DnsService:
         """
         Provides access to all DNS related services.
 
@@ -288,14 +303,14 @@ class TestMockHelperMixin(object):
     like HTTPretty which take over socket communications.
     """
 
-    def setUpMock(self):
+    def setUpMock(self) -> None:
         """
         Called before a test is started.
         """
         raise NotImplementedError(
             'TestMockHelperMixin.setUpMock not implemented')
 
-    def tearDownMock(self):
+    def tearDownMock(self) -> None:
         """
         Called before test teardown.
         """
@@ -312,11 +327,11 @@ class ContainerProvider(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def create_container(self):
+    def create_container(self) -> Any:
         pass
 
     @abstractmethod
-    def delete_container(self):
+    def delete_container(self) -> Any:
         pass
 
 
@@ -328,7 +343,7 @@ class DeploymentProvider(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def deploy(self, target):
+    def deploy(self, target: Any) -> Any:
         """
         Deploys on given target, where target is an Instance or Container
         """
