@@ -135,8 +135,14 @@ implicit_reexport = true
 # `deprecation` library's decorators are untyped; don't fail the build on them.
 disallow_untyped_decorators = false
 
-# Gradual-typing exemptions. Remove a module from this list once it is fully
-# annotated; it then falls under the strict baseline above.
+# Not-yet-typed internal modules: stay exempt until annotated, then move them
+# into the pragmatic tier below (or, if fully strict-clean, delete the entry).
 [[tool.mypy.overrides]]
-module = ["cloudbridge.base.*", "cloudbridge.providers.*"]
+module = ["cloudbridge.providers.*"]
 ignore_errors = true
+
+# base/ is held to the FULL strict bar (it orchestrates through the typed
+# interface layer and never touches the cloud SDKs directly), so it falls under
+# the global strict baseline with no override. The providers will get a
+# pragmatic tier (warn_return_any / disallow_untyped_calls off) when they are
+# typed, because they DO read from untyped SDK objects.

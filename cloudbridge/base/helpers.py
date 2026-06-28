@@ -3,7 +3,12 @@ import functools
 import logging
 import os
 import re
+from collections.abc import Callable
+from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Any
+from typing import TypeVar
+from typing import cast
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
@@ -17,8 +22,11 @@ from ..interfaces.exceptions import InvalidParamException
 
 log = logging.getLogger(__name__)
 
+T = TypeVar("T")
+F = TypeVar("F", bound=Callable[..., Any])
 
-def generate_key_pair():
+
+def generate_key_pair() -> tuple[str, str]:
     """
     This method generates a keypair and returns it as a tuple
     of (public, private) keys.
@@ -38,7 +46,8 @@ def generate_key_pair():
     return public_key, private_key
 
 
-def filter_by(prop_name, kwargs, objs):
+def filter_by(prop_name: str, kwargs: dict[str, Any],
+              objs: list[T]) -> list[T]:
     """
     Utility method for filtering a list of objects by a property.
     If the given property has a non empty value in kwargs, then
@@ -60,7 +69,8 @@ def filter_by(prop_name, kwargs, objs):
         return objs
 
 
-def generic_find(filter_names, kwargs, objs):
+def generic_find(filter_names: list[str], kwargs: dict[str, Any],
+                 objs: list[T]) -> list[T]:
     """
     Utility method for filtering a list of objects by a list of filters.
     """
@@ -78,7 +88,7 @@ def generic_find(filter_names, kwargs, objs):
 
 
 @contextmanager
-def cleanup_action(cleanup_func):
+def cleanup_action(cleanup_func: Callable[[], object]) -> Iterator[None]:
     """
     Context manager to carry out a given
     cleanup action after carrying out a set
@@ -109,7 +119,7 @@ def cleanup_action(cleanup_func):
         log.exception("Error during exception cleanup: ")
 
 
-def get_env(varname, default_value=None):
+def get_env(varname: str, default_value: Any = None) -> Any:
     """
     Return the value of the environment variable or default_value.
 
@@ -128,17 +138,18 @@ def get_env(varname, default_value=None):
 # Alias deprecation decorator, following:
 # https://stackoverflow.com/questions/49802412/
 # how-to-implement-deprecation-in-python-with-argument-alias
-def deprecated_alias(**aliases):
-    def deco(f):
+def deprecated_alias(**aliases: str) -> Callable[[F], F]:
+    def deco(f: F) -> F:
         @functools.wraps(f)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             rename_kwargs(f.__name__, kwargs, aliases)
             return f(*args, **kwargs)
-        return wrapper
+        return cast(F, wrapper)
     return deco
 
 
-def rename_kwargs(func_name, kwargs, aliases):
+def rename_kwargs(func_name: str, kwargs: dict[str, Any],
+                  aliases: dict[str, str]) -> None:
     for alias, new in aliases.items():
         if alias in kwargs:
             if new in kwargs:
@@ -157,7 +168,7 @@ def rename_kwargs(func_name, kwargs, aliases):
 NON_ALPHA_NUM = re.compile(r"[^A-Za-z0-9]+")
 
 
-def to_resource_name(value, replace_with="-"):
+def to_resource_name(value: str, replace_with: str = "-") -> str:
     """
     Converts a given string to a valid resource name by stripping
     all characters that are not alphanumeric.

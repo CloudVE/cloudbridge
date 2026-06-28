@@ -12,8 +12,15 @@ import shutil
 import time
 import uuid
 from concurrent.futures import FIRST_COMPLETED
+from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import wait
+from typing import Any
+from typing import IO
+from typing import Iterator
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import cast
 
 from cloudbridge.interfaces.exceptions import \
     InvalidConfigurationException
@@ -21,6 +28,7 @@ from cloudbridge.interfaces.exceptions import InvalidLabelException
 from cloudbridge.interfaces.exceptions import InvalidNameException
 from cloudbridge.interfaces.exceptions import InvalidValueException
 from cloudbridge.interfaces.exceptions import WaitStateException
+from cloudbridge.interfaces.provider import CloudProvider
 from cloudbridge.interfaces.resources import AttachmentInfo
 from cloudbridge.interfaces.resources import Bucket
 from cloudbridge.interfaces.resources import BucketObject
@@ -50,6 +58,7 @@ from cloudbridge.interfaces.resources import Snapshot
 from cloudbridge.interfaces.resources import SnapshotState
 from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import SubnetState
+from cloudbridge.interfaces.resources import UploadConfig
 from cloudbridge.interfaces.resources import UploadPart
 from cloudbridge.interfaces.resources import VMFirewall
 from cloudbridge.interfaces.resources import VMFirewallRule
@@ -59,7 +68,16 @@ from cloudbridge.interfaces.resources import VolumeState
 
 from . import helpers as cb_helpers
 
+if TYPE_CHECKING:
+    from _typeshed import SupportsRead
+
+    from cloudbridge.interfaces.services import BucketObjectService
+
 log = logging.getLogger(__name__)
+
+# Element type for the generic pageable collections defined in this module
+# (mirrors ``cloudbridge.interfaces.resources.T``).
+T = TypeVar("T")
 
 
 class BaseCloudResource(CloudResource):
@@ -73,11 +91,11 @@ class BaseCloudResource(CloudResource):
     # -with-dashes-allowed-in-between-but-not-at-the-start-or-e
     CB_NAME_PATTERN = re.compile(r"^[a-z][-a-z0-9]{1,61}[a-z0-9]$")
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         self.__provider = provider
 
     @staticmethod
-    def is_valid_resource_name(name):
+    def is_valid_resource_name(name: str) -> bool:
         if not name:
             return False
         else:
@@ -85,7 +103,7 @@ class BaseCloudResource(CloudResource):
                     else False)
 
     @staticmethod
-    def assert_valid_resource_label(name):
+    def assert_valid_resource_label(name: str) -> None:
         if not BaseCloudResource.is_valid_resource_name(name):
             log.debug("InvalidLabelException raised on %s", name)
             raise InvalidLabelException(
@@ -95,7 +113,7 @@ class BaseCloudResource(CloudResource):
                 "letter and not end with a dash." % name)
 
     @staticmethod
-    def assert_valid_resource_name(name):
+    def assert_valid_resource_name(name: str) -> None:
         if not BaseCloudResource.is_valid_resource_name(name):
             log.debug("InvalidLabelException raised on %s", name)
             raise InvalidNameException(
@@ -105,7 +123,7 @@ class BaseCloudResource(CloudResource):
                 " end with a dash." % name)
 
     @staticmethod
-    def _generate_name_from_label(label, default):
+    def _generate_name_from_label(label: str | None, default: str) -> str:
         if not label:
             label = default
         name = label[:55] + '-' + uuid.uuid4().hex[:6]
@@ -113,16 +131,16 @@ class BaseCloudResource(CloudResource):
         return name
 
     @property
-    def _provider(self):
+    def _provider(self) -> CloudProvider:
         return self.__provider
 
-    def to_json(self):
+    def to_json(self) -> dict[str, Any]:
         # Get all attributes but filter methods and private/magic ones
         attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
         js = {k: v for (k, v) in attr if not k.startswith('_')}
         return js
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         name_or_label = getattr(self, 'label', self.name)
         if name_or_label == self.id:
             return "<CB-{0}: {1}>".format(
@@ -141,9 +159,10 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
     method, since the desired ready states are object specific.
     """
 
-    def wait_for(self, target_states, terminal_states=None, timeout=None,
-
-                 interval=None):
+    def wait_for(self, target_states: list[str],
+                 terminal_states: list[str] | None = None,
+                 timeout: int | None = None,
+                 interval: int | None = None) -> bool:
         if timeout is None:
             timeout = self._provider.config.default_wait_timeout
         if interval is None:
@@ -180,10 +199,12 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
         return True
 
 
-class BaseResultList(ResultList):
+class BaseResultList(ResultList[T]):
 
     def __init__(
-            self, is_truncated, marker, supports_total, total=None, data=None):
+            self, is_truncated: bool, marker: str | None,
+            supports_total: bool, total: int | None = None,
+            data: list[T] | None = None) -> None:
         # call list constructor
         super(BaseResultList, self).__init__(data or [])
         self._marker = marker
@@ -192,23 +213,23 @@ class BaseResultList(ResultList):
         self._total = total
 
     @property
-    def marker(self):
+    def marker(self) -> str | None:
         return self._marker
 
     @property
-    def is_truncated(self):
+    def is_truncated(self) -> bool:
         return self._is_truncated
 
     @property
-    def supports_total(self):
+    def supports_total(self) -> bool:
         return self._supports_total
 
     @property
-    def total_results(self):
-        return self._total
+    def total_results(self) -> int:
+        return cast(int, self._total)
 
 
-class ServerPagedResultList(BaseResultList):
+class ServerPagedResultList(BaseResultList[T]):
     """
     This is a convenience class that extends the :class:`BaseResultList` class
     and provides a server side implementation of paging. It is meant for use by
@@ -218,16 +239,16 @@ class ServerPagedResultList(BaseResultList):
     """
 
     @property
-    def supports_server_paging(self):
+    def supports_server_paging(self) -> bool:
         return True
 
     @property
-    def data(self):
+    def data(self) -> list[T]:
         raise NotImplementedError(
             "ServerPagedResultLists do not support the data property")
 
 
-class ClientPagedResultList(BaseResultList):
+class ClientPagedResultList(BaseResultList[T]):
     """
     This is a convenience class that extends the :class:`BaseResultList` class
     and provides a client side implementation of paging. It is meant for use by
@@ -237,13 +258,14 @@ class ClientPagedResultList(BaseResultList):
     of the full result set entirely on the client side.
     """
 
-    def __init__(self, provider, objects, limit=None, marker=None):
+    def __init__(self, provider: CloudProvider, objects: list[T],
+                 limit: int | None = None, marker: str | None = None) -> None:
         self._objects = objects
         limit = limit or provider.config.default_result_limit
         total_size = len(objects)
         if marker:
             from_marker = itertools.dropwhile(
-                lambda obj: not obj.id == marker, objects)
+                lambda obj: not cast(CloudResource, obj).id == marker, objects)
             # skip one past the marker
             next(from_marker, None)
             objects = list(from_marker)
@@ -251,30 +273,30 @@ class ClientPagedResultList(BaseResultList):
         results = list(itertools.islice(objects, limit))
         super(ClientPagedResultList, self).__init__(
             is_truncated,
-            results[-1].id if is_truncated else None,
+            cast(CloudResource, results[-1]).id if is_truncated else None,
             True, total=total_size,
             data=results)
 
     @property
-    def supports_server_paging(self):
+    def supports_server_paging(self) -> bool:
         return False
 
     @property
-    def data(self):
+    def data(self) -> list[T]:
         return self._objects
 
 
-class BasePageableObjectMixin(PageableObjectMixin):
+class BasePageableObjectMixin(PageableObjectMixin[T]):
     """
     A mixin to provide iteration capability for a class
     that support a list(limit, marker) method.
     """
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[T]:
         for result in self.iter():
             yield result
 
-    def iter(self, **kwargs):
+    def iter(self, **kwargs: Any) -> Iterator[T]:
         result_list = self.list(**kwargs)
         if result_list.supports_server_paging:
             for result in result_list:
@@ -290,26 +312,26 @@ class BasePageableObjectMixin(PageableObjectMixin):
 
 class BaseVMType(BaseCloudResource, VMType):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseVMType, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, VMType) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
 
     @property
-    def size_total_disk(self):
+    def size_total_disk(self) -> int:
         return self.size_root_disk + self.size_ephemeral_disks
 
 
 class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseInstance, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, Instance) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
@@ -322,42 +344,53 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
                 self.private_ips == other.private_ips and
                 self.image_id == other.image_id)
 
-    def wait_till_ready(self, timeout=None, interval=None):
+    # NB: interface declares -> bool, but neither base nor provider
+    # implementations return a value (wait_for raises on failure); annotate
+    # honestly as -> None without altering behavior.
+    def wait_till_ready(  # type: ignore[override]
+            self, timeout: int | None = None,
+            interval: int | None = None) -> None:
         self.wait_for(
             [InstanceState.RUNNING],
             terminal_states=[InstanceState.DELETED, InstanceState.ERROR],
             timeout=timeout,
             interval=interval)
 
-    def delete(self):
-        self._provider.compute.instances.delete(self)
+    def delete(self) -> None:
+        # InstanceService.delete is implemented by every provider but is not
+        # declared on the public typed interface, hence the ignore.
+        self._provider.compute.instances.delete(self)  # type: ignore[attr-defined]
 
 
 class BaseLaunchConfig(LaunchConfig):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         self.provider = provider
-        self.block_devices = []
+        self.block_devices: list[BaseLaunchConfig.BlockDeviceMapping] = []
 
     class BlockDeviceMapping(object):
         """
         Represents a block device mapping
         """
 
-        def __init__(self, is_volume=False, source=None, is_root=None,
-                     size=None, delete_on_terminate=None):
+        def __init__(self, is_volume: bool = False,
+                     source: Volume | Snapshot | MachineImage | None = None,
+                     is_root: bool | None = None, size: int | None = None,
+                     delete_on_terminate: bool | None = None) -> None:
             self.is_volume = is_volume
             self.source = source
             self.is_root = is_root
             self.size = size
             self.delete_on_terminate = delete_on_terminate
 
-    def add_ephemeral_device(self):
+    def add_ephemeral_device(self) -> None:
         block_device = BaseLaunchConfig.BlockDeviceMapping()
         self.block_devices.append(block_device)
 
-    def add_volume_device(self, source=None, is_root=None, size=None,
-                          delete_on_terminate=None):
+    def add_volume_device(
+            self, source: Volume | Snapshot | MachineImage | None = None,
+            is_root: bool | None = None, size: int | None = None,
+            delete_on_terminate: bool | None = None) -> None:
         block_device = self._validate_volume_device(
             source=source, is_root=is_root, size=size,
             delete_on_terminate=delete_on_terminate)
@@ -365,8 +398,11 @@ class BaseLaunchConfig(LaunchConfig):
                   block_device)
         self.block_devices.append(block_device)
 
-    def _validate_volume_device(self, source=None, is_root=None,
-                                size=None, delete_on_terminate=None):
+    def _validate_volume_device(
+            self, source: Volume | Snapshot | MachineImage | None = None,
+            is_root: bool | None = None, size: int | None = None,
+            delete_on_terminate: bool | None = None
+    ) -> "BaseLaunchConfig.BlockDeviceMapping":
         """
         Validates a volume based device and throws an
         InvalidConfigurationException if the configuration is incorrect.
@@ -409,10 +445,10 @@ class BaseLaunchConfig(LaunchConfig):
 class BaseMachineImage(
         BaseCloudResource, BaseObjectLifeCycleMixin, MachineImage):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseMachineImage, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, MachineImage) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
@@ -422,7 +458,12 @@ class BaseMachineImage(
                 self.label == other.label and
                 self.description == other.description)
 
-    def wait_till_ready(self, timeout=None, interval=None):
+    # NB: interface declares -> bool but the implementation does not return a
+    # value (wait_for raises on failure); annotate honestly without altering
+    # behavior.
+    def wait_till_ready(  # type: ignore[override]
+            self, timeout: int | None = None,
+            interval: int | None = None) -> None:
         self.wait_for(
             [MachineImageState.AVAILABLE],
             terminal_states=[MachineImageState.ERROR],
@@ -432,30 +473,30 @@ class BaseMachineImage(
 
 class BaseAttachmentInfo(AttachmentInfo):
 
-    def __init__(self, volume, instance_id, device):
+    def __init__(self, volume: Volume, instance_id: str, device: str) -> None:
         self._volume = volume
         self._instance_id = instance_id
         self._device = device
 
     @property
-    def volume(self):
+    def volume(self) -> Volume:
         return self._volume
 
     @property
-    def instance_id(self):
+    def instance_id(self) -> str:
         return self._instance_id
 
     @property
-    def device(self):
+    def device(self) -> str:
         return self._device
 
 
 class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseVolume, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, Volume) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
@@ -464,14 +505,21 @@ class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
                 self.state == other.state and
                 self.label == other.label)
 
-    def wait_till_ready(self, timeout=None, interval=None):
+    # NB: interface declares -> bool but the implementation does not return a
+    # value (wait_for raises on failure); annotate honestly without altering
+    # behavior.
+    def wait_till_ready(  # type: ignore[override]
+            self, timeout: int | None = None,
+            interval: int | None = None) -> None:
         self.wait_for(
             [VolumeState.AVAILABLE],
             terminal_states=[VolumeState.ERROR, VolumeState.DELETED],
             timeout=timeout,
             interval=interval)
 
-    def delete(self):
+    # NB: interface declares -> bool but VolumeService.delete returns None;
+    # annotate honestly without altering behavior.
+    def delete(self) -> None:  # type: ignore[override]
         """
         Delete this volume.
         """
@@ -480,10 +528,10 @@ class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
 
 class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseSnapshot, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, Snapshot) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
@@ -492,14 +540,21 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
                 self.state == other.state and
                 self.label == other.label)
 
-    def wait_till_ready(self, timeout=None, interval=None):
+    # NB: interface declares -> bool but the implementation does not return a
+    # value (wait_for raises on failure); annotate honestly without altering
+    # behavior.
+    def wait_till_ready(  # type: ignore[override]
+            self, timeout: int | None = None,
+            interval: int | None = None) -> None:
         self.wait_for(
             [SnapshotState.AVAILABLE],
             terminal_states=[SnapshotState.ERROR],
             timeout=timeout,
             interval=interval)
 
-    def delete(self):
+    # NB: interface declares -> bool but SnapshotService.delete returns None;
+    # annotate honestly without altering behavior.
+    def delete(self) -> None:  # type: ignore[override]
         """
         Delete this snapshot.
         """
@@ -508,51 +563,53 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
 
 class BaseKeyPair(BaseCloudResource, KeyPair):
 
-    def __init__(self, provider, key_pair):
+    def __init__(self, provider: CloudProvider, key_pair: Any) -> None:
         super(BaseKeyPair, self).__init__(provider)
         self._key_pair = key_pair
-        self._private_material = None
+        self._private_material: str | None = None
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, KeyPair) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.name == other.name)
 
     @property
-    def id(self):
+    def id(self) -> str:
         """
         Return the id of this key pair.
         """
-        return self._key_pair.name
+        return cast(str, self._key_pair.name)
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Return the name of this key pair.
         """
         return self.id
 
     @property
-    def material(self):
+    def material(self) -> str | None:
         return self._private_material
 
     @material.setter
     # pylint:disable=arguments-differ
-    def material(self, value):
+    def material(self, value: str | None) -> None:
         self._private_material = value
 
-    def delete(self):
+    # NB: interface declares -> bool but the implementation does not return a
+    # value; annotate honestly without altering behavior.
+    def delete(self) -> None:  # type: ignore[override]
         self._provider.security.key_pairs.delete(self)
 
 
 class BaseVMFirewall(BaseCloudResource, VMFirewall):
 
-    def __init__(self, provider, vm_firewall):
+    def __init__(self, provider: CloudProvider, vm_firewall: Any) -> None:
         super(BaseVMFirewall, self).__init__(provider)
         self._vm_firewall = vm_firewall
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """
         Check if all the defined rules match across both VM firewalls.
         """
@@ -561,34 +618,34 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
                 self._provider == other._provider and
                 set(self.rules) == set(other.rules))
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
 
     @property
-    def id(self):
+    def id(self) -> str:
         """
         Get the ID of this VM firewall.
 
         :rtype: str
         :return: VM firewall ID
         """
-        return self._vm_firewall.id
+        return cast(str, self._vm_firewall.id)
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Return the name of this VM firewall.
         """
         return self.id
 
     @property
-    def description(self):
+    def description(self) -> str:
         """
         Return the description of this VM firewall.
         """
-        return self._vm_firewall.description
+        return cast(str, self._vm_firewall.description)
 
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this VM firewall.
         """
@@ -597,7 +654,7 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
 
 class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
 
-    def __init__(self, parent_fw, rule):
+    def __init__(self, parent_fw: VMFirewall, rule: Any) -> None:
         # pylint:disable=protected-access
         super(BaseVMFirewallRule, self).__init__(
             parent_fw._provider)
@@ -610,17 +667,17 @@ class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
             self.cidr, self.src_dest_fw_id).lower()
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return ("<{0}: id: {1}; direction: {2}; protocol: {3};  from: {4};"
                 " to: {5}; cidr: {6}, src_dest_fw: {7}>"
                 .format(self.__class__.__name__, self.id, self.direction,
                         self.protocol, self.from_port, self.to_port, self.cidr,
                         self.src_dest_fw_id))
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, VMFirewallRule) and
                 self.direction == other.direction and
                 self.protocol == other.protocol and
@@ -629,10 +686,10 @@ class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
                 self.cidr == other.cidr and
                 self.src_dest_fw_id == other.src_dest_fw_id)
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """
         Return a hash-based interpretation of all of the object's field values.
 
@@ -643,23 +700,26 @@ class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
             self.direction, self.protocol, self.from_port, self.to_port,
             self.cidr, self.src_dest_fw_id))
 
-    def to_json(self):
+    def to_json(self) -> dict[str, Any]:
         attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
         js = {k: v for (k, v) in attr if not k.startswith('_')}
         js['src_dest_fw'] = self.src_dest_fw_id
         js['firewall'] = self.firewall.id
         return js
 
-    def delete(self):
-        self._provider.security._vm_firewall_rules.delete(self.firewall, self)
+    def delete(self) -> None:
+        # The interface types the second arg as a rule_id (str), but every
+        # provider's _vm_firewall_rules.delete accepts the rule object itself.
+        self._provider.security._vm_firewall_rules.delete(
+            self.firewall, self)  # type: ignore[arg-type]
 
 
 class BasePlacementZone(BaseCloudResource, PlacementZone):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BasePlacementZone, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, PlacementZone) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
@@ -668,23 +728,23 @@ class BasePlacementZone(BaseCloudResource, PlacementZone):
 
 class BaseRegion(BaseCloudResource, Region):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseRegion, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, Region) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
 
-    def to_json(self):
+    def to_json(self) -> dict[str, Any]:
         attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
         js = {k: v for (k, v) in attr if not k.startswith('_')}
         js['zones'] = [z.id for z in self.zones]
         return js
 
     @property
-    def default_zone(self):
+    def default_zone(self) -> PlacementZone:
         return next(iter(self.zones))
 
 
@@ -695,19 +755,19 @@ class BaseUploadPart(UploadPart):
     ``complete_multipart_upload``.
     """
 
-    def __init__(self, part_number, etag):
+    def __init__(self, part_number: int, etag: object) -> None:
         self._part_number = part_number
         self._etag = etag
 
     @property
-    def part_number(self):
+    def part_number(self) -> int:
         return self._part_number
 
     @property
-    def etag(self):
+    def etag(self) -> object:
         return self._etag
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<CB-{0}: {1} ({2})>".format(
             self.__class__.__name__, self._part_number, self._etag)
 
@@ -720,42 +780,54 @@ class BaseMultipartUpload(BaseCloudResource, MultipartUpload):
     (e.g. ``BaseBucket.delete``).
     """
 
-    def __init__(self, provider, bucket, object_name, upload_id):
+    def __init__(self, provider: CloudProvider, bucket: Bucket,
+                 object_name: str, upload_id: str) -> None:
         super(BaseMultipartUpload, self).__init__(provider)
         self._bucket = bucket
         self._object_name = object_name
         self._upload_id = upload_id
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._upload_id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._object_name
 
     @property
-    def bucket(self):
+    def bucket(self) -> Bucket:
         return self._bucket
 
     @property
-    def object_name(self):
+    def object_name(self) -> str:
         return self._object_name
 
-    def upload_part(self, part_number, data):
+    def upload_part(self, part_number: int,
+                    data: bytes | IO[bytes]) -> UploadPart:
         # pylint:disable=protected-access
-        return self._provider.storage._bucket_objects.upload_part(
+        # _bucket_objects is a provider-internal service not exposed on the
+        # public StorageService interface, hence the typed cast + ignore.
+        return self._bucket_objects.upload_part(
             self._bucket, self, part_number, data)
 
-    def complete(self, parts):
+    def complete(self, parts: list[UploadPart]) -> BucketObject:
         # pylint:disable=protected-access
-        return self._provider.storage._bucket_objects\
-            .complete_multipart_upload(self._bucket, self, parts)
+        return self._bucket_objects.complete_multipart_upload(
+            self._bucket, self, parts)
 
-    def abort(self):
+    def abort(self) -> None:
         # pylint:disable=protected-access
-        return self._provider.storage._bucket_objects\
-            .abort_multipart_upload(self._bucket, self)
+        return self._bucket_objects.abort_multipart_upload(
+            self._bucket, self)
+
+    @property
+    def _bucket_objects(self) -> "BucketObjectService":
+        # _bucket_objects is a provider-internal service not exposed on the
+        # public StorageService interface, hence the typed cast + ignore.
+        return cast(
+            "BucketObjectService",
+            self._provider.storage._bucket_objects)  # type: ignore[attr-defined]
 
 
 class BaseBucketObject(BaseCloudResource, BucketObject):
@@ -781,16 +853,36 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     CB_MULTIPART_MAX_CONCURRENCY = int(os.environ.get(
         'CB_MULTIPART_MAX_CONCURRENCY', 5))
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseBucketObject, self).__init__(provider)
 
+    @property
+    def bucket(self) -> Bucket:
+        # Provider-implemented; every concrete BucketObject knows its bucket.
+        raise NotImplementedError(
+            "BucketObject subclasses must implement the bucket property")
+
+    def _upload_single_shot(
+            self, data: str | bytes | IO[bytes]) -> BucketObject | None:
+        # Provider-implemented single-shot (non-multipart) upload.
+        raise NotImplementedError(
+            "BucketObject subclasses must implement _upload_single_shot")
+
+    @property
+    def _bucket_objects(self) -> "BucketObjectService":
+        # _bucket_objects is a provider-internal service not exposed on the
+        # public StorageService interface, hence the typed cast + ignore.
+        return cast(
+            "BucketObjectService",
+            self._provider.storage._bucket_objects)  # type: ignore[attr-defined]
+
     @staticmethod
-    def is_valid_resource_name(name):
+    def is_valid_resource_name(name: str) -> bool:
         return (True if BaseBucketObject.CB_NAME_PATTERN.match(name)
                 else False)
 
     @staticmethod
-    def assert_valid_resource_name(name):
+    def assert_valid_resource_name(name: str) -> None:
         if not BaseBucketObject.is_valid_resource_name(name):
             log.debug("InvalidLabelException raised on %s", name,
                       exc_info=True)
@@ -799,35 +891,42 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
                 "in: http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMeta"
                 "data.html#object-key-guidelines" % name)
 
-    def save_content(self, target_stream):
-        shutil.copyfileobj(self.iter_content(), target_stream)
+    def save_content(self, target_stream: IO[bytes]) -> None:
+        # iter_content() is declared Iterable[bytes] on the interface, but the
+        # concrete objects returned by providers also support .read(); cast so
+        # copyfileobj accepts it without changing behavior.
+        shutil.copyfileobj(
+            cast("SupportsRead[bytes]", self.iter_content()), target_stream)
 
     # The three resolvers below pick, in order of precedence: an explicit
     # per-call UploadConfig field, the provider/global config, then the class
     # default constant.
-    def _multipart_threshold(self, config=None):
+    def _multipart_threshold(self, config: UploadConfig | None = None) -> int:
         if config is not None and config.threshold is not None:
             return int(config.threshold)
         # pylint:disable=protected-access
-        return int(self._provider._get_config_value(
+        # _get_config_value is a provider-internal helper not on the public
+        # CloudProvider interface, hence the ignore.
+        return int(self._provider._get_config_value(  # type: ignore[attr-defined]
             'multipart_threshold', self.CB_MULTIPART_THRESHOLD))
 
-    def _multipart_part_size(self, config=None):
+    def _multipart_part_size(self, config: UploadConfig | None = None) -> int:
         if config is not None and config.part_size is not None:
             return int(config.part_size)
         # pylint:disable=protected-access
-        return int(self._provider._get_config_value(
+        return int(self._provider._get_config_value(  # type: ignore[attr-defined]
             'multipart_part_size', self.CB_MULTIPART_PART_SIZE))
 
-    def _multipart_max_concurrency(self, config=None):
+    def _multipart_max_concurrency(
+            self, config: UploadConfig | None = None) -> int:
         if config is not None and config.max_concurrency is not None:
             return int(config.max_concurrency)
         # pylint:disable=protected-access
-        return int(self._provider._get_config_value(
+        return int(self._provider._get_config_value(  # type: ignore[attr-defined]
             'multipart_max_concurrency', self.CB_MULTIPART_MAX_CONCURRENCY))
 
     @staticmethod
-    def _data_size(data):
+    def _data_size(data: str | bytes | IO[bytes]) -> int | None:
         """
         Best-effort size of an upload payload, or ``None`` if it cannot be
         determined without consuming the data (e.g. a non-seekable stream).
@@ -848,26 +947,34 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
         return None
 
     @staticmethod
-    def _as_stream(data):
+    def _as_stream(data: str | bytes | IO[bytes]) -> IO[bytes]:
         if isinstance(data, str):
             data = data.encode('utf-8')
         if isinstance(data, (bytes, bytearray)):
             return io.BytesIO(data)
         return data
 
-    def upload(self, data, config=None):
+    # NB: interface declares -> bool, but the base path returns the completed
+    # BucketObject (multipart) or None (single-shot); annotate honestly.
+    def upload(self, data: str | bytes | IO[bytes],  # type: ignore[override]
+               config: UploadConfig | None = None) -> BucketObject | None:
         size = self._data_size(data)
         if size is not None and size > self._multipart_threshold(config):
             return self._upload_multipart(self._as_stream(data), config)
         return self._upload_single_shot(data)
 
-    def upload_from_file(self, path, config=None):
+    # NB: interface declares -> None, but the base path returns the completed
+    # BucketObject for the multipart branch; annotate honestly.
+    def upload_from_file(  # type: ignore[override]
+            self, path: str,
+            config: UploadConfig | None = None) -> BucketObject | None:
         if os.path.getsize(path) > self._multipart_threshold(config):
             with open(path, 'rb') as f:
                 return self._upload_multipart(f, config)
         return self._upload_from_file_single_shot(path)
 
-    def _upload_multipart(self, stream, config=None):
+    def _upload_multipart(self, stream: IO[bytes],
+                          config: UploadConfig | None = None) -> BucketObject:
         """
         Drive the explicit multipart lifecycle over a stream, reading it one
         part at a time so the whole payload is never held in memory.
@@ -898,7 +1005,9 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
             upload.abort()
             raise
 
-    def _upload_parts_serially(self, upload, stream, part_size):
+    def _upload_parts_serially(self, upload: MultipartUpload,
+                               stream: IO[bytes],
+                               part_size: int) -> list[UploadPart]:
         parts = []
         part_number = 1
         while True:
@@ -909,16 +1018,21 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
             part_number += 1
         return parts
 
-    def _upload_parts_concurrently(self, upload, stream, part_size,
-                                   concurrency):
+    def _upload_parts_concurrently(self, upload: MultipartUpload,
+                                   stream: IO[bytes], part_size: int,
+                                   concurrency: int) -> list[UploadPart]:
         # A pool of cloned bucket-object services, one per worker, so each
         # thread touches an isolated provider/connection.
-        clones = queue.Queue()
+        clones: "queue.Queue[BucketObjectService]" = queue.Queue()
         for _ in range(concurrency):
             # pylint:disable=protected-access
-            clones.put(self._provider.clone().storage._bucket_objects)
+            # _bucket_objects is a provider-internal service not exposed on the
+            # public StorageService interface, hence the typed cast + ignore.
+            clones.put(cast(
+                "BucketObjectService",
+                self._provider.clone().storage._bucket_objects))  # type: ignore[attr-defined]
 
-        def upload_one(part_number, chunk):
+        def upload_one(part_number: int, chunk: bytes) -> UploadPart:
             service = clones.get()
             try:
                 return service.upload_part(
@@ -926,8 +1040,8 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
             finally:
                 clones.put(service)
 
-        parts = []
-        in_flight = set()
+        parts: list[UploadPart] = []
+        in_flight: set[Future[UploadPart]] = set()
         part_number = 1
         depleted = False
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
@@ -951,7 +1065,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
         return parts
 
     @staticmethod
-    def _read_part(stream, part_size):
+    def _read_part(stream: IO[bytes], part_size: int) -> bytes:
         """
         Read exactly ``part_size`` bytes from ``stream`` (fewer only at EOF),
         coalescing short reads so non-final parts always meet the provider
@@ -965,7 +1079,8 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
             buffer.extend(chunk)
         return bytes(buffer)
 
-    def _upload_from_file_single_shot(self, path):
+    def _upload_from_file_single_shot(
+            self, path: str) -> BucketObject | None:
         """
         Default small-file upload: read the file and hand it to the provider's
         single-shot upload. Providers with a more efficient native file upload
@@ -974,12 +1089,12 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
         with open(path, 'rb') as f:
             return self._upload_single_shot(f)
 
-    def create_multipart_upload(self):
+    def create_multipart_upload(self) -> MultipartUpload:
         # pylint:disable=protected-access
-        return self._provider.storage._bucket_objects.create_multipart_upload(
+        return self._bucket_objects.create_multipart_upload(
             self.bucket, self.name)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, BucketObject) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
@@ -990,10 +1105,10 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
 
 class BaseBucket(BaseCloudResource, Bucket):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseBucket, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, Bucket) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
@@ -1001,11 +1116,16 @@ class BaseBucket(BaseCloudResource, Bucket):
                 # check from most to least likely mutables
                 self.name == other.name)
 
-    def delete(self):
+    # NB: interface declares delete(delete_contents=False) -> bool, but this
+    # base implementation takes no args and returns None; annotate honestly
+    # without altering behavior.
+    def delete(self) -> None:  # type: ignore[override]
         """
         Delete this bucket.
         """
-        self._provider.storage.buckets.delete(self.id)
+        # BucketService.delete is implemented by every provider but is not
+        # declared on the public typed interface, hence the ignore.
+        self._provider.storage.buckets.delete(self.id)  # type: ignore[attr-defined]
 
     # TODO: Discuss creating `create_object` method, or change docs
 
@@ -1017,11 +1137,11 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
     CB_DEFAULT_IPV4RANGE = os.environ.get('CB_DEFAULT_IPV4RANGE',
                                           u'10.0.0.0/16')
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseNetwork, self).__init__(provider)
 
     @staticmethod
-    def cidr_blocks_overlap(block1, block2):
+    def cidr_blocks_overlap(block1: str, block2: str) -> bool:
         common_length = min(int(block1.split('/')[1]),
                             int(block2.split('/')[1]))
 
@@ -1033,17 +1153,24 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
         return prefix1 == prefix2
 
-    def wait_till_ready(self, timeout=None, interval=None):
+    # NB: interface declares -> bool but the implementation does not return a
+    # value (wait_for raises on failure); annotate honestly without altering
+    # behavior.
+    def wait_till_ready(  # type: ignore[override]
+            self, timeout: int | None = None,
+            interval: int | None = None) -> None:
         self.wait_for(
             [NetworkState.AVAILABLE],
             terminal_states=[NetworkState.ERROR],
             timeout=timeout,
             interval=interval)
 
-    def delete(self):
+    # NB: interface declares -> bool but NetworkService.delete returns None;
+    # annotate honestly without altering behavior.
+    def delete(self) -> None:  # type: ignore[override]
         self._provider.networking.networks.delete(self)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, Network) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
@@ -1057,61 +1184,78 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
     CB_DEFAULT_SUBNET_IPV4RANGE = os.environ.get('CB_DEFAULT_SUBNET_IPV4RANGE',
                                                  '10.0.0.0/24')
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseSubnet, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, Subnet) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
 
     @property
-    def network(self):
-        return self._provider.networking.networks.get(self.network_id)
+    def network(self) -> Network:
+        # The parent network of an existing subnet always resolves; the
+        # service get() is typed Network | None, so narrow to Network.
+        return cast(
+            Network, self._provider.networking.networks.get(self.network_id))
 
-    def wait_till_ready(self, timeout=None, interval=None):
+    # NB: interface declares -> bool but the implementation does not return a
+    # value (wait_for raises on failure); annotate honestly without altering
+    # behavior.
+    def wait_till_ready(  # type: ignore[override]
+            self, timeout: int | None = None,
+            interval: int | None = None) -> None:
         self.wait_for(
             [SubnetState.AVAILABLE],
             terminal_states=[SubnetState.ERROR],
             timeout=timeout,
             interval=interval)
 
-    def delete(self):
+    # NB: interface declares -> bool but SubnetService.delete returns None;
+    # annotate honestly without altering behavior.
+    def delete(self) -> None:  # type: ignore[override]
         self._provider.networking.subnets.delete(self)
 
 
 class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseFloatingIP, self).__init__(provider)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.public_ip
 
     @property
-    def state(self):
+    def state(self) -> str:
         return (FloatingIpState.IN_USE if self.in_use
                 else FloatingIpState.AVAILABLE)
 
-    def wait_till_ready(self, timeout=None, interval=None):
+    # NB: interface declares -> bool but the implementation does not return a
+    # value (wait_for raises on failure); annotate honestly without altering
+    # behavior.
+    def wait_till_ready(  # type: ignore[override]
+            self, timeout: int | None = None,
+            interval: int | None = None) -> None:
         self.wait_for(
             [FloatingIpState.AVAILABLE, FloatingIpState.IN_USE],
             terminal_states=[FloatingIpState.ERROR],
             timeout=timeout,
             interval=interval)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, FloatingIP) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
 
-    def delete(self):
+    # NB: interface declares -> bool but FloatingIPService.delete returns None;
+    # annotate honestly without altering behavior.
+    def delete(self) -> None:  # type: ignore[override]
         # For OS where the gateway is necessary, we pass the gateway when
         # deleting, for all others we pass None and it will be ignored
-        gw = getattr(self, '_gateway_id', None)
+        gw: Any = getattr(self, '_gateway_id', None)
         self._provider.networking._floating_ips.delete(gw, self.id)
 
 
@@ -1120,16 +1264,18 @@ class BaseRouter(BaseCloudResource, Router):
     CB_DEFAULT_ROUTER_LABEL = os.environ.get('CB_DEFAULT_ROUTER_LABEL',
                                              'cloudbridge-router')
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseRouter, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, Router) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
 
-    def delete(self):
+    # NB: interface declares -> bool but RouterService.delete returns None;
+    # annotate honestly without altering behavior.
+    def delete(self) -> None:  # type: ignore[override]
         self._provider.networking.routers.delete(self)
 
 
@@ -1139,25 +1285,32 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
     CB_DEFAULT_INET_GATEWAY_NAME = cb_helpers.get_env(
         'CB_DEFAULT_INET_GATEWAY_NAME', 'cloudbridge-inetgateway')
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseInternetGateway, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, InternetGateway) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
 
-    def wait_till_ready(self, timeout=None, interval=None):
+    # NB: interface declares -> bool but the implementation does not return a
+    # value (wait_for raises on failure); annotate honestly without altering
+    # behavior.
+    def wait_till_ready(  # type: ignore[override]
+            self, timeout: int | None = None,
+            interval: int | None = None) -> None:
         self.wait_for(
             [GatewayState.AVAILABLE],
             terminal_states=[GatewayState.ERROR, GatewayState.UNKNOWN],
             timeout=timeout,
             interval=interval)
 
-    def delete(self):
-        return self._provider.networking._gateways.delete(self.network_id,
-                                                          self)
+    def delete(self) -> None:
+        # A gateway is always attached to a network when it can be deleted;
+        # network_id is typed str | None, so narrow to str for the service.
+        return self._provider.networking._gateways.delete(
+            cast(str, self.network_id), self)
 
 
 class BaseDnsZone(BaseCloudResource, DnsZone):
@@ -1166,17 +1319,17 @@ class BaseDnsZone(BaseCloudResource, DnsZone):
         r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]"
         r"[a-z0-9-]{0,61}[a-z0-9]\.?$")
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseDnsZone, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, BaseDnsZone) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
 
     @staticmethod
-    def is_valid_resource_name(name):
+    def is_valid_resource_name(name: str) -> bool:
         if not name:
             return False
         else:
@@ -1184,7 +1337,7 @@ class BaseDnsZone(BaseCloudResource, DnsZone):
                     else False)
 
     @staticmethod
-    def assert_valid_resource_name(name):
+    def assert_valid_resource_name(name: str) -> None:
         if not BaseDnsZone.is_valid_resource_name(name):
             log.debug("InvalidNameException raised on %s", name,
                       exc_info=True)
@@ -1193,7 +1346,7 @@ class BaseDnsZone(BaseCloudResource, DnsZone):
                 u"(ending with a .) and match criteria defined "
                 u"in: https://stackoverflow.com/q/10306690/10971151" % name)
 
-    def delete(self):
+    def delete(self) -> None:
         return self._provider.dns.host_zones.delete(self.id)
 
 
@@ -1203,17 +1356,17 @@ class BaseDnsRecord(BaseCloudResource, DnsRecord):
         r"^(?:\*\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]"
         r"[a-z0-9-]{0,61}[a-z0-9]\.?$")
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(BaseDnsRecord, self).__init__(provider)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return (isinstance(other, BaseDnsRecord) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
 
     @staticmethod
-    def is_valid_resource_name(name):
+    def is_valid_resource_name(name: str) -> bool:
         if not name:
             return False
         else:
@@ -1221,7 +1374,7 @@ class BaseDnsRecord(BaseCloudResource, DnsRecord):
                     else False)
 
     @staticmethod
-    def assert_valid_resource_name(name):
+    def assert_valid_resource_name(name: str) -> None:
         if not BaseDnsRecord.is_valid_resource_name(name):
             log.debug("InvalidNameException raised on %s", name,
                       exc_info=True)
