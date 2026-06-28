@@ -344,10 +344,7 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
                 self.private_ips == other.private_ips and
                 self.image_id == other.image_id)
 
-    # NB: interface declares -> bool, but neither base nor provider
-    # implementations return a value (wait_for raises on failure); annotate
-    # honestly as -> None without altering behavior.
-    def wait_till_ready(  # type: ignore[override]
+    def wait_till_ready(
             self, timeout: int | None = None,
             interval: int | None = None) -> None:
         self.wait_for(
@@ -458,10 +455,7 @@ class BaseMachineImage(
                 self.label == other.label and
                 self.description == other.description)
 
-    # NB: interface declares -> bool but the implementation does not return a
-    # value (wait_for raises on failure); annotate honestly without altering
-    # behavior.
-    def wait_till_ready(  # type: ignore[override]
+    def wait_till_ready(
             self, timeout: int | None = None,
             interval: int | None = None) -> None:
         self.wait_for(
@@ -505,10 +499,7 @@ class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
                 self.state == other.state and
                 self.label == other.label)
 
-    # NB: interface declares -> bool but the implementation does not return a
-    # value (wait_for raises on failure); annotate honestly without altering
-    # behavior.
-    def wait_till_ready(  # type: ignore[override]
+    def wait_till_ready(
             self, timeout: int | None = None,
             interval: int | None = None) -> None:
         self.wait_for(
@@ -517,9 +508,7 @@ class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
             timeout=timeout,
             interval=interval)
 
-    # NB: interface declares -> bool but VolumeService.delete returns None;
-    # annotate honestly without altering behavior.
-    def delete(self) -> None:  # type: ignore[override]
+    def delete(self) -> None:
         """
         Delete this volume.
         """
@@ -540,10 +529,7 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
                 self.state == other.state and
                 self.label == other.label)
 
-    # NB: interface declares -> bool but the implementation does not return a
-    # value (wait_for raises on failure); annotate honestly without altering
-    # behavior.
-    def wait_till_ready(  # type: ignore[override]
+    def wait_till_ready(
             self, timeout: int | None = None,
             interval: int | None = None) -> None:
         self.wait_for(
@@ -552,9 +538,7 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
             timeout=timeout,
             interval=interval)
 
-    # NB: interface declares -> bool but SnapshotService.delete returns None;
-    # annotate honestly without altering behavior.
-    def delete(self) -> None:  # type: ignore[override]
+    def delete(self) -> None:
         """
         Delete this snapshot.
         """
@@ -597,9 +581,7 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
     def material(self, value: str | None) -> None:
         self._private_material = value
 
-    # NB: interface declares -> bool but the implementation does not return a
-    # value; annotate honestly without altering behavior.
-    def delete(self) -> None:  # type: ignore[override]
+    def delete(self) -> None:
         self._provider.security.key_pairs.delete(self)
 
 
@@ -954,18 +936,14 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
             return io.BytesIO(data)
         return data
 
-    # NB: interface declares -> bool, but the base path returns the completed
-    # BucketObject (multipart) or None (single-shot); annotate honestly.
-    def upload(self, data: str | bytes | IO[bytes],  # type: ignore[override]
+    def upload(self, data: str | bytes | IO[bytes],
                config: UploadConfig | None = None) -> BucketObject | None:
         size = self._data_size(data)
         if size is not None and size > self._multipart_threshold(config):
             return self._upload_multipart(self._as_stream(data), config)
         return self._upload_single_shot(data)
 
-    # NB: interface declares -> None, but the base path returns the completed
-    # BucketObject for the multipart branch; annotate honestly.
-    def upload_from_file(  # type: ignore[override]
+    def upload_from_file(
             self, path: str,
             config: UploadConfig | None = None) -> BucketObject | None:
         if os.path.getsize(path) > self._multipart_threshold(config):
@@ -1116,9 +1094,9 @@ class BaseBucket(BaseCloudResource, Bucket):
                 # check from most to least likely mutables
                 self.name == other.name)
 
-    # NB: interface declares delete(delete_contents=False) -> bool, but this
-    # base implementation takes no args and returns None; annotate honestly
-    # without altering behavior.
+    # NB: interface declares delete(delete_contents=False), but this base
+    # implementation takes no args; the override ignore covers that signature
+    # mismatch without altering behavior.
     def delete(self) -> None:  # type: ignore[override]
         """
         Delete this bucket.
@@ -1153,10 +1131,7 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
         return prefix1 == prefix2
 
-    # NB: interface declares -> bool but the implementation does not return a
-    # value (wait_for raises on failure); annotate honestly without altering
-    # behavior.
-    def wait_till_ready(  # type: ignore[override]
+    def wait_till_ready(
             self, timeout: int | None = None,
             interval: int | None = None) -> None:
         self.wait_for(
@@ -1165,9 +1140,7 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
             timeout=timeout,
             interval=interval)
 
-    # NB: interface declares -> bool but NetworkService.delete returns None;
-    # annotate honestly without altering behavior.
-    def delete(self) -> None:  # type: ignore[override]
+    def delete(self) -> None:
         self._provider.networking.networks.delete(self)
 
     def __eq__(self, other: object) -> bool:
@@ -1200,10 +1173,7 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
         return cast(
             Network, self._provider.networking.networks.get(self.network_id))
 
-    # NB: interface declares -> bool but the implementation does not return a
-    # value (wait_for raises on failure); annotate honestly without altering
-    # behavior.
-    def wait_till_ready(  # type: ignore[override]
+    def wait_till_ready(
             self, timeout: int | None = None,
             interval: int | None = None) -> None:
         self.wait_for(
@@ -1212,9 +1182,7 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
             timeout=timeout,
             interval=interval)
 
-    # NB: interface declares -> bool but SubnetService.delete returns None;
-    # annotate honestly without altering behavior.
-    def delete(self) -> None:  # type: ignore[override]
+    def delete(self) -> None:
         self._provider.networking.subnets.delete(self)
 
 
@@ -1232,10 +1200,7 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
         return (FloatingIpState.IN_USE if self.in_use
                 else FloatingIpState.AVAILABLE)
 
-    # NB: interface declares -> bool but the implementation does not return a
-    # value (wait_for raises on failure); annotate honestly without altering
-    # behavior.
-    def wait_till_ready(  # type: ignore[override]
+    def wait_till_ready(
             self, timeout: int | None = None,
             interval: int | None = None) -> None:
         self.wait_for(
@@ -1250,9 +1215,7 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
                 self._provider == other._provider and
                 self.id == other.id)
 
-    # NB: interface declares -> bool but FloatingIPService.delete returns None;
-    # annotate honestly without altering behavior.
-    def delete(self) -> None:  # type: ignore[override]
+    def delete(self) -> None:
         # For OS where the gateway is necessary, we pass the gateway when
         # deleting, for all others we pass None and it will be ignored
         gw: Any = getattr(self, '_gateway_id', None)
@@ -1273,9 +1236,7 @@ class BaseRouter(BaseCloudResource, Router):
                 self._provider == other._provider and
                 self.id == other.id)
 
-    # NB: interface declares -> bool but RouterService.delete returns None;
-    # annotate honestly without altering behavior.
-    def delete(self) -> None:  # type: ignore[override]
+    def delete(self) -> None:
         self._provider.networking.routers.delete(self)
 
 
@@ -1294,10 +1255,7 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
                 self._provider == other._provider and
                 self.id == other.id)
 
-    # NB: interface declares -> bool but the implementation does not return a
-    # value (wait_for raises on failure); annotate honestly without altering
-    # behavior.
-    def wait_till_ready(  # type: ignore[override]
+    def wait_till_ready(
             self, timeout: int | None = None,
             interval: int | None = None) -> None:
         self.wait_for(

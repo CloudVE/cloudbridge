@@ -1500,7 +1500,7 @@ class KeyPairService(PageableObjectMixin[KeyPair], CloudService):
         pass
 
     @abstractmethod
-    def delete(self, key_pair: KeyPair | str) -> bool:
+    def delete(self, key_pair: KeyPair | str) -> None:
         """
         Delete an existing keypair.
 

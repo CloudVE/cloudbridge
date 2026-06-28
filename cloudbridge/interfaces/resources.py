@@ -137,7 +137,7 @@ class CloudResource(object):
 class LabeledCloudResource(CloudResource):
 
     @abstractproperty
-    def label(self) -> str:
+    def label(self) -> str | None:
         """
         Get the resource label.
 
@@ -326,7 +326,7 @@ class ObjectLifeCycleMixin(object):
 
     @abstractmethod
     def wait_till_ready(self, timeout: int | None = None,
-                        interval: int | None = None) -> bool:
+                        interval: int | None = None) -> None:
         """
         Wait till the current object reaches its ready state.
 
@@ -600,7 +600,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def reboot(self) -> bool:
+    def reboot(self) -> None:
         """
         Reboot this instance (using the cloud middleware API).
 
@@ -610,7 +610,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def start(self) -> bool:
+    def start(self) -> bool | None:
         """
         Start this instance (using the cloud middleware API)
 
@@ -620,7 +620,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def stop(self) -> bool:
+    def stop(self) -> bool | None:
         """
         Stop this instance (using the cloud middleware API)
 
@@ -899,7 +899,7 @@ class MachineImage(ObjectLifeCycleMixin, LabeledCloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def description(self) -> str:
+    def description(self) -> str | None:
         """
         Get the image description.
 
@@ -910,7 +910,7 @@ class MachineImage(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def min_disk(self) -> int:
+    def min_disk(self) -> int | None:
         """
         Return the minimum size of the disk that's required to boot this image.
 
@@ -922,7 +922,7 @@ class MachineImage(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def delete(self) -> bool:
+    def delete(self) -> None:
         """
         Delete this image.
 
@@ -1001,7 +1001,7 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def delete(self) -> bool:
+    def delete(self) -> None:
         """
         Delete this network.
 
@@ -1108,7 +1108,7 @@ class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def delete(self) -> bool:
+    def delete(self) -> None:
         """
         Delete this subnet.
 
@@ -1171,7 +1171,7 @@ class FloatingIP(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def delete(self) -> bool:
+    def delete(self) -> None:
         """
         Delete this address.
 
@@ -1238,7 +1238,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractmethod
-    def delete(self) -> bool:
+    def delete(self) -> None:
         """
         Delete this router.
 
@@ -1248,7 +1248,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractmethod
-    def attach_subnet(self, subnet: Subnet | str) -> bool:
+    def attach_subnet(self, subnet: Subnet | str) -> None:
         """
         Attach this router to a subnet.
 
@@ -1261,7 +1261,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractmethod
-    def detach_subnet(self, subnet: Subnet | str) -> bool:
+    def detach_subnet(self, subnet: Subnet | str) -> None:
         """
         Detach this subnet from a network.
 
@@ -1284,7 +1284,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractmethod
-    def attach_gateway(self, gateway: Gateway) -> bool:
+    def attach_gateway(self, gateway: Gateway) -> None:
         """
         Attach a gateway to this router.
 
@@ -1297,7 +1297,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractmethod
-    def detach_gateway(self, gateway: Gateway) -> bool:
+    def detach_gateway(self, gateway: Gateway) -> None:
         """
         Detach this router from a gateway.
 
@@ -1375,7 +1375,7 @@ class DnsZone(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def admin_email(self) -> str:
+    def admin_email(self) -> str | None:
         """
         Email address of this zone's administrator. Some cloud providers do not
         support this field, and therefore, it may be stored in an extra field
@@ -1450,7 +1450,7 @@ class DnsRecord(CloudResource):
         pass
 
     @abstractproperty
-    def data(self) -> str:
+    def data(self) -> list[str]:
         """
         Dns Record data
 
@@ -1615,7 +1615,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def attachments(self) -> list[AttachmentInfo]:
+    def attachments(self) -> AttachmentInfo | None:
         """
         Get attachment information for this volume.
 
@@ -1625,7 +1625,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def attach(self, instance: str | Instance, device: str) -> bool:
+    def attach(self, instance: str | Instance, device: str) -> None:
         """
         Attach this volume to an instance.
 
@@ -1643,7 +1643,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def detach(self, force: bool = False) -> bool:
+    def detach(self, force: bool = False) -> None:
         """
         Detach this volume from an instance.
 
@@ -1682,7 +1682,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def delete(self) -> bool:
+    def delete(self) -> None:
         """
         Delete this volume.
 
@@ -1841,7 +1841,7 @@ class Snapshot(ObjectLifeCycleMixin, LabeledCloudResource):
 #         pass
 
     @abstractmethod
-    def delete(self) -> bool:
+    def delete(self) -> None:
         """
         Delete this snapshot.
 
@@ -1869,7 +1869,7 @@ class KeyPair(CloudResource):
         pass
 
     @abstractmethod
-    def delete(self) -> bool:
+    def delete(self) -> None:
         """
         Delete this key pair.
 
@@ -2118,7 +2118,7 @@ class VMFirewallRule(CloudResource):
         pass
 
     @abstractproperty
-    def cidr(self) -> str:
+    def cidr(self) -> str | None:
         """
         CIDR block this VM firewall is providing access to.
 
@@ -2128,7 +2128,7 @@ class VMFirewallRule(CloudResource):
         pass
 
     @abstractproperty
-    def src_dest_fw_id(self) -> str:
+    def src_dest_fw_id(self) -> str | None:
         """
         VM firewall id given access permissions by this rule.
 
@@ -2138,7 +2138,7 @@ class VMFirewallRule(CloudResource):
         pass
 
     @abstractproperty
-    def src_dest_fw(self) -> VMFirewall:
+    def src_dest_fw(self) -> VMFirewall | None:
         """
         VM firewall given access permissions by this rule.
 
@@ -2364,7 +2364,7 @@ class BucketObject(CloudResource):
 
     @abstractmethod
     def upload(self, source_stream: IO[bytes],
-               config: UploadConfig | None = None) -> bool:
+               config: UploadConfig | None = None) -> BucketObject | None:
         """
         Set the contents of the object to the data read from the source stream.
 
@@ -2380,7 +2380,7 @@ class BucketObject(CloudResource):
 
     @abstractmethod
     def upload_from_file(self, path: str,
-                         config: UploadConfig | None = None) -> None:
+                         config: UploadConfig | None = None) -> BucketObject | None:
         """
         Store the contents of the file pointed by the "path" variable.
 
@@ -2419,7 +2419,7 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def delete(self) -> bool:
+    def delete(self) -> None:
         """
         Delete this object.
 
@@ -2504,7 +2504,7 @@ class Bucket(CloudResource):
         pass
 
     @abstractmethod
-    def delete(self, delete_contents: bool = False) -> bool:
+    def delete(self, delete_contents: bool = False) -> None:
         """
         Delete this bucket.
 
