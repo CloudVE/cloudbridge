@@ -890,10 +890,15 @@ class AWSBucketObject(BaseBucketObject):
         self._obj.upload_fileobj(stream, Config=config)
 
     def upload_from_file(self, path):
-        # boto3's upload_file already streams large files in parts via its
-        # TransferManager, so it is used directly rather than CloudBridge's
-        # multipart driver.
-        self._obj.upload_file(path)
+        # boto3's upload_file streams large files in parts via its
+        # TransferManager. Drive it with CloudBridge's multipart knobs so that
+        # upload_from_file and upload() honour the same configuration rather
+        # than boto3's own defaults.
+        config = TransferConfig(
+            multipart_threshold=self._multipart_threshold,
+            multipart_chunksize=self._multipart_part_size,
+            max_concurrency=self._multipart_max_concurrency)
+        self._obj.upload_file(path, Config=config)
 
     def delete(self):
         self._obj.delete()

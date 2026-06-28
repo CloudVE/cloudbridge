@@ -382,6 +382,40 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 obj.save_content(target_stream)
                 self.assertEqual(target_stream.getvalue(), content)
 
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_upload_from_file_uses_multipart_config(self):
+        # AWS drives boto3's TransferManager with CloudBridge's multipart
+        # knobs (not boto3's own defaults). This wiring is AWS-specific.
+        if self.provider.PROVIDER_ID not in ('aws', 'mock'):
+            self.skipTest("TransferConfig wiring is specific to AWS")
+        from boto3.s3.transfer import TransferConfig
+
+        name = "cbtest-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj = test_bucket.objects.create("config.bin")
+
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                test_file = os.path.join(
+                    helpers.get_test_fixtures_folder(), 'logo.jpg')
+                # pylint:disable=protected-access
+                with mock.patch.object(
+                        BaseBucketObject, 'CB_MULTIPART_PART_SIZE',
+                        7 * 1024 * 1024), \
+                    mock.patch.object(
+                        BaseBucketObject, 'CB_MULTIPART_MAX_CONCURRENCY', 3), \
+                    mock.patch.object(
+                        obj._obj, 'upload_file',
+                        wraps=obj._obj.upload_file) as spy:
+                    obj.upload_from_file(test_file)
+
+                spy.assert_called_once()
+                config = spy.call_args.kwargs['Config']
+                self.assertIsInstance(config, TransferConfig)
+                self.assertEqual(config.multipart_chunksize, 7 * 1024 * 1024)
+                self.assertEqual(config.max_concurrency, 3)
+
     @skip("Skip unless you want to test objects bigger than 5GB")
     @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content_with_large_file(self):
