@@ -41,6 +41,7 @@ from cloudbridge.base.resources import BaseVMFirewallRule
 from cloudbridge.base.resources import BaseVMType
 from cloudbridge.base.resources import BaseVolume
 from cloudbridge.interfaces.resources import AttachmentInfo
+from cloudbridge.interfaces.resources import BucketObject
 from cloudbridge.interfaces.resources import FloatingIP
 from cloudbridge.interfaces.resources import Gateway
 from cloudbridge.interfaces.resources import GatewayState
@@ -343,21 +344,11 @@ class AWSInstance(BaseInstance):
     def reboot(self) -> None:
         self._ec2_instance.reboot()
 
-    def start(self) -> bool:
-        response = self._ec2_instance.start()
-        states = ['pending', 'running']
-        if response['StartingInstances'][0]['CurrentState']['Name'] in states:
-            return True
-        else:
-            return False
+    def start(self) -> None:
+        self._ec2_instance.start()
 
-    def stop(self) -> bool:
-        response = self._ec2_instance.stop()
-        states = ['stopping', 'stopped']
-        if response['StoppingInstances'][0]['CurrentState']['Name'] in states:
-            return True
-        else:
-            return False
+    def stop(self) -> None:
+        self._ec2_instance.stop()
 
     @property
     def image_id(self) -> str:
@@ -925,15 +916,14 @@ class AWSBucketObject(BaseBucketObject):
     def iter_content(self) -> Iterable[bytes]:
         return self.BucketObjIterator(self._obj.get().get('Body'))
 
-    def _upload_single_shot(self, data: str | bytes | IO[bytes]) -> None:
+    def _upload_single_shot(self,
+                            data: str | bytes | IO[bytes]) -> BucketObject:
         self._obj.put(Body=data)
+        return self
 
-    # The base driver returns the completed BucketObject; boto3's
-    # upload_fileobj performs the multipart upload in place and returns
-    # nothing, so this override returns None.
-    def _upload_multipart(  # type: ignore[override]
+    def _upload_multipart(
             self, stream: IO[bytes],
-            config: UploadConfig | None = None) -> None:
+            config: UploadConfig | None = None) -> BucketObject:
         # boto3's TransferManager uploads parts concurrently with a thread-safe
         # client, so the transparent multipart path delegates to it rather than
         # CloudBridge's generic clone-pool driver.
@@ -942,9 +932,10 @@ class AWSBucketObject(BaseBucketObject):
             multipart_chunksize=self._multipart_part_size(config),
             max_concurrency=self._multipart_max_concurrency(config))
         self._obj.upload_fileobj(stream, Config=transfer_config)
+        return self
 
     def upload_from_file(self, path: str,
-                         config: UploadConfig | None = None) -> None:
+                         config: UploadConfig | None = None) -> BucketObject:
         # boto3's upload_file streams large files in parts via its
         # TransferManager. Drive it with CloudBridge's multipart knobs so that
         # upload_from_file and upload() honour the same configuration rather
@@ -954,6 +945,7 @@ class AWSBucketObject(BaseBucketObject):
             multipart_chunksize=self._multipart_part_size(config),
             max_concurrency=self._multipart_max_concurrency(config))
         self._obj.upload_file(path, Config=transfer_config)
+        return self
 
     def delete(self) -> None:
         self._obj.delete()
@@ -1289,23 +1281,16 @@ class AWSRouter(BaseRouter):
         return [AWSSubnet(cast("AWSCloudProvider", self._provider), rta.subnet)
                 for rta in self._route_table.associations if rta.subnet]
 
-    # AWS returns a bool, but the Router interface declares attach_gateway as
-    # returning None; preserve the AWS-specific bool return.
-    def attach_gateway(self, gateway: Gateway) -> bool:  # type: ignore[override]
+    def attach_gateway(self, gateway: Gateway) -> None:
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
                  else gateway)
-        if self._route_table.create_route(
-                DestinationCidrBlock='0.0.0.0/0', GatewayId=gw_id):
-            return True
-        return False
+        self._route_table.create_route(
+            DestinationCidrBlock='0.0.0.0/0', GatewayId=gw_id)
 
-    # AWS returns the raw boto3 response dict, but the Router interface declares
-    # detach_gateway as returning None; preserve the AWS-specific dict return.
-    def detach_gateway(  # type: ignore[override]
-            self, gateway: Gateway) -> dict[str, Any]:
+    def detach_gateway(self, gateway: Gateway) -> None:
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
                  else gateway)
-        return cast("AWSCloudProvider", self._provider).ec2_conn.meta.client \
+        cast("AWSCloudProvider", self._provider).ec2_conn.meta.client \
             .detach_internet_gateway(
                 InternetGatewayId=gw_id, VpcId=self._route_table.vpc_id)
 

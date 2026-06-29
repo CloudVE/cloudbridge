@@ -493,7 +493,7 @@ class AWSSnapshotService(BaseSnapshotService):
         # Filter by description or label
         label = kwargs.get('label', None)
 
-        obj_list = []
+        obj_list: list[Snapshot] = []
         if label:
             log.debug("Searching for AWS Snapshot with label %s", label)
             obj_list.extend(self.svc.find(filters={'tag:Name': label},
@@ -501,8 +501,8 @@ class AWSSnapshotService(BaseSnapshotService):
         else:
             obj_list = list(self)
         filters = ['label']
-        return cast("ResultList[Snapshot]",
-                    cb_helpers.generic_find(filters, kwargs, obj_list))
+        return ClientPagedResultList(
+            self.provider, cb_helpers.generic_find(filters, kwargs, obj_list))
 
     @dispatch(event="provider.storage.snapshots.list",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
@@ -800,16 +800,14 @@ class AWSImageService(BaseImageService):
 
         # The original list is made by combining both searches by "tag:Name"
         # and "AMI name" to allow for searches of public images
+        obj_list: list[MachineImage] = []
         if label:
             log.debug("Searching for AWS Image Service %s", label)
-            obj_list: list[MachineImage] = []
             obj_list.extend(
                 self.svc.find(filters={'name': label}, **extra_args))
             obj_list.extend(
                 self.svc.find(filters={'tag:Name': label}, **extra_args))
-            return cast("ResultList[MachineImage]", obj_list)
-        else:
-            return cast("ResultList[MachineImage]", [])
+        return ClientPagedResultList(self.provider, obj_list)
 
     # Intentionally extends the base list() with a leading filter_by_owner
     # parameter (matches the interface's documented arguments-differ override).
@@ -1526,10 +1524,7 @@ class AWSGatewayService(BaseGatewayService):
                 # pylint:disable=protected-access
                 gw._gateway.detach_from_vpc(VpcId=gw.network_id)
         except ClientError as e:
-            # NB: self.id is a pre-existing latent bug (a service has no id);
-            # preserved as-is for this typing pass. Only runs on an error path.
-            log.warn("Error deleting gateway {0}: {1}".format(
-                self.id, e))  # type: ignore[attr-defined]
+            log.warn("Error deleting gateway {0}: {1}".format(gw.id, e))
         # pylint:disable=protected-access
         gw._gateway.delete()
 

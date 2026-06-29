@@ -846,7 +846,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
             "BucketObject subclasses must implement the bucket property")
 
     def _upload_single_shot(
-            self, data: str | bytes | IO[bytes]) -> BucketObject | None:
+            self, data: str | bytes | IO[bytes]) -> BucketObject:
         # Provider-implemented single-shot (non-multipart) upload.
         raise NotImplementedError(
             "BucketObject subclasses must implement _upload_single_shot")
@@ -938,7 +938,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
         return data
 
     def upload(self, data: str | bytes | IO[bytes],
-               config: UploadConfig | None = None) -> BucketObject | None:
+               config: UploadConfig | None = None) -> BucketObject:
         size = self._data_size(data)
         if size is not None and size > self._multipart_threshold(config):
             return self._upload_multipart(self._as_stream(data), config)
@@ -946,7 +946,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
 
     def upload_from_file(
             self, path: str,
-            config: UploadConfig | None = None) -> BucketObject | None:
+            config: UploadConfig | None = None) -> BucketObject:
         if os.path.getsize(path) > self._multipart_threshold(config):
             with open(path, 'rb') as f:
                 return self._upload_multipart(f, config)
@@ -1059,7 +1059,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
         return bytes(buffer)
 
     def _upload_from_file_single_shot(
-            self, path: str) -> BucketObject | None:
+            self, path: str) -> BucketObject:
         """
         Default small-file upload: read the file and hand it to the provider's
         single-shot upload. Providers with a more efficient native file upload
@@ -1095,13 +1095,13 @@ class BaseBucket(BaseCloudResource, Bucket):
                 # check from most to least likely mutables
                 self.name == other.name)
 
-    # NB: interface declares delete(delete_contents=False), but this base
-    # implementation takes no args; the override ignore covers that signature
-    # mismatch without altering behavior.
-    def delete(self) -> None:  # type: ignore[override]
+    def delete(self, delete_contents: bool = False) -> None:
         """
         Delete this bucket.
         """
+        if delete_contents:
+            for obj in self.objects:
+                obj.delete()
         # BucketService.delete is implemented by every provider but is not
         # declared on the public typed interface, hence the ignore.
         self._provider.storage.buckets.delete(self.id)  # type: ignore[attr-defined]
