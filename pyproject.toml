@@ -148,7 +148,7 @@ ignore_errors = true
 # through cast()/ignore adds noise without value. A more-specific module pattern
 # here wins over the broad providers.* exemption above.
 [[tool.mypy.overrides]]
-module = ["cloudbridge.providers.aws.*"]
+module = ["cloudbridge.providers.aws.*", "cloudbridge.providers.mock.*"]
 ignore_errors = false
 warn_return_any = false
 disallow_untyped_calls = false
