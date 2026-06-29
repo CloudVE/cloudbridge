@@ -281,16 +281,12 @@ class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
         # _vm_firewall is an AWS-internal boto handle not on the interface.
         boto_fw = cast(Any, firewall)._vm_firewall
         # pylint:disable=protected-access
-        # AWSVMFirewallRule.__init__ types direction as str but the codebase
-        # passes (and stores) the TrafficDirection enum; preserve that.
         rules: list[VMFirewallRule] = [
-            AWSVMFirewallRule(firewall, TrafficDirection.INBOUND,  # type: ignore[arg-type] # noqa: E501
-                              r)
+            AWSVMFirewallRule(firewall, TrafficDirection.INBOUND, r)
             for r in boto_fw.ip_permissions]
         # pylint:disable=protected-access
         rules = rules + [
-            AWSVMFirewallRule(firewall, TrafficDirection.OUTBOUND,  # type: ignore[arg-type] # noqa: E501
-                              r)
+            AWSVMFirewallRule(firewall, TrafficDirection.OUTBOUND, r)
             for r in boto_fw.ip_permissions_egress]
         return ClientPagedResultList(self.provider, rules,
                                      limit=limit, marker=marker)
@@ -326,15 +322,10 @@ class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
             else:
                 raise InvalidValueException("direction", direction)
             cast(Any, firewall).refresh()
-            # AWSVMFirewallRule.__init__ types direction as str, but the
-            # TrafficDirection enum is what is passed and stored here.
-            return AWSVMFirewallRule(
-                firewall, direction, ip_perm_entry)  # type: ignore[arg-type]
+            return AWSVMFirewallRule(firewall, direction, ip_perm_entry)
         except ClientError as ec2e:
             if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
-                return AWSVMFirewallRule(
-                    firewall, direction,  # type: ignore[arg-type]
-                    ip_perm_entry)
+                return AWSVMFirewallRule(firewall, direction, ip_perm_entry)
             else:
                 raise ec2e
 

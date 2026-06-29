@@ -40,6 +40,7 @@ from cloudbridge.base.resources import BaseVMFirewall
 from cloudbridge.base.resources import BaseVMFirewallRule
 from cloudbridge.base.resources import BaseVMType
 from cloudbridge.base.resources import BaseVolume
+from cloudbridge.interfaces.exceptions import ProviderInternalException
 from cloudbridge.interfaces.resources import AttachmentInfo
 from cloudbridge.interfaces.resources import BucketObject
 from cloudbridge.interfaces.resources import FloatingIP
@@ -56,6 +57,7 @@ from cloudbridge.interfaces.resources import Snapshot
 from cloudbridge.interfaces.resources import SnapshotState
 from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import SubnetState
+from cloudbridge.interfaces.resources import TrafficDirection
 from cloudbridge.interfaces.resources import UploadConfig
 from cloudbridge.interfaces.resources import VMFirewall
 from cloudbridge.interfaces.resources import VMType
@@ -100,15 +102,13 @@ class AWSMachineImage(BaseMachineImage):
     def id(self) -> str:
         return self._ec2_image.id
 
-    # AWS may fail to read the image name; the CloudResource interface declares
-    # name as ``str``, but this implementation can legitimately return None.
     @property
-    def name(self) -> str | None:  # type: ignore[override]
+    def name(self) -> str:
         try:
             return self._ec2_image.name
         except (AttributeError, ClientError) as e:
             log.warn("Cannot get name for image {0}: {1}".format(self.id, e))
-            return None
+            return ""
 
     @property
     # pylint:disable=arguments-differ
@@ -755,10 +755,7 @@ class AWSVMFirewall(BaseVMFirewall):
         self._vm_firewall.create_tags(Tags=[{'Key': 'Name',
                                              'Value': value or ""}])
 
-    # find_tag_value can return None on a missing tag and the read is also
-    # wrapped to swallow ClientError; the VMFirewall interface declares
-    # description as ``str``, so the optional return is widened here.
-    @property  # type: ignore[override]
+    @property
     def description(self) -> str | None:
         try:
             return find_tag_value(self._vm_firewall.tags, 'Description')
@@ -794,7 +791,7 @@ class AWSVMFirewall(BaseVMFirewall):
 
 class AWSVMFirewallRule(BaseVMFirewallRule):
 
-    def __init__(self, parent_fw: VMFirewall, direction: str,
+    def __init__(self, parent_fw: VMFirewall, direction: TrafficDirection,
                  rule: Any) -> None:
         self._direction = direction
         super(AWSVMFirewallRule, self).__init__(parent_fw, rule)
@@ -809,7 +806,7 @@ class AWSVMFirewallRule(BaseVMFirewallRule):
         return self._id
 
     @property
-    def direction(self) -> str:
+    def direction(self) -> TrafficDirection:
         return self._direction
 
     @property
@@ -1348,12 +1345,14 @@ class AWSDnsZone(BaseDnsZone):
         self._dns_zone = dns_zone
         self._dns_record_container = AWSDnsRecordSubService(provider, self)
 
-    # The zone id is derived from an optional AWS field; the CloudResource
-    # interface declares id as ``str``, but this implementation can return None.
     @property
-    def id(self) -> str | None:  # type: ignore[override]
+    def id(self) -> str:
         # The ID contains a slash, do not allow this
-        return self.escape_zone_id(self.aws_id)
+        zone_id = self.escape_zone_id(self.aws_id)
+        if zone_id is None:
+            raise ProviderInternalException(
+                "DNS zone is missing an AWS HostedZone Id")
+        return zone_id
 
     @property
     def aws_id(self) -> str | None:
@@ -1407,7 +1406,7 @@ class AWSDnsRecord(BaseDnsRecord):
     # The containing zone id is optional on AWSDnsZone, but the DnsRecord
     # interface declares zone_id as ``str``; widen the return to match reality.
     @property
-    def zone_id(self) -> str | None:  # type: ignore[override]
+    def zone_id(self) -> str:
         return self._dns_zone.id
 
     @property

@@ -2022,12 +2022,12 @@ class VMFirewall(LabeledCloudResource):
         pass
 
     @abstractproperty
-    def description(self) -> str:
+    def description(self) -> str | None:
         """
         Return the description of this VM firewall.
 
         :rtype: ``str``
-        :return: A description of this VM firewall.
+        :return: A description of this VM firewall, or ``None``.
         """
         pass
 
@@ -2070,13 +2070,13 @@ class VMFirewallRule(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def direction(self) -> str:
+    def direction(self) -> TrafficDirection:
         """
         Direction of traffic to which this rule applies.
 
         Either ``TrafficDirection.INBOUND`` or ``TrafficDirection.OUTBOUND``.
 
-        :rtype: ``str``
+        :rtype: :class:`.TrafficDirection`
         :return: Direction of traffic to which this rule applies.
         """
         pass

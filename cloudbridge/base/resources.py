@@ -622,11 +622,11 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
         return self.id
 
     @property
-    def description(self) -> str:
+    def description(self) -> str | None:
         """
         Return the description of this VM firewall.
         """
-        return cast(str, self._vm_firewall.description)
+        return cast("str | None", self._vm_firewall.description)
 
     def delete(self) -> None:
         """
