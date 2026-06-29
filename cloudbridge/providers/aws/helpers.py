@@ -1,5 +1,10 @@
 """A set of AWS-specific helper methods used by the framework."""
+from __future__ import annotations
+
 import logging
+from typing import Any
+from typing import TYPE_CHECKING
+from typing import TypeVar
 
 from boto3.resources.params import create_request_parameters
 
@@ -9,12 +14,19 @@ from botocore.utils import merge_dicts
 
 from cloudbridge.base.resources import ClientPagedResultList
 from cloudbridge.base.resources import ServerPagedResultList
+from cloudbridge.interfaces.resources import CloudResource
+from cloudbridge.interfaces.resources import ResultList
+
+if TYPE_CHECKING:
+    from .provider import AWSCloudProvider
 
 
 log = logging.getLogger(__name__)
 
+T = TypeVar("T")
 
-def trim_empty_params(params_dict):
+
+def trim_empty_params(params_dict: dict[str, Any]) -> dict[str, Any]:
     """
     Given a dict containing potentially null values, trims out
     all the null values. This is to please Boto, which throws
@@ -35,7 +47,7 @@ def trim_empty_params(params_dict):
     return {k: v for k, v in params_dict.items() if v is not None}
 
 
-def find_tag_value(tags, key):
+def find_tag_value(tags: list[dict[str, Any]] | None, key: str) -> Any:
     """
     Finds the value associated with a given key from a list of AWS tags.
 
@@ -59,7 +71,9 @@ class BotoGenericService(object):
     resource, collection and paging support to implement
     basic cloudbridge methods.
     """
-    def __init__(self, provider, cb_resource, boto_conn, boto_collection_name):
+    def __init__(self, provider: AWSCloudProvider,
+                 cb_resource: Any, boto_conn: Any,
+                 boto_collection_name: str) -> None:
         """
         :type provider: :class:`AWSCloudProvider`
         :param provider: CloudBridge AWS provider to use
@@ -86,12 +100,12 @@ class BotoGenericService(object):
         self.boto_resource = self._infer_boto_resource(
             boto_conn, self.boto_collection_model)
 
-    def _infer_collection_model(self, conn, collection_name):
+    def _infer_collection_model(self, conn: Any, collection_name: str) -> Any:
         log.debug("Retrieving boto model for collection: %s", collection_name)
         return next(col for col in conn.meta.resource_model.collections
                     if col.name == collection_name)
 
-    def _infer_boto_resource(self, conn, collection_model):
+    def _infer_boto_resource(self, conn: Any, collection_model: Any) -> Any:
         log.debug("Retrieving resource model for collection: %s",
                   collection_model.name)
         resource_model = next(
@@ -99,7 +113,7 @@ class BotoGenericService(object):
             if sr.resource.model.name == collection_model.resource.model.name)
         return getattr(self.boto_conn, resource_model.name)
 
-    def get_raw(self, resource_id):
+    def get_raw(self, resource_id: str) -> Any:
         """
         Returns a single resource.
 
@@ -124,7 +138,7 @@ class BotoGenericService(object):
             else:
                 raise exc
 
-    def get(self, resource_id):
+    def get(self, resource_id: str) -> Any:
         """
         Returns a single resource.
 
@@ -139,7 +153,7 @@ class BotoGenericService(object):
         else:
             return None
 
-    def _get_list_operation(self):
+    def _get_list_operation(self) -> str:
         """
         This function discovers the list operation for a particular resource
         collection. For example, given the resource collection model for
@@ -147,7 +161,8 @@ class BotoGenericService(object):
         """
         return xform_name(self.boto_collection_model.request.operation)
 
-    def _to_boto_resource(self, collection, params, page):
+    def _to_boto_resource(self, collection: Any, params: Any,
+                          page: Any) -> Any:
         """
         This function duplicates some of the logic of the pages() method in
         boto.resources.collection.ResourceCollection. It will convert a raw
@@ -158,7 +173,8 @@ class BotoGenericService(object):
         # pylint:disable=protected-access
         return collection._handler(collection._parent, params, page)
 
-    def _get_paginated_results(self, limit, marker, collection):
+    def _get_paginated_results(self, limit: int | None, marker: str | None,
+                               collection: Any) -> tuple[Any, Any]:
         """
         If a Boto Paginator is available, use it. The results
         are converted back into BotoResources by directly accessing
@@ -177,7 +193,7 @@ class BotoGenericService(object):
         client = self.boto_conn.meta.client
         list_op = self._get_list_operation()
         paginator = client.get_paginator(list_op)
-        PaginationConfig = {}
+        PaginationConfig: dict[str, Any] = {}
         if limit:
             PaginationConfig = {'MaxItems': limit, 'PageSize': limit}
 
@@ -194,7 +210,8 @@ class BotoGenericService(object):
         resume_token = pages.resume_token
         return (resume_token, boto_objs)
 
-    def _make_query(self, collection, limit, marker):
+    def _make_query(self, collection: Any, limit: int | None,
+                    marker: str | None) -> tuple[str, Any, Any]:
         """
         Decide between server or client pagination,
         depending on the availability of a Boto Paginator.
@@ -213,7 +230,9 @@ class BotoGenericService(object):
                       " limit and page results.")
             return 'client', None, collection
 
-    def list(self, limit=None, marker=None, collection=None, **kwargs):
+    def list(self, limit: int | None = None, marker: str | None = None,
+             collection: Any = None,
+             **kwargs: Any) -> ResultList[CloudResource]:
         """
         List a set of resources.
 
@@ -244,8 +263,9 @@ class BotoGenericService(object):
             return ClientPagedResultList(self.provider, results,
                                          limit=limit, marker=marker)
 
-    def find(self, filters, limit=None, marker=None,
-             **kwargs):
+    def find(self, filters: dict[str, Any], limit: int | None = None,
+             marker: str | None = None,
+             **kwargs: Any) -> ResultList[CloudResource]:
         """
         Return a list of resources by filter.
 
@@ -261,7 +281,7 @@ class BotoGenericService(object):
             collection = collection.filter(**kwargs)
         return self.list(limit=limit, marker=marker, collection=collection)
 
-    def create(self, boto_method, **kwargs):
+    def create(self, boto_method: str, **kwargs: Any) -> Any:
         """
         Creates a resource
 
@@ -281,7 +301,7 @@ class BotoGenericService(object):
         else:
             return self.cb_resource(self.provider, result) if result else None
 
-    def delete(self, resource_id):
+    def delete(self, resource_id: str) -> None:
         """
         Deletes a resource by id
 
@@ -298,8 +318,9 @@ class BotoEC2Service(BotoGenericService):
     """
     Boto EC2 service implementation
     """
-    def __init__(self, provider, cb_resource,
-                 boto_collection_name):
+    def __init__(self, provider: AWSCloudProvider,
+                 cb_resource: Any,
+                 boto_collection_name: str) -> None:
         """
         :type provider: :class:`AWSCloudProvider`
         :param provider: CloudBridge AWS provider to use
@@ -320,8 +341,9 @@ class BotoS3Service(BotoGenericService):
     """
     Boto S3 service implementation.
     """
-    def __init__(self, provider, cb_resource,
-                 boto_collection_name):
+    def __init__(self, provider: AWSCloudProvider,
+                 cb_resource: Any,
+                 boto_collection_name: str) -> None:
         """
         :type provider: :class:`AWSCloudProvider`
         :param provider: CloudBridge AWS provider to use

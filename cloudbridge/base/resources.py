@@ -18,6 +18,7 @@ from concurrent.futures import wait
 from typing import Any
 from typing import IO
 from typing import Iterator
+from typing import Sequence
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import cast
@@ -204,7 +205,7 @@ class BaseResultList(ResultList[T]):
     def __init__(
             self, is_truncated: bool, marker: str | None,
             supports_total: bool, total: int | None = None,
-            data: list[T] | None = None) -> None:
+            data: Sequence[T] | None = None) -> None:
         # call list constructor
         super(BaseResultList, self).__init__(data or [])
         self._marker = marker
@@ -258,9 +259,9 @@ class ClientPagedResultList(BaseResultList[T]):
     of the full result set entirely on the client side.
     """
 
-    def __init__(self, provider: CloudProvider, objects: list[T],
+    def __init__(self, provider: CloudProvider, objects: Sequence[T],
                  limit: int | None = None, marker: str | None = None) -> None:
-        self._objects = objects
+        self._objects = list(objects)
         limit = limit or provider.config.default_result_limit
         total_size = len(objects)
         if marker:

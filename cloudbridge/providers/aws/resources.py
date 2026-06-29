@@ -1,9 +1,17 @@
 """
 DataTypes used by this provider
 """
+from __future__ import annotations
+
 import hashlib
 import inspect
 import logging
+from typing import Any
+from typing import IO
+from typing import Iterable
+from typing import Iterator
+from typing import TYPE_CHECKING
+from typing import cast
 
 from boto3.s3.transfer import TransferConfig
 
@@ -32,14 +40,27 @@ from cloudbridge.base.resources import BaseVMFirewall
 from cloudbridge.base.resources import BaseVMFirewallRule
 from cloudbridge.base.resources import BaseVMType
 from cloudbridge.base.resources import BaseVolume
+from cloudbridge.interfaces.resources import AttachmentInfo
+from cloudbridge.interfaces.resources import FloatingIP
+from cloudbridge.interfaces.resources import Gateway
 from cloudbridge.interfaces.resources import GatewayState
+from cloudbridge.interfaces.resources import Instance
 from cloudbridge.interfaces.resources import InstanceState
+from cloudbridge.interfaces.resources import MachineImage
 from cloudbridge.interfaces.resources import MachineImageState
 from cloudbridge.interfaces.resources import NetworkState
+from cloudbridge.interfaces.resources import PlacementZone
 from cloudbridge.interfaces.resources import RouterState
+from cloudbridge.interfaces.resources import Snapshot
 from cloudbridge.interfaces.resources import SnapshotState
+from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import SubnetState
+from cloudbridge.interfaces.resources import UploadConfig
+from cloudbridge.interfaces.resources import VMFirewall
+from cloudbridge.interfaces.resources import VMType
+from cloudbridge.interfaces.resources import Volume
 from cloudbridge.interfaces.resources import VolumeState
+
 from .helpers import find_tag_value
 from .helpers import trim_empty_params
 from .subservices import AWSBucketObjectSubService
@@ -48,6 +69,9 @@ from .subservices import AWSFloatingIPSubService
 from .subservices import AWSGatewaySubService
 from .subservices import AWSSubnetSubService
 from .subservices import AWSVMFirewallRuleSubService
+
+if TYPE_CHECKING:
+    from cloudbridge.providers.aws.provider import AWSCloudProvider
 
 log = logging.getLogger(__name__)
 
@@ -63,56 +87,59 @@ class AWSMachineImage(BaseMachineImage):
         'invalid': MachineImageState.ERROR
     }
 
-    def __init__(self, provider, image):
+    def __init__(self, provider: AWSCloudProvider, image: Any) -> None:
         super(AWSMachineImage, self).__init__(provider)
         if isinstance(image, AWSMachineImage):
             # pylint:disable=protected-access
-            self._ec2_image = image._ec2_image
+            self._ec2_image = cast(Any, image)._ec2_image
         else:
             self._ec2_image = image
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._ec2_image.id
 
+    # AWS may fail to read the image name; the CloudResource interface declares
+    # name as ``str``, but this implementation can legitimately return None.
     @property
-    def name(self):
+    def name(self) -> str | None:  # type: ignore[override]
         try:
             return self._ec2_image.name
         except (AttributeError, ClientError) as e:
             log.warn("Cannot get name for image {0}: {1}".format(self.id, e))
+            return None
 
     @property
     # pylint:disable=arguments-differ
-    def label(self):
+    def label(self) -> str | None:
         """
         .. note:: an instance must have a (case sensitive) tag ``Name``
         """
         return find_tag_value(self._ec2_image.tags, 'Name')
 
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value: str) -> None:
+        self.assert_valid_resource_label(value)
+        self._set_label(value)
+
     @tenacity.retry(stop=tenacity.stop_after_attempt(5),
                     retry=tenacity.retry_if_exception_type(ClientError),
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
-    def _set_label(self, value):
+    def _set_label(self, value: str) -> None:
         self._ec2_image.create_tags(Tags=[{'Key': 'Name',
                                            'Value': value or ""}])
 
-    @label.setter
-    # pylint:disable=arguments-differ
-    def label(self, value):
-        self.assert_valid_resource_label(value)
-        self._set_label(value)
-
     @property
-    def description(self):
+    def description(self) -> str | None:
         try:
             return self._ec2_image.description
         except AttributeError:
             return None
 
     @property
-    def min_disk(self):
+    def min_disk(self) -> int | None:
         vols = [bdm.get('Ebs', {}) for bdm in
                 self._ec2_image.block_device_mappings if
                 bdm.get('DeviceName') == self._ec2_image.root_device_name]
@@ -121,7 +148,7 @@ class AWSMachineImage(BaseMachineImage):
         else:
             return None
 
-    def delete(self):
+    def delete(self) -> None:
         snapshot_id = [
             bdm.get('Ebs', {}).get('SnapshotId') for bdm in
             self._ec2_image.block_device_mappings if
@@ -134,7 +161,7 @@ class AWSMachineImage(BaseMachineImage):
             snapshot.delete()
 
     @property
-    def state(self):
+    def state(self) -> str:
         try:
             return AWSMachineImage.IMAGE_STATE_MAP.get(
                 self._ec2_image.state, MachineImageState.UNKNOWN)
@@ -142,52 +169,54 @@ class AWSMachineImage(BaseMachineImage):
             # Ignore all exceptions when querying state
             return MachineImageState.UNKNOWN
 
-    def refresh(self):
+    def refresh(self) -> None:
         self._ec2_image.reload()
 
 
 class AWSPlacementZone(BasePlacementZone):
 
-    def __init__(self, provider, zone, region):
+    def __init__(self, provider: AWSCloudProvider, zone: Any,
+                 region: Any) -> None:
         super(AWSPlacementZone, self).__init__(provider)
         if isinstance(zone, AWSPlacementZone):
             # pylint:disable=protected-access
-            self._aws_zone = zone._aws_zone
+            self._aws_zone = cast(Any, zone)._aws_zone
             # pylint:disable=protected-access
-            self._aws_region = zone._aws_region
+            self._aws_region = cast(Any, zone)._aws_region
         else:
             self._aws_zone = zone
             self._aws_region = region
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._aws_zone
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def region_name(self):
+    def region_name(self) -> str:
         return self._aws_region
 
 
 class AWSVMType(BaseVMType):
 
-    def __init__(self, provider, instance_dict):
+    def __init__(self, provider: AWSCloudProvider,
+                 instance_dict: dict[str, Any]) -> None:
         super(AWSVMType, self).__init__(provider)
         self._inst_dict = instance_dict
 
     @property
-    def id(self):
+    def id(self) -> str:
         return str(self._inst_dict.get('InstanceType'))
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def family(self):
+    def family(self) -> str | None:
         # Limited to whether CurrentGeneration or not
         curr = self._inst_dict.get('CurrentGeneration')
         if curr:
@@ -195,14 +224,14 @@ class AWSVMType(BaseVMType):
         return None
 
     @property
-    def vcpus(self):
+    def vcpus(self) -> int:
         vcpus = self._inst_dict.get('VCpuInfo')
         if vcpus:
             return vcpus.get('DefaultVCpus', 0)
         return 0
 
     @property
-    def ram(self):
+    def ram(self) -> float:
         ram = self._inst_dict.get('MemoryInfo')
         if ram:
             mib = ram.get('SizeInMiB', 0)
@@ -210,18 +239,18 @@ class AWSVMType(BaseVMType):
         return 0
 
     @property
-    def size_root_disk(self):
+    def size_root_disk(self) -> int:
         return 0
 
     @property
-    def size_ephemeral_disks(self):
+    def size_ephemeral_disks(self) -> int:
         storage = self._inst_dict.get('InstanceStorageInfo')
         if storage:
             return storage.get('TotalSizeInGB', 0)
         return 0
 
     @property
-    def num_ephemeral_disks(self):
+    def num_ephemeral_disks(self) -> int:
         storage = self._inst_dict.get('InstanceStorageInfo')
         if storage:
             disks = storage.get("Disks", [])
@@ -232,7 +261,7 @@ class AWSVMType(BaseVMType):
         return 0
 
     @property
-    def extra_data(self):
+    def extra_data(self) -> dict[str, Any]:
         return {key: val for key, val in self._inst_dict.items()
                 if key not in ["InstanceType", "VCpuInfo", "MemoryInfo"]}
 
@@ -249,71 +278,72 @@ class AWSInstance(BaseInstance):
         'stopped': InstanceState.STOPPED
     }
 
-    def __init__(self, provider, ec2_instance):
+    def __init__(self, provider: AWSCloudProvider,
+                 ec2_instance: Any) -> None:
         super(AWSInstance, self).__init__(provider)
         self._ec2_instance = ec2_instance
         self._unknown_state = False
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._ec2_instance.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
     # pylint:disable=arguments-differ
-    def label(self):
+    def label(self) -> str | None:
         """
         .. note:: an instance must have a (case sensitive) tag ``Name``
         """
         return find_tag_value(self._ec2_instance.tags, 'Name')
 
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value: str) -> None:
+        self.assert_valid_resource_label(value)
+        self._set_label(value)
+
     @tenacity.retry(stop=tenacity.stop_after_attempt(5),
                     retry=tenacity.retry_if_exception_type(ClientError),
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
-    def _set_label(self, value):
+    def _set_label(self, value: str) -> None:
         self._ec2_instance.create_tags(Tags=[{'Key': 'Name',
                                               'Value': value or ""}])
 
-    @label.setter
-    # pylint:disable=arguments-differ
-    def label(self, value):
-        self.assert_valid_resource_label(value)
-        self._set_label(value)
-
     @property
-    def public_ips(self):
+    def public_ips(self) -> list[str]:
         return ([self._ec2_instance.public_ip_address]
                 if self._ec2_instance.public_ip_address else [])
 
     @property
-    def private_ips(self):
+    def private_ips(self) -> list[str]:
         return ([self._ec2_instance.private_ip_address]
                 if self._ec2_instance.private_ip_address else [])
 
     @property
-    def vm_type_id(self):
+    def vm_type_id(self) -> str:
         return self._ec2_instance.instance_type
 
     @property
-    def vm_type(self):
+    def vm_type(self) -> VMType:
         return self._provider.compute.vm_types.find(
             name=self._ec2_instance.instance_type)[0]
 
     @property
-    def create_time(self):
+    def create_time(self) -> str:
         """
         Get the instance creation time
         """
         return self._ec2_instance.launch_time
 
-    def reboot(self):
+    def reboot(self) -> None:
         self._ec2_instance.reboot()
 
-    def start(self):
+    def start(self) -> bool:
         response = self._ec2_instance.start()
         states = ['pending', 'running']
         if response['StartingInstances'][0]['CurrentState']['Name'] in states:
@@ -321,7 +351,7 @@ class AWSInstance(BaseInstance):
         else:
             return False
 
-    def stop(self):
+    def stop(self) -> bool:
         response = self._ec2_instance.stop()
         states = ['stopping', 'stopped']
         if response['StoppingInstances'][0]['CurrentState']['Name'] in states:
@@ -330,49 +360,50 @@ class AWSInstance(BaseInstance):
             return False
 
     @property
-    def image_id(self):
+    def image_id(self) -> str:
         return self._ec2_instance.image_id
 
     @property
-    def zone_id(self):
+    def zone_id(self) -> str:
         return self._ec2_instance.placement.get('AvailabilityZone')
 
     @property
-    def subnet_id(self):
+    def subnet_id(self) -> str:
         return self._ec2_instance.subnet_id
 
     @property
-    def vm_firewalls(self):
-        return [
+    def vm_firewalls(self) -> list[VMFirewall]:
+        return cast("list[VMFirewall]", [
             self._provider.security.vm_firewalls.get(fw_id)
             for fw_id in self.vm_firewall_ids
-        ]
+        ])
 
     @property
-    def vm_firewall_ids(self):
+    def vm_firewall_ids(self) -> list[str]:
         return list(set([
             group.get('GroupId') for group in
             self._ec2_instance.security_groups
         ]))
 
     @property
-    def key_pair_id(self):
+    def key_pair_id(self) -> str:
         return self._ec2_instance.key_name
 
     @tenacity.retry(stop=tenacity.stop_after_attempt(5),
                     retry=tenacity.retry_if_exception_type(ClientError),
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
-    def _wait_for_image(self, image):
-        self._provider.ec2_conn.meta.client.get_waiter('image_exists').wait(
-            ImageIds=[image.id])
+    def _wait_for_image(self, image: MachineImage) -> None:
+        cast("AWSCloudProvider", self._provider).ec2_conn.meta.client \
+            .get_waiter('image_exists').wait(ImageIds=[image.id])
 
-    def create_image(self, label):
+    def create_image(self, label: str) -> MachineImage:
         self.assert_valid_resource_label(label)
         name = self._generate_name_from_label(label, 'cb-img')
 
-        image = AWSMachineImage(self._provider,
-                                self._ec2_instance.create_image(Name=name))
+        image = AWSMachineImage(
+            cast("AWSCloudProvider", self._provider),
+            self._ec2_instance.create_image(Name=name))
         # Wait for the image to exist
         self._wait_for_image(image)
         # Add image label
@@ -381,44 +412,47 @@ class AWSInstance(BaseInstance):
         image.refresh()
         return image
 
-    def _get_fip(self, floating_ip):
+    def _get_fip(self, floating_ip: str) -> FloatingIP:
         """Get a floating IP object based on the supplied allocation ID."""
-        return self._provider.networking._floating_ips.get(None, floating_ip)
+        return cast("FloatingIP", self._provider.networking._floating_ips.get(
+            cast("Gateway", None), floating_ip))
 
-    def add_floating_ip(self, floating_ip):
+    def add_floating_ip(self, floating_ip: FloatingIP | str) -> None:
         fip = (floating_ip if isinstance(floating_ip, AWSFloatingIP)
-               else self._get_fip(floating_ip))
+               else self._get_fip(cast(str, floating_ip)))
         # pylint:disable=protected-access
         params = trim_empty_params({
             'InstanceId': self.id,
             'PublicIp': None if self._ec2_instance.vpc_id else
             fip.public_ip,
-            'AllocationId': fip._ip.allocation_id})
-        self._provider.ec2_conn.meta.client.associate_address(**params)
+            'AllocationId': cast(AWSFloatingIP, fip)._ip.allocation_id})
+        cast("AWSCloudProvider", self._provider).ec2_conn.meta.client \
+            .associate_address(**params)
         self.refresh()
 
-    def remove_floating_ip(self, floating_ip):
+    def remove_floating_ip(self, floating_ip: FloatingIP | str) -> None:
         fip = (floating_ip if isinstance(floating_ip, AWSFloatingIP)
-               else self._get_fip(floating_ip))
+               else self._get_fip(cast(str, floating_ip)))
         # pylint:disable=protected-access
         params = trim_empty_params({
             'PublicIp': None if self._ec2_instance.vpc_id else
             fip.public_ip,
-            'AssociationId': fip._ip.association_id})
-        self._provider.ec2_conn.meta.client.disassociate_address(**params)
+            'AssociationId': cast(AWSFloatingIP, fip)._ip.association_id})
+        cast("AWSCloudProvider", self._provider).ec2_conn.meta.client \
+            .disassociate_address(**params)
         self.refresh()
 
-    def add_vm_firewall(self, firewall):
+    def add_vm_firewall(self, firewall: VMFirewall) -> None:
         self._ec2_instance.modify_attribute(
             Groups=self.vm_firewall_ids + [firewall.id])
 
-    def remove_vm_firewall(self, firewall):
+    def remove_vm_firewall(self, firewall: VMFirewall) -> None:
         self._ec2_instance.modify_attribute(
             Groups=([fw_id for fw_id in self.vm_firewall_ids
                      if fw_id != firewall.id]))
 
     @property
-    def state(self):
+    def state(self) -> str:
         if self._unknown_state:
             return InstanceState.UNKNOWN
         try:
@@ -428,7 +462,7 @@ class AWSInstance(BaseInstance):
             # Ignore all exceptions when querying state
             return InstanceState.UNKNOWN
 
-    def refresh(self):
+    def refresh(self) -> None:
         try:
             self._ec2_instance.reload()
             self._unknown_state = False
@@ -438,7 +472,8 @@ class AWSInstance(BaseInstance):
             self._unknown_state = True
 
     # pylint:disable=unused-argument
-    def _wait_till_exists(self, timeout=None, interval=None):
+    def _wait_till_exists(self, timeout: int | None = None,
+                          interval: int | None = None) -> None:
         self._ec2_instance.wait_until_exists()
         # refresh again to make sure instance status is in sync
         self._ec2_instance.reload()
@@ -457,70 +492,71 @@ class AWSVolume(BaseVolume):
         'error': VolumeState.ERROR
     }
 
-    def __init__(self, provider, volume):
+    def __init__(self, provider: AWSCloudProvider, volume: Any) -> None:
         super(AWSVolume, self).__init__(provider)
         self._volume = volume
         self._unknown_state = False
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._volume.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
     # pylint:disable=arguments-differ
-    def label(self):
+    def label(self) -> str | None:
         try:
             return find_tag_value(self._volume.tags, 'Name')
         except ClientError as e:
             log.warn("Cannot get label for volume {0}: {1}".format(self.id, e))
+            return None
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value: str) -> None:
+        self.assert_valid_resource_label(value)
+        self._set_label(value)
 
     @tenacity.retry(stop=tenacity.stop_after_attempt(5),
                     retry=tenacity.retry_if_exception_type(ClientError),
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
-    def _set_label(self, value):
+    def _set_label(self, value: str) -> None:
         self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
 
-    @label.setter
-    # pylint:disable=arguments-differ
-    def label(self, value):
-        self.assert_valid_resource_label(value)
-        self._set_label(value)
-
     @property
-    def description(self):
+    def description(self) -> str:
         return find_tag_value(self._volume.tags, 'Description')
 
     @description.setter
-    def description(self, value):
+    def description(self, value: str) -> None:
         self._volume.create_tags(Tags=[{'Key': 'Description',
                                         'Value': value or ""}])
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self._volume.size
 
     @property
-    def create_time(self):
+    def create_time(self) -> str:
         return self._volume.create_time
 
     @property
-    def zone_id(self):
+    def zone_id(self) -> str:
         return self._volume.availability_zone
 
     @property
-    def source(self):
+    def source(self) -> Snapshot | MachineImage | None:
         if self._volume.snapshot_id:
             return self._provider.storage.snapshots.get(
                 self._volume.snapshot_id)
         return None
 
     @property
-    def attachments(self):
+    def attachments(self) -> AttachmentInfo | None:
         return [
             BaseAttachmentInfo(self,
                                a.get('InstanceId'),
@@ -532,21 +568,22 @@ class AWSVolume(BaseVolume):
                     retry=tenacity.retry_if_exception_type(Exception),
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
-    def _wait_till_volume_attached(self, instance_id):
+    def _wait_till_volume_attached(self, instance_id: str) -> None:
         self.refresh()
-        if not self.attachments.instance_id == instance_id:
+        if not cast(AttachmentInfo,
+                    self.attachments).instance_id == instance_id:
             raise Exception(f"Volume {self.id} is not yet attached to"
                             f"instance {instance_id}")
 
-    def attach(self, instance, device):
+    def attach(self, instance: str | Instance, device: str) -> None:
         instance_id = instance.id if isinstance(
             instance,
             AWSInstance) else instance
         self._volume.attach_to_instance(InstanceId=instance_id,
                                         Device=device)
-        self._wait_till_volume_attached(instance_id)
+        self._wait_till_volume_attached(cast(str, instance_id))
 
-    def detach(self, force=False):
+    def detach(self, force: bool = False) -> None:
         a = self.attachments
         if a:
             self._volume.detach_from_instance(
@@ -554,10 +591,11 @@ class AWSVolume(BaseVolume):
                 Device=a.device,
                 Force=force)
 
-    def create_snapshot(self, label, description=None):
+    def create_snapshot(self, label: str,
+                        description: str | None = None) -> Snapshot:
         self.assert_valid_resource_label(label)
         snap = AWSSnapshot(
-            self._provider,
+            cast("AWSCloudProvider", self._provider),
             self._volume.create_snapshot(
                 TagSpecifications=[{'ResourceType': 'snapshot',
                                     'Tags': [{'Key': 'Name',
@@ -567,7 +605,7 @@ class AWSVolume(BaseVolume):
         return snap
 
     @property
-    def state(self):
+    def state(self) -> str:
         if self._unknown_state:
             return VolumeState.UNKNOWN
         try:
@@ -577,7 +615,7 @@ class AWSVolume(BaseVolume):
             # Ignore all exceptions when querying state
             return VolumeState.UNKNOWN
 
-    def refresh(self):
+    def refresh(self) -> None:
         try:
             self._volume.reload()
             self._unknown_state = False
@@ -597,64 +635,65 @@ class AWSSnapshot(BaseSnapshot):
         'error': SnapshotState.ERROR
     }
 
-    def __init__(self, provider, snapshot):
+    def __init__(self, provider: AWSCloudProvider, snapshot: Any) -> None:
         super(AWSSnapshot, self).__init__(provider)
         self._snapshot = snapshot
         self._unknown_state = False
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._snapshot.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
     # pylint:disable=arguments-differ
-    def label(self):
+    def label(self) -> str | None:
         try:
             return find_tag_value(self._snapshot.tags, 'Name')
         except ClientError as e:
             log.warn("Cannot get label for snap {0}: {1}".format(self.id, e))
+            return None
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value: str) -> None:
+        self.assert_valid_resource_label(value)
+        self._set_label(value)
 
     @tenacity.retry(stop=tenacity.stop_after_attempt(5),
                     retry=tenacity.retry_if_exception_type(ClientError),
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
-    def _set_label(self, value):
+    def _set_label(self, value: str) -> None:
         self._snapshot.create_tags(Tags=[{'Key': 'Name',
                                           'Value': value or ""}])
 
-    @label.setter
-    # pylint:disable=arguments-differ
-    def label(self, value):
-        self.assert_valid_resource_label(value)
-        self._set_label(value)
-
     @property
-    def description(self):
+    def description(self) -> str:
         return find_tag_value(self._snapshot.tags, 'Description')
 
     @description.setter
-    def description(self, value):
+    def description(self, value: str) -> None:
         self._snapshot.create_tags(Tags=[{
             'Key': 'Description', 'Value': value or ""}])
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self._snapshot.volume_size
 
     @property
-    def volume_id(self):
+    def volume_id(self) -> str | None:
         return self._snapshot.volume_id
 
     @property
-    def create_time(self):
+    def create_time(self) -> str:
         return self._snapshot.start_time
 
     @property
-    def state(self):
+    def state(self) -> str:
         if self._unknown_state:
             return SnapshotState.UNKNOWN
         try:
@@ -664,7 +703,7 @@ class AWSSnapshot(BaseSnapshot):
             # Ignore all exceptions when querying state
             return SnapshotState.UNKNOWN
 
-    def refresh(self):
+    def refresh(self) -> None:
         try:
             self._snapshot.reload()
             self._unknown_state = False
@@ -673,11 +712,13 @@ class AWSSnapshot(BaseSnapshot):
             # set the status to unknown
             self._unknown_state = True
 
-    def create_volume(self, size=None, volume_type=None, iops=None):
+    def create_volume(self, size: int | None = None,
+                      volume_type: str | None = None,
+                      iops: int | None = None) -> Volume:
         label = "from-snap-{0}".format(self.label or self.id)
         cb_vol = self._provider.storage.volumes.create(
             label=label,
-            size=size,
+            size=cast(int, size),
             snapshot=self.id)
         cb_vol.wait_till_ready()
         return cb_vol
@@ -685,46 +726,49 @@ class AWSSnapshot(BaseSnapshot):
 
 class AWSKeyPair(BaseKeyPair):
 
-    def __init__(self, provider, key_pair):
+    def __init__(self, provider: AWSCloudProvider, key_pair: Any) -> None:
         super(AWSKeyPair, self).__init__(provider, key_pair)
 
 
 class AWSVMFirewall(BaseVMFirewall):
 
-    def __init__(self, provider, _vm_firewall):
+    def __init__(self, provider: AWSCloudProvider, _vm_firewall: Any) -> None:
         super(AWSVMFirewall, self).__init__(provider, _vm_firewall)
         self._rule_container = AWSVMFirewallRuleSubService(provider, self)
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Return the name of this VM firewall.
         """
         return self._vm_firewall.group_name
 
     @property
-    def label(self):
+    def label(self) -> str | None:
         try:
             return find_tag_value(self._vm_firewall.tags, 'Name')
         except ClientError:
             return None
 
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value: str) -> None:
+        self.assert_valid_resource_label(value)
+        self._set_label(value)
+
     @tenacity.retry(stop=tenacity.stop_after_attempt(5),
                     retry=tenacity.retry_if_exception_type(ClientError),
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
-    def _set_label(self, value):
+    def _set_label(self, value: str) -> None:
         self._vm_firewall.create_tags(Tags=[{'Key': 'Name',
                                              'Value': value or ""}])
 
-    @label.setter
-    # pylint:disable=arguments-differ
-    def label(self, value):
-        self.assert_valid_resource_label(value)
-        self._set_label(value)
-
-    @property
-    def description(self):
+    # find_tag_value can return None on a missing tag and the read is also
+    # wrapped to swallow ClientError; the VMFirewall interface declares
+    # description as ``str``, so the optional return is widened here.
+    @property  # type: ignore[override]
+    def description(self) -> str | None:
         try:
             return find_tag_value(self._vm_firewall.tags, 'Description')
         except ClientError:
@@ -732,22 +776,22 @@ class AWSVMFirewall(BaseVMFirewall):
 
     @description.setter
     # pylint:disable=arguments-differ
-    def description(self, value):
+    def description(self, value: str) -> None:
         self._vm_firewall.create_tags(Tags=[{'Key': 'Description',
                                              'Value': value or ""}])
 
     @property
-    def network_id(self):
+    def network_id(self) -> str | None:
         return self._vm_firewall.vpc_id
 
     @property
-    def rules(self):
+    def rules(self) -> AWSVMFirewallRuleSubService:
         return self._rule_container
 
-    def refresh(self):
+    def refresh(self) -> None:
         self._vm_firewall.reload()
 
-    def to_json(self):
+    def to_json(self) -> dict[str, Any]:
         attr = inspect.getmembers(self, lambda a: not inspect.isroutine(a))
         js = {k: v for (k, v) in attr if not k.startswith('_')}
         json_rules = [r.to_json() for r in self.rules]
@@ -759,7 +803,8 @@ class AWSVMFirewall(BaseVMFirewall):
 
 class AWSVMFirewallRule(BaseVMFirewallRule):
 
-    def __init__(self, parent_fw, direction, rule):
+    def __init__(self, parent_fw: VMFirewall, direction: str,
+                 rule: Any) -> None:
         self._direction = direction
         super(AWSVMFirewallRule, self).__init__(parent_fw, rule)
 
@@ -769,50 +814,52 @@ class AWSVMFirewallRule(BaseVMFirewallRule):
         self._id = md5.hexdigest()
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._id
 
     @property
-    def direction(self):
+    def direction(self) -> str:
         return self._direction
 
     @property
-    def protocol(self):
+    def protocol(self) -> str:
         return self._rule.get('IpProtocol')
 
     @property
-    def from_port(self):
+    def from_port(self) -> int:
         return self._rule.get('FromPort')
 
     @property
-    def to_port(self):
+    def to_port(self) -> int:
         return self._rule.get('ToPort')
 
     @property
-    def cidr(self):
+    def cidr(self) -> str | None:
         if len(self._rule.get('IpRanges') or []) > 0:
             return self._rule['IpRanges'][0].get('CidrIp')
         return None
 
     @property
-    def src_dest_fw_id(self):
+    def src_dest_fw_id(self) -> str | None:
         if len(self._rule.get('UserIdGroupPairs') or []) > 0:
             return self._rule['UserIdGroupPairs'][0]['GroupId']
         else:
             return None
 
     @property
-    def src_dest_fw(self):
+    def src_dest_fw(self) -> VMFirewall | None:
         if self.src_dest_fw_id:
             return AWSVMFirewall(
-                self._provider,
-                self._provider.ec2_conn.SecurityGroup(self.src_dest_fw_id))
+                cast("AWSCloudProvider", self._provider),
+                cast("AWSCloudProvider", self._provider).ec2_conn
+                .SecurityGroup(self.src_dest_fw_id))
         else:
             return None
 
     @staticmethod
-    def _construct_ip_perms(protocol, from_port, to_port, cidr,
-                            src_dest_fw_id):
+    def _construct_ip_perms(protocol: str | None, from_port: int | None,
+                            to_port: int | None, cidr: str | None,
+                            src_dest_fw_id: str | None) -> dict[str, Any]:
         return {
             'IpProtocol': protocol,
             'FromPort': from_port,
@@ -828,10 +875,10 @@ class AWSBucketObject(BaseBucketObject):
     class BucketObjIterator():
         CHUNK_SIZE = 4096
 
-        def __init__(self, body):
+        def __init__(self, body: Any) -> None:
             self.body = body
 
-        def __iter__(self):
+        def __iter__(self) -> Iterator[bytes]:
             while True:
                 data = self.read(self.CHUNK_SIZE)
                 if data:
@@ -839,47 +886,54 @@ class AWSBucketObject(BaseBucketObject):
                 else:
                     break
 
-        def read(self, length):
+        def read(self, length: int) -> bytes:
             return self.body.read(amt=length)
 
-        def close(self):
+        def close(self) -> Any:
             return self.body.close()
 
-    def __init__(self, provider, obj):
+    def __init__(self, provider: AWSCloudProvider, obj: Any) -> None:
         super(AWSBucketObject, self).__init__(provider)
         self._obj = obj
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._obj.key
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def size(self):
+    def size(self) -> int:
         try:
             return self._obj.content_length
         except AttributeError:  # we're dealing with s3.ObjectSummary
             return self._obj.size
 
     @property
-    def last_modified(self):
+    def last_modified(self) -> str:
         return self._obj.last_modified.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     @property
-    def bucket(self):
-        return AWSBucket(self._provider,
-                         self._provider.s3_conn.Bucket(self._obj.bucket_name))
+    def bucket(self) -> AWSBucket:
+        return AWSBucket(
+            cast("AWSCloudProvider", self._provider),
+            cast("AWSCloudProvider", self._provider).s3_conn
+            .Bucket(self._obj.bucket_name))
 
-    def iter_content(self):
+    def iter_content(self) -> Iterable[bytes]:
         return self.BucketObjIterator(self._obj.get().get('Body'))
 
-    def _upload_single_shot(self, data):
+    def _upload_single_shot(self, data: str | bytes | IO[bytes]) -> None:
         self._obj.put(Body=data)
 
-    def _upload_multipart(self, stream, config=None):
+    # The base driver returns the completed BucketObject; boto3's
+    # upload_fileobj performs the multipart upload in place and returns
+    # nothing, so this override returns None.
+    def _upload_multipart(  # type: ignore[override]
+            self, stream: IO[bytes],
+            config: UploadConfig | None = None) -> None:
         # boto3's TransferManager uploads parts concurrently with a thread-safe
         # client, so the transparent multipart path delegates to it rather than
         # CloudBridge's generic clone-pool driver.
@@ -889,7 +943,8 @@ class AWSBucketObject(BaseBucketObject):
             max_concurrency=self._multipart_max_concurrency(config))
         self._obj.upload_fileobj(stream, Config=transfer_config)
 
-    def upload_from_file(self, path, config=None):
+    def upload_from_file(self, path: str,
+                         config: UploadConfig | None = None) -> None:
         # boto3's upload_file streams large files in parts via its
         # TransferManager. Drive it with CloudBridge's multipart knobs so that
         # upload_from_file and upload() honour the same configuration rather
@@ -900,64 +955,66 @@ class AWSBucketObject(BaseBucketObject):
             max_concurrency=self._multipart_max_concurrency(config))
         self._obj.upload_file(path, Config=transfer_config)
 
-    def delete(self):
+    def delete(self) -> None:
         self._obj.delete()
 
-    def generate_url(self, expires_in, writable=False):
-        return self._provider.s3_conn.meta.client.generate_presigned_url(
-            'put_object' if writable else 'get_object',
-            Params={'Bucket': self._obj.bucket_name, 'Key': self.id},
-            ExpiresIn=expires_in)
+    def generate_url(self, expires_in: int, writable: bool = False) -> str:
+        return cast("AWSCloudProvider", self._provider).s3_conn.meta.client \
+            .generate_presigned_url(
+                'put_object' if writable else 'get_object',
+                Params={'Bucket': self._obj.bucket_name, 'Key': self.id},
+                ExpiresIn=expires_in)
 
-    def refresh(self):
+    def refresh(self) -> None:
         self._obj.load()
 
 
 class AWSBucket(BaseBucket):
 
-    def __init__(self, provider, bucket):
+    def __init__(self, provider: AWSCloudProvider, bucket: Any) -> None:
         super(AWSBucket, self).__init__(provider)
         self._bucket = bucket
         self._object_container = AWSBucketObjectSubService(provider, self)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._bucket.name
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def objects(self):
+    def objects(self) -> AWSBucketObjectSubService:
         return self._object_container
 
 
 class AWSRegion(BaseRegion):
 
-    def __init__(self, provider, aws_region):
+    def __init__(self, provider: AWSCloudProvider, aws_region: Any) -> None:
         super(AWSRegion, self).__init__(provider)
         self._aws_region = aws_region
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._aws_region.get('RegionName')
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def zones(self):
+    def zones(self) -> Iterable[PlacementZone]:
+        aws_provider = cast("AWSCloudProvider", self._provider)
         if self.id == self._provider.region_name:  # optimisation
-            conn = self._provider.ec2_conn
+            conn = aws_provider.ec2_conn
         else:
             # pylint:disable=protected-access
-            conn = self._provider._connect_ec2_region(region_name=self.id)
+            conn = aws_provider._connect_ec2_region(region_name=self.id)
 
         zones = (conn.meta.client.describe_availability_zones()
                  .get('AvailabilityZones', []))
-        return [AWSPlacementZone(self._provider, zone.get('ZoneName'),
+        return [AWSPlacementZone(aws_provider, zone.get('ZoneName'),
                                  self.id)
                 for zone in zones]
 
@@ -970,7 +1027,7 @@ class AWSNetwork(BaseNetwork):
         'available': NetworkState.AVAILABLE,
     }
 
-    def __init__(self, provider, network):
+    def __init__(self, provider: AWSCloudProvider, network: Any) -> None:
         super(AWSNetwork, self).__init__(provider)
         self._vpc = network
         self._unknown_state = False
@@ -978,32 +1035,32 @@ class AWSNetwork(BaseNetwork):
         self._subnet_svc = AWSSubnetSubService(provider, self)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._vpc.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def label(self):
+    def label(self) -> str | None:
         return find_tag_value(self._vpc.tags, 'Name')
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value: str) -> None:
+        self.assert_valid_resource_label(value)
+        self._set_label(value)
 
     @tenacity.retry(stop=tenacity.stop_after_attempt(5),
                     retry=tenacity.retry_if_exception_type(ClientError),
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
-    def _set_label(self, value):
+    def _set_label(self, value: str) -> None:
         self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
 
-    @label.setter
-    # pylint:disable=arguments-differ
-    def label(self, value):
-        self.assert_valid_resource_label(value)
-        self._set_label(value)
-
     @property
-    def external(self):
+    def external(self) -> bool:
         """
         For AWS, all VPC networks can be connected to the Internet so always
         return ``True``.
@@ -1011,7 +1068,7 @@ class AWSNetwork(BaseNetwork):
         return True
 
     @property
-    def state(self):
+    def state(self) -> str:
         if self._unknown_state:
             return NetworkState.UNKNOWN
         try:
@@ -1022,14 +1079,14 @@ class AWSNetwork(BaseNetwork):
             return NetworkState.UNKNOWN
 
     @property
-    def cidr_block(self):
+    def cidr_block(self) -> str:
         return self._vpc.cidr_block
 
     @property
-    def subnets(self):
+    def subnets(self) -> AWSSubnetSubService:
         return self._subnet_svc
 
-    def refresh(self):
+    def refresh(self) -> None:
         try:
             self._vpc.reload()
             self._unknown_state = False
@@ -1042,16 +1099,17 @@ class AWSNetwork(BaseNetwork):
                     retry=tenacity.retry_if_exception_type(ClientError),
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
-    def _wait_for_vpc(self):
+    def _wait_for_vpc(self) -> None:
         self._vpc.wait_until_exists()
         self._vpc.wait_until_available()
 
-    def wait_till_ready(self, timeout=None, interval=None):
+    def wait_till_ready(self, timeout: int | None = None,
+                        interval: int | None = None) -> None:
         self._wait_for_vpc()
         self.refresh()
 
     @property
-    def gateways(self):
+    def gateways(self) -> AWSGatewaySubService:
         return self._gtw_container
 
 
@@ -1062,51 +1120,53 @@ class AWSSubnet(BaseSubnet):
         'available': SubnetState.AVAILABLE,
     }
 
-    def __init__(self, provider, subnet):
+    def __init__(self, provider: AWSCloudProvider, subnet: Any) -> None:
         super(AWSSubnet, self).__init__(provider)
         self._subnet = subnet
         self._unknown_state = False
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._subnet.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def label(self):
+    def label(self) -> str | None:
         return find_tag_value(self._subnet.tags, 'Name')
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value: str) -> None:
+        self.assert_valid_resource_label(value)
+        self._set_label(value)
 
     @tenacity.retry(stop=tenacity.stop_after_attempt(5),
                     retry=tenacity.retry_if_exception_type(ClientError),
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
-    def _set_label(self, value):
+    def _set_label(self, value: str) -> None:
         self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
 
-    @label.setter
-    # pylint:disable=arguments-differ
-    def label(self, value):
-        self.assert_valid_resource_label(value)
-        self._set_label(value)
-
     @property
-    def cidr_block(self):
+    def cidr_block(self) -> str:
         return self._subnet.cidr_block
 
     @property
-    def network_id(self):
+    def network_id(self) -> str:
         return self._subnet.vpc_id
 
     @property
-    def zone(self):
-        return AWSPlacementZone(self._provider, self._subnet.availability_zone,
-                                self._provider.region_name)
+    def zone(self) -> PlacementZone | None:
+        return AWSPlacementZone(
+            cast("AWSCloudProvider", self._provider),
+            self._subnet.availability_zone,
+            self._provider.region_name)
 
     @property
-    def state(self):
+    def state(self) -> str:
         if self._unknown_state:
             return SubnetState.UNKNOWN
         try:
@@ -1116,7 +1176,7 @@ class AWSSubnet(BaseSubnet):
             # Ignore all exceptions when querying state
             return SubnetState.UNKNOWN
 
-    def refresh(self):
+    def refresh(self) -> None:
         try:
             self._subnet.reload()
             self._unknown_state = False
@@ -1127,83 +1187,83 @@ class AWSSubnet(BaseSubnet):
 
 class AWSFloatingIP(BaseFloatingIP):
 
-    def __init__(self, provider, floating_ip):
+    def __init__(self, provider: AWSCloudProvider, floating_ip: Any) -> None:
         super(AWSFloatingIP, self).__init__(provider)
         self._ip = floating_ip
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._ip.allocation_id
 
     @property
-    def public_ip(self):
+    def public_ip(self) -> str:
         return self._ip.public_ip
 
     @property
-    def private_ip(self):
+    def private_ip(self) -> str | None:
         return self._ip.private_ip_address
 
     @property
-    def in_use(self):
+    def in_use(self) -> bool:
         return True if self._ip.association_id else False
 
-    def refresh(self):
+    def refresh(self) -> None:
         self._ip.reload()
 
 
 class AWSRouter(BaseRouter):
 
-    def __init__(self, provider, route_table):
+    def __init__(self, provider: AWSCloudProvider, route_table: Any) -> None:
         super(AWSRouter, self).__init__(provider)
         self._route_table = route_table
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._route_table.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def label(self):
+    def label(self) -> str | None:
         return find_tag_value(self._route_table.tags, 'Name')
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value: str) -> None:
+        self.assert_valid_resource_label(value)
+        self._set_label(value)
 
     @tenacity.retry(stop=tenacity.stop_after_attempt(5),
                     retry=tenacity.retry_if_exception_type(ClientError),
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
-    def _set_label(self, value):
+    def _set_label(self, value: str) -> None:
         self._route_table.create_tags(Tags=[{'Key': 'Name',
                                              'Value': value or ""}])
 
-    @label.setter
-    # pylint:disable=arguments-differ
-    def label(self, value):
-        self.assert_valid_resource_label(value)
-        self._set_label(value)
-
-    def refresh(self):
+    def refresh(self) -> None:
         try:
             self._route_table.reload()
         except ClientError:
             self._route_table.associations = None
 
     @property
-    def state(self):
+    def state(self) -> str:
         if self._route_table.associations:
             return RouterState.ATTACHED
         return RouterState.DETACHED
 
     @property
-    def network_id(self):
+    def network_id(self) -> str | None:
         return self._route_table.vpc_id
 
     @tenacity.retry(stop=tenacity.stop_after_attempt(5),
                     retry=tenacity.retry_if_exception_type(Exception),
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
-    def _wait_till_subnet_attached(self, subnet_id):
+    def _wait_till_subnet_attached(self, subnet_id: str) -> None:
         self.refresh()
         association = [a for a in self._route_table.associations
                        if a.subnet_id == subnet_id]
@@ -1211,12 +1271,12 @@ class AWSRouter(BaseRouter):
             raise Exception(
                 f"Subnet {subnet_id} not attached to route table {self.id}")
 
-    def attach_subnet(self, subnet):
+    def attach_subnet(self, subnet: Subnet | str) -> None:
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
         self._route_table.associate_with_subnet(SubnetId=subnet_id)
-        self._wait_till_subnet_attached(subnet_id)
+        self._wait_till_subnet_attached(cast(str, subnet_id))
 
-    def detach_subnet(self, subnet):
+    def detach_subnet(self, subnet: Subnet | str) -> None:
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
         associations = [a for a in self._route_table.associations
                         if a.subnet_id == subnet_id]
@@ -1225,11 +1285,13 @@ class AWSRouter(BaseRouter):
         self.refresh()
 
     @property
-    def subnets(self):
-        return [AWSSubnet(self._provider, rta.subnet)
+    def subnets(self) -> list[Subnet]:
+        return [AWSSubnet(cast("AWSCloudProvider", self._provider), rta.subnet)
                 for rta in self._route_table.associations if rta.subnet]
 
-    def attach_gateway(self, gateway):
+    # AWS returns a bool, but the Router interface declares attach_gateway as
+    # returning None; preserve the AWS-specific bool return.
+    def attach_gateway(self, gateway: Gateway) -> bool:  # type: ignore[override]
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
                  else gateway)
         if self._route_table.create_route(
@@ -1237,89 +1299,95 @@ class AWSRouter(BaseRouter):
             return True
         return False
 
-    def detach_gateway(self, gateway):
+    # AWS returns the raw boto3 response dict, but the Router interface declares
+    # detach_gateway as returning None; preserve the AWS-specific dict return.
+    def detach_gateway(  # type: ignore[override]
+            self, gateway: Gateway) -> dict[str, Any]:
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
                  else gateway)
-        return self._provider.ec2_conn.meta.client.detach_internet_gateway(
-            InternetGatewayId=gw_id, VpcId=self._route_table.vpc_id)
+        return cast("AWSCloudProvider", self._provider).ec2_conn.meta.client \
+            .detach_internet_gateway(
+                InternetGatewayId=gw_id, VpcId=self._route_table.vpc_id)
 
 
 class AWSInternetGateway(BaseInternetGateway):
 
-    def __init__(self, provider, gateway):
+    def __init__(self, provider: AWSCloudProvider, gateway: Any) -> None:
         super(AWSInternetGateway, self).__init__(provider)
         self._gateway = gateway
         self._gateway.state = ''
         self._fips_container = AWSFloatingIPSubService(provider, self)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._gateway.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return find_tag_value(self._gateway.tags, 'Name')
 
-    def refresh(self):
+    def refresh(self) -> None:
         try:
             self._gateway.reload()
         except ClientError:
             self._gateway.state = GatewayState.UNKNOWN
 
     @property
-    def state(self):
+    def state(self) -> str:
         if self._gateway.state == GatewayState.UNKNOWN:
             return GatewayState.UNKNOWN
         else:
             return GatewayState.AVAILABLE
 
     @property
-    def network_id(self):
+    def network_id(self) -> str | None:
         if self._gateway.attachments:
             return self._gateway.attachments[0].get('VpcId')
         return None
 
     @property
-    def floating_ips(self):
+    def floating_ips(self) -> AWSFloatingIPSubService:
         return self._fips_container
 
 
 class AWSLaunchConfig(BaseLaunchConfig):
 
-    def __init__(self, provider):
+    def __init__(self, provider: AWSCloudProvider) -> None:
         super(AWSLaunchConfig, self).__init__(provider)
 
 
 class AWSDnsZone(BaseDnsZone):
 
-    def __init__(self, provider, dns_zone):
+    def __init__(self, provider: AWSCloudProvider, dns_zone: Any) -> None:
         super(AWSDnsZone, self).__init__(provider)
         self._dns_zone = dns_zone
         self._dns_record_container = AWSDnsRecordSubService(provider, self)
 
+    # The zone id is derived from an optional AWS field; the CloudResource
+    # interface declares id as ``str``, but this implementation can return None.
     @property
-    def id(self):
+    def id(self) -> str | None:  # type: ignore[override]
         # The ID contains a slash, do not allow this
         return self.escape_zone_id(self.aws_id)
 
     @property
-    def aws_id(self):
+    def aws_id(self) -> str | None:
         return self._dns_zone.get('Id')
 
     @staticmethod
-    def escape_zone_id(value):
+    def escape_zone_id(value: str | None) -> str | None:
         return value.replace("/", "-") if value else None
 
     @staticmethod
-    def unescape_zone_id(value):
+    def unescape_zone_id(value: str | None) -> str | None:
         return value.replace("-", "/") if value else None
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._dns_zone.get('Name')
 
     @property
-    def admin_email(self):
+    def admin_email(self) -> str | None:
         comment = self._dns_zone.get('Config', {}).get('Comment')
         if comment:
             email_field = comment.split(",")[0].split("=")
@@ -1331,42 +1399,46 @@ class AWSDnsZone(BaseDnsZone):
             return None
 
     @property
-    def records(self):
+    def records(self) -> AWSDnsRecordSubService:
         return self._dns_record_container
 
 
 class AWSDnsRecord(BaseDnsRecord):
 
-    def __init__(self, provider, dns_zone, dns_record):
+    def __init__(self, provider: AWSCloudProvider, dns_zone: AWSDnsZone,
+                 dns_record: Any) -> None:
         super(AWSDnsRecord, self).__init__(provider)
         self._dns_zone = dns_zone
         self._dns_rec = dns_record
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._dns_rec.get('Name') + ":" + self._dns_rec.get('Type')
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._dns_rec.get('Name')
 
+    # The containing zone id is optional on AWSDnsZone, but the DnsRecord
+    # interface declares zone_id as ``str``; widen the return to match reality.
     @property
-    def zone_id(self):
+    def zone_id(self) -> str | None:  # type: ignore[override]
         return self._dns_zone.id
 
     @property
-    def type(self):
+    def type(self) -> str:
         return self._dns_rec.get('Type')
 
     @property
-    def data(self):
+    def data(self) -> list[str]:
         return [rec.get('Value') for rec in
                 self._dns_rec.get('ResourceRecords')]
 
     @property
-    def ttl(self):
+    def ttl(self) -> int:
         return self._dns_rec.get('TTL')
 
-    def delete(self):
+    def delete(self) -> None:
         # pylint:disable=protected-access
-        return self._provider.dns._records.delete(self._dns_zone, self)
+        records: Any = self._provider.dns._records
+        records.delete(self._dns_zone, self)

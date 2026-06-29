@@ -141,6 +141,18 @@ disallow_untyped_decorators = false
 module = ["cloudbridge.providers.*"]
 ignore_errors = true
 
+# Typed providers (pragmatic tier). Providers wrap untyped cloud SDKs, so we
+# require complete annotations (disallow_untyped_defs etc. from the strict
+# baseline) but turn off warn_return_any and disallow_untyped_calls: every
+# getter reads an attribute off an Any-typed SDK object, and forcing those
+# through cast()/ignore adds noise without value. A more-specific module pattern
+# here wins over the broad providers.* exemption above.
+[[tool.mypy.overrides]]
+module = ["cloudbridge.providers.aws.*"]
+ignore_errors = false
+warn_return_any = false
+disallow_untyped_calls = false
+
 # base/ is held to the FULL strict bar (it orchestrates through the typed
 # interface layer and never touches the cloud SDKs directly), so it falls under
 # the global strict baseline with no override. The providers will get a

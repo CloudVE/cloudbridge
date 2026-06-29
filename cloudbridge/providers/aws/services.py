@@ -1,8 +1,15 @@
 """Services implemented by the AWS provider."""
+from __future__ import annotations
+
+import builtins
 import ipaddress
 import logging
 import string
 import uuid
+from typing import Any
+from typing import IO
+from typing import TYPE_CHECKING
+from typing import cast
 
 from botocore.exceptions import ClientError
 
@@ -41,12 +48,29 @@ from cloudbridge.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.interfaces.exceptions import InvalidParamException
 from cloudbridge.interfaces.exceptions import InvalidValueException
+from cloudbridge.interfaces.resources import Bucket
+from cloudbridge.interfaces.resources import BucketObject
+from cloudbridge.interfaces.resources import DnsRecord
+from cloudbridge.interfaces.resources import DnsZone
+from cloudbridge.interfaces.resources import FloatingIP
+from cloudbridge.interfaces.resources import Gateway
+from cloudbridge.interfaces.resources import Instance
+from cloudbridge.interfaces.resources import InternetGateway
 from cloudbridge.interfaces.resources import KeyPair
+from cloudbridge.interfaces.resources import LaunchConfig
 from cloudbridge.interfaces.resources import MachineImage
+from cloudbridge.interfaces.resources import MultipartUpload
 from cloudbridge.interfaces.resources import Network
+from cloudbridge.interfaces.resources import PlacementZone
+from cloudbridge.interfaces.resources import Region
+from cloudbridge.interfaces.resources import ResultList
+from cloudbridge.interfaces.resources import Router
 from cloudbridge.interfaces.resources import Snapshot
+from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import TrafficDirection
+from cloudbridge.interfaces.resources import UploadPart
 from cloudbridge.interfaces.resources import VMFirewall
+from cloudbridge.interfaces.resources import VMFirewallRule
 from cloudbridge.interfaces.resources import VMType
 from cloudbridge.interfaces.resources import Volume
 
@@ -73,12 +97,16 @@ from .resources import AWSVMFirewallRule
 from .resources import AWSVMType
 from .resources import AWSVolume
 
+if TYPE_CHECKING:
+    from cloudbridge.interfaces.provider import CloudProvider
+    from cloudbridge.providers.aws.provider import AWSCloudProvider
+
 log = logging.getLogger(__name__)
 
 
 class AWSSecurityService(BaseSecurityService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSSecurityService, self).__init__(provider)
 
         # Initialize provider services
@@ -87,40 +115,42 @@ class AWSSecurityService(BaseSecurityService):
         self._vm_firewall_rule_svc = AWSVMFirewallRuleService(provider)
 
     @property
-    def key_pairs(self):
+    def key_pairs(self) -> AWSKeyPairService:
         return self._key_pairs
 
     @property
-    def vm_firewalls(self):
+    def vm_firewalls(self) -> AWSVMFirewallService:
         return self._vm_firewalls
 
     @property
-    def _vm_firewall_rules(self):
+    def _vm_firewall_rules(self) -> AWSVMFirewallRuleService:
         return self._vm_firewall_rule_svc
 
 
 class AWSKeyPairService(BaseKeyPairService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSKeyPairService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSKeyPair,
-                                  boto_collection_name='key_pairs')
+        self.svc: Any = BotoEC2Service(
+            provider=cast("AWSCloudProvider", self.provider),
+            cb_resource=AWSKeyPair,
+            boto_collection_name='key_pairs')
 
     @dispatch(event="provider.security.key_pairs.get",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def get(self, key_pair_id):
+    def get(self, key_pair_id: str) -> KeyPair | None:
         log.debug("Getting Key Pair Service %s", key_pair_id)
         return self.svc.get(key_pair_id)
 
     @dispatch(event="provider.security.key_pairs.list",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[KeyPair]:
         return self.svc.list(limit=limit, marker=marker)
 
     @dispatch(event="provider.security.key_pairs.find",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[KeyPair]:
         name = kwargs.pop('name', None)
 
         # All kwargs should have been popped at this time.
@@ -134,7 +164,8 @@ class AWSKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.create",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def create(self, name, public_key_material=None):
+    def create(self, name: str,
+               public_key_material: str | None = None) -> KeyPair:
         AWSKeyPair.assert_valid_resource_name(name)
         private_key = None
         if not public_key_material:
@@ -153,7 +184,7 @@ class AWSKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.delete",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def delete(self, key_pair):
+    def delete(self, key_pair: KeyPair | str) -> None:
         key_pair = (key_pair if isinstance(key_pair, AWSKeyPair) else
                     self.get(key_pair))
         if key_pair:
@@ -163,27 +194,30 @@ class AWSKeyPairService(BaseKeyPairService):
 
 class AWSVMFirewallService(BaseVMFirewallService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSVMFirewallService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSVMFirewall,
-                                  boto_collection_name='security_groups')
+        self.svc: Any = BotoEC2Service(
+            provider=cast("AWSCloudProvider", self.provider),
+            cb_resource=AWSVMFirewall,
+            boto_collection_name='security_groups')
 
     @dispatch(event="provider.security.vm_firewalls.get",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def get(self, vm_firewall_id):
+    def get(self, vm_firewall_id: str) -> VMFirewall | None:
         log.debug("Getting Firewall Service with the id: %s", vm_firewall_id)
         return self.svc.get(vm_firewall_id)
 
     @dispatch(event="provider.security.vm_firewalls.list",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[VMFirewall]:
         return self.svc.list(limit=limit, marker=marker)
 
     @cb_helpers.deprecated_alias(network_id='network')
     @dispatch(event="provider.security.vm_firewalls.create",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, network, description=None):
+    def create(self, label: str, network: Network | str,
+               description: str | None = None) -> VMFirewall:
         AWSVMFirewall.assert_valid_resource_label(label)
         name = AWSVMFirewall._generate_name_from_label(label, 'cb-fw')
         network_id = network.id if isinstance(network, Network) else network
@@ -214,7 +248,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
 
     @dispatch(event="provider.security.vm_firewalls.find",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[VMFirewall]:
         # Filter by name or label
         label = kwargs.pop('label', None)
         log.debug("Searching for Firewall Service %s", label)
@@ -227,7 +261,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
 
     @dispatch(event="provider.security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def delete(self, vm_firewall):
+    def delete(self, vm_firewall: VMFirewall | str) -> None:
         firewall = (vm_firewall if isinstance(vm_firewall, AWSVMFirewall)
                     else self.get(vm_firewall))
         if firewall:
@@ -237,83 +271,103 @@ class AWSVMFirewallService(BaseVMFirewallService):
 
 class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSVMFirewallRuleService, self).__init__(provider)
 
     @dispatch(event="provider.security.vm_firewall_rules.list",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
-    def list(self, firewall, limit=None, marker=None):
+    def list(self, firewall: VMFirewall, limit: int | None = None,
+             marker: str | None = None) -> ResultList[VMFirewallRule]:
+        # _vm_firewall is an AWS-internal boto handle not on the interface.
+        boto_fw = cast(Any, firewall)._vm_firewall
         # pylint:disable=protected-access
-        rules = [AWSVMFirewallRule(firewall,
-                                   TrafficDirection.INBOUND, r)
-                 for r in firewall._vm_firewall.ip_permissions]
+        # AWSVMFirewallRule.__init__ types direction as str but the codebase
+        # passes (and stores) the TrafficDirection enum; preserve that.
+        rules: list[VMFirewallRule] = [
+            AWSVMFirewallRule(firewall, TrafficDirection.INBOUND,  # type: ignore[arg-type] # noqa: E501
+                              r)
+            for r in boto_fw.ip_permissions]
         # pylint:disable=protected-access
         rules = rules + [
-            AWSVMFirewallRule(
-                firewall, TrafficDirection.OUTBOUND, r)
-            for r in firewall._vm_firewall.ip_permissions_egress]
+            AWSVMFirewallRule(firewall, TrafficDirection.OUTBOUND,  # type: ignore[arg-type] # noqa: E501
+                              r)
+            for r in boto_fw.ip_permissions_egress]
         return ClientPagedResultList(self.provider, rules,
                                      limit=limit, marker=marker)
 
     @dispatch(event="provider.security.vm_firewall_rules.create",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
-    def create(self, firewall,  direction, protocol=None, from_port=None,
-               to_port=None, cidr=None, src_dest_fw=None):
-        src_dest_fw_id = (
+    def create(self, firewall: VMFirewall, direction: TrafficDirection,
+               protocol: str | None = None, from_port: int | None = None,
+               to_port: int | None = None,
+               cidr: str | builtins.list[str] | None = None,
+               src_dest_fw: VMFirewall | None = None) -> VMFirewallRule:
+        src_dest_fw_id = cast(
+            "str | None",
             src_dest_fw.id if isinstance(src_dest_fw, AWSVMFirewall)
             else src_dest_fw)
 
         # pylint:disable=protected-access
         ip_perm_entry = AWSVMFirewallRule._construct_ip_perms(
-            protocol, from_port, to_port, cidr, src_dest_fw_id)
+            protocol, from_port, to_port,
+            cast("str | None", cidr), src_dest_fw_id)
         # Filter out empty values to please Boto
         ip_perms = [trim_empty_params(ip_perm_entry)]
 
+        # _vm_firewall is an AWS-internal boto handle not on the interface.
+        boto_fw = cast(Any, firewall)._vm_firewall
         try:
             if direction == TrafficDirection.INBOUND:
                 # pylint:disable=protected-access
-                firewall._vm_firewall.authorize_ingress(
-                    IpPermissions=ip_perms)
+                boto_fw.authorize_ingress(IpPermissions=ip_perms)
             elif direction == TrafficDirection.OUTBOUND:
                 # pylint:disable=protected-access
-                firewall._vm_firewall.authorize_egress(
-                    IpPermissions=ip_perms)
+                boto_fw.authorize_egress(IpPermissions=ip_perms)
             else:
                 raise InvalidValueException("direction", direction)
-            firewall.refresh()
-            return AWSVMFirewallRule(firewall, direction, ip_perm_entry)
+            cast(Any, firewall).refresh()
+            # AWSVMFirewallRule.__init__ types direction as str, but the
+            # TrafficDirection enum is what is passed and stored here.
+            return AWSVMFirewallRule(
+                firewall, direction, ip_perm_entry)  # type: ignore[arg-type]
         except ClientError as ec2e:
             if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
                 return AWSVMFirewallRule(
-                    firewall, direction, ip_perm_entry)
+                    firewall, direction,  # type: ignore[arg-type]
+                    ip_perm_entry)
             else:
                 raise ec2e
 
+    # The interface declares delete(firewall, rule_id: str), but this impl
+    # operates on a VMFirewallRule object (reading protocol/ports/cidr off it).
     @dispatch(event="provider.security.vm_firewall_rules.delete",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
-    def delete(self, firewall, rule):
+    def delete(self, firewall: VMFirewall,
+               rule: VMFirewallRule) -> None:
+        # rule carries AWS-internal helpers/attributes not on the interface.
+        aws_rule = cast(Any, rule)
         # pylint:disable=protected-access
-        ip_perm_entry = rule._construct_ip_perms(
-            rule.protocol, rule.from_port, rule.to_port,
-            rule.cidr, rule.src_dest_fw_id)
+        ip_perm_entry = aws_rule._construct_ip_perms(
+            aws_rule.protocol, aws_rule.from_port, aws_rule.to_port,
+            aws_rule.cidr, aws_rule.src_dest_fw_id)
 
         # Filter out empty values to please Boto
         ip_perms = [trim_empty_params(ip_perm_entry)]
 
+        # _vm_firewall is an AWS-internal boto handle not on the interface.
+        boto_fw = cast(Any, firewall)._vm_firewall
         # pylint:disable=protected-access
-        if rule.direction == TrafficDirection.INBOUND:
-            firewall._vm_firewall.revoke_ingress(
-                IpPermissions=ip_perms)
+        if aws_rule.direction == TrafficDirection.INBOUND:
+            boto_fw.revoke_ingress(IpPermissions=ip_perms)
         else:
             # pylint:disable=protected-access
-            firewall._vm_firewall.revoke_egress(
-                IpPermissions=ip_perms)
-        firewall.refresh()
+            boto_fw.revoke_egress(IpPermissions=ip_perms)
+        cast(Any, firewall).refresh()
 
 
 class AWSStorageService(BaseStorageService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSStorageService, self).__init__(provider)
 
         # Initialize provider services
@@ -323,38 +377,39 @@ class AWSStorageService(BaseStorageService):
         self._bucket_obj_svc = AWSBucketObjectService(self.provider)
 
     @property
-    def volumes(self):
+    def volumes(self) -> AWSVolumeService:
         return self._volume_svc
 
     @property
-    def snapshots(self):
+    def snapshots(self) -> AWSSnapshotService:
         return self._snapshot_svc
 
     @property
-    def buckets(self):
+    def buckets(self) -> AWSBucketService:
         return self._bucket_svc
 
     @property
-    def _bucket_objects(self):
+    def _bucket_objects(self) -> AWSBucketObjectService:
         return self._bucket_obj_svc
 
 
 class AWSVolumeService(BaseVolumeService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSVolumeService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSVolume,
-                                  boto_collection_name='volumes')
+        self.svc: Any = BotoEC2Service(
+            provider=cast("AWSCloudProvider", self.provider),
+            cb_resource=AWSVolume,
+            boto_collection_name='volumes')
 
     @dispatch(event="provider.storage.volumes.get",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def get(self, volume_id):
+    def get(self, volume_id: str) -> Volume | None:
         return self.svc.get(volume_id)
 
     @dispatch(event="provider.storage.volumes.find",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Volume]:
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -370,14 +425,17 @@ class AWSVolumeService(BaseVolumeService):
 
     @dispatch(event="provider.storage.volumes.list",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Volume]:
         return self.svc.find(
             filters={'availability-zone': self.provider.zone_name},
             limit=limit, marker=marker)
 
     @dispatch(event="provider.storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, size, snapshot=None, description=None):
+    def create(self, label: str, size: int,
+               snapshot: Snapshot | str | None = None,
+               description: str | None = None) -> Volume:
         AWSVolume.assert_valid_resource_label(label)
         zone_name = self.provider.zone_name
         snapshot_id = snapshot.id if isinstance(
@@ -408,7 +466,7 @@ class AWSVolumeService(BaseVolumeService):
 
     @dispatch(event="provider.storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def delete(self, vol):
+    def delete(self, vol: Volume | str) -> None:
         volume = vol if isinstance(vol, AWSVolume) else self.get(vol)
         if volume:
             # pylint:disable=protected-access
@@ -417,20 +475,21 @@ class AWSVolumeService(BaseVolumeService):
 
 class AWSSnapshotService(BaseSnapshotService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSSnapshotService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSSnapshot,
-                                  boto_collection_name='snapshots')
+        self.svc: Any = BotoEC2Service(
+            provider=cast("AWSCloudProvider", self.provider),
+            cb_resource=AWSSnapshot,
+            boto_collection_name='snapshots')
 
     @dispatch(event="provider.storage.snapshots.get",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def get(self, snapshot_id):
+    def get(self, snapshot_id: str) -> Snapshot | None:
         return self.svc.get(snapshot_id)
 
     @dispatch(event="provider.storage.snapshots.find",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Snapshot]:
         # Filter by description or label
         label = kwargs.get('label', None)
 
@@ -442,17 +501,20 @@ class AWSSnapshotService(BaseSnapshotService):
         else:
             obj_list = list(self)
         filters = ['label']
-        return cb_helpers.generic_find(filters, kwargs, obj_list)
+        return cast("ResultList[Snapshot]",
+                    cb_helpers.generic_find(filters, kwargs, obj_list))
 
     @dispatch(event="provider.storage.snapshots.list",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Snapshot]:
         return self.svc.list(limit=limit, marker=marker,
                              OwnerIds=['self'])
 
     @dispatch(event="provider.storage.snapshots.create",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, volume, description=None):
+    def create(self, label: str, volume: Volume | str,
+               description: str | None = None) -> Snapshot:
         AWSSnapshot.assert_valid_resource_label(label)
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
 
@@ -479,7 +541,7 @@ class AWSSnapshotService(BaseSnapshotService):
 
     @dispatch(event="provider.storage.snapshots.delete",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def delete(self, snapshot):
+    def delete(self, snapshot: Snapshot | str) -> None:
         snapshot = (snapshot if isinstance(snapshot, AWSSnapshot) else
                     self.get(snapshot))
         if snapshot:
@@ -489,15 +551,16 @@ class AWSSnapshotService(BaseSnapshotService):
 
 class AWSBucketService(BaseBucketService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSBucketService, self).__init__(provider)
-        self.svc = BotoS3Service(provider=self.provider,
-                                 cb_resource=AWSBucket,
-                                 boto_collection_name='buckets')
+        self.svc: Any = BotoS3Service(
+            provider=cast("AWSCloudProvider", self.provider),
+            cb_resource=AWSBucket,
+            boto_collection_name='buckets')
 
     @dispatch(event="provider.storage.buckets.get",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def get(self, bucket_id):
+    def get(self, bucket_id: str) -> Bucket | None:
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
@@ -506,9 +569,9 @@ class AWSBucketService(BaseBucketService):
             # Make a call to make sure the bucket exists. There's an edge case
             # where a 403 response can occur when the bucket exists but the
             # user simply does not have permissions to access it. See below.
-            self.provider.s3_conn.meta.client.head_bucket(Bucket=bucket_id)
-            return AWSBucket(self.provider,
-                             self.provider.s3_conn.Bucket(bucket_id))
+            s3_conn = cast("AWSCloudProvider", self.provider).s3_conn
+            s3_conn.meta.client.head_bucket(Bucket=bucket_id)
+            return AWSBucket(cast("AWSCloudProvider", self.provider), s3_conn.Bucket(bucket_id))
         except ClientError as e:
             # If 403, it means the bucket exists, but the user does not have
             # permissions to access the bucket. However, limited operations
@@ -521,19 +584,21 @@ class AWSBucketService(BaseBucketService):
                             "have enough permissions to list its contents."
                             "Other operations may be available.",
                             bucket_id)
-                return AWSBucket(self.provider,
-                                 self.provider.s3_conn.Bucket(bucket_id))
+                s3_conn = cast("AWSCloudProvider", self.provider).s3_conn
+                return AWSBucket(cast("AWSCloudProvider", self.provider), s3_conn.Bucket(bucket_id))
         # For all other responses, it's assumed that the bucket does not exist.
         return None
 
     @dispatch(event="provider.storage.buckets.list",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Bucket]:
         return self.svc.list(limit=limit, marker=marker)
 
     @dispatch(event="provider.storage.buckets.create",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def create(self, name, location=None):
+    def create(self, name: str,
+               location: Region | str | None = None) -> Bucket:
         AWSBucket.assert_valid_resource_name(name)
         location = location or self.provider.region_name
         # Due to an API issue in S3, specifying us-east-1 as a
@@ -546,7 +611,8 @@ class AWSBucketService(BaseBucketService):
         if location == 'us-east-1':
             try:
                 # check whether bucket already exists
-                self.provider.s3_conn.meta.client.head_bucket(Bucket=name)
+                cast("AWSCloudProvider", self.provider).s3_conn.meta.client \
+                    .head_bucket(Bucket=name)
             except ClientError as e:
                 if e.response['Error']['Code'] == "404":
                     # bucket doesn't exist, go ahead and create it
@@ -568,7 +634,7 @@ class AWSBucketService(BaseBucketService):
 
     @dispatch(event="provider.storage.buckets.delete",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def delete(self, bucket):
+    def delete(self, bucket: Bucket | str) -> None:
         b = bucket if isinstance(bucket, AWSBucket) else self.get(bucket)
         if b:
             # pylint:disable=protected-access
@@ -577,82 +643,109 @@ class AWSBucketService(BaseBucketService):
 
 class AWSBucketObjectService(BaseBucketObjectService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSBucketObjectService, self).__init__(provider)
 
-    def get(self, bucket, object_id):
+    def get(self, bucket: Bucket | str,
+            object_id: str) -> BucketObject | None:
         try:
             # pylint:disable=protected-access
-            obj = bucket._bucket.Object(object_id)
+            obj = cast(Any, bucket)._bucket.Object(object_id)
             # load() throws an error if object does not exist
             obj.load()
-            return AWSBucketObject(self.provider, obj)
+            return AWSBucketObject(cast("AWSCloudProvider", self.provider), obj)
         except ClientError:
             return None
 
-    def list(self, bucket, limit=None, marker=None, prefix=None):
+    # The interface declares list(bucket, prefix, limit, marker); this impl
+    # orders the optional parameters as (limit, marker, prefix).
+    def list(self, bucket: Bucket | str,  # type: ignore[override]
+             limit: int | None = None, marker: str | None = None,
+             prefix: str | None = None) -> ResultList[BucketObject]:
+        aws_provider = cast("AWSCloudProvider", self.provider)
         if prefix:
             # pylint:disable=protected-access
-            boto_objs = bucket._bucket.objects.filter(Prefix=prefix)
+            boto_objs = cast(Any, bucket)._bucket.objects.filter(Prefix=prefix)
         else:
             # pylint:disable=protected-access
-            boto_objs = bucket._bucket.objects.all()
-        objects = [AWSBucketObject(self.provider, obj) for obj in boto_objs]
+            boto_objs = cast(Any, bucket)._bucket.objects.all()
+        objects: builtins.list[BucketObject] = [
+            AWSBucketObject(aws_provider, obj) for obj in boto_objs]
         return ClientPagedResultList(self.provider, objects,
                                      limit=limit, marker=marker)
 
-    def find(self, bucket, **kwargs):
+    def find(self, bucket: Bucket | str,
+             **kwargs: Any) -> ResultList[BucketObject]:
+        aws_provider = cast("AWSCloudProvider", self.provider)
         # pylint:disable=protected-access
-        obj_list = [AWSBucketObject(self.provider, o)
-                    for o in bucket._bucket.objects.all()]
+        obj_list: builtins.list[BucketObject] = [
+            AWSBucketObject(aws_provider, o)
+            for o in cast(Any, bucket)._bucket.objects.all()]
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self.provider, list(matches),
                                      limit=None, marker=None)
 
-    def create(self, bucket, name):
+    def create(self, bucket: Bucket | str,
+               object_name: str) -> BucketObject:
         # pylint:disable=protected-access
-        obj = bucket._bucket.Object(name)
-        return AWSBucketObject(self.provider, obj)
+        obj = cast(Any, bucket)._bucket.Object(object_name)
+        return AWSBucketObject(
+            cast("AWSCloudProvider", self.provider), obj)
 
     @dispatch(event="provider.storage._bucket_objects.create_multipart_upload",
               priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
-    def create_multipart_upload(self, bucket, object_name):
-        response = self.provider.s3_conn.meta.client.create_multipart_upload(
-            Bucket=bucket.name, Key=object_name)
-        return BaseMultipartUpload(self.provider, bucket, object_name,
-                                   response['UploadId'])
+    def create_multipart_upload(self, bucket: Bucket | str,
+                                object_name: str) -> MultipartUpload:
+        client = cast("AWSCloudProvider", self.provider).s3_conn.meta.client
+        response = client.create_multipart_upload(
+            Bucket=cast(Any, bucket).name, Key=object_name)
+        return BaseMultipartUpload(
+            cast("AWSCloudProvider", self.provider),
+            cast(Bucket, bucket), object_name, response['UploadId'])
 
     @dispatch(event="provider.storage._bucket_objects.upload_part",
               priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
-    def upload_part(self, bucket, upload, part_number, data):
-        response = self.provider.s3_conn.meta.client.upload_part(
-            Bucket=bucket.name, Key=upload.object_name,
+    def upload_part(self, bucket: Bucket | str, upload: MultipartUpload,
+                    part_number: int,
+                    data: bytes | IO[bytes]) -> UploadPart:
+        client = cast("AWSCloudProvider", self.provider).s3_conn.meta.client
+        response = client.upload_part(
+            Bucket=cast(Any, bucket).name, Key=upload.object_name,
             UploadId=upload.id, PartNumber=part_number, Body=data)
         return BaseUploadPart(part_number, response['ETag'])
 
     @dispatch(event="provider.storage._bucket_objects."
                     "complete_multipart_upload",
               priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
-    def complete_multipart_upload(self, bucket, upload, parts):
+    def complete_multipart_upload(self, bucket: Bucket | str,
+                                  upload: MultipartUpload,
+                                  parts: builtins.list[UploadPart]
+                                  ) -> BucketObject:
         ordered = sorted(parts, key=lambda p: p.part_number)
-        self.provider.s3_conn.meta.client.complete_multipart_upload(
-            Bucket=bucket.name, Key=upload.object_name, UploadId=upload.id,
+        client = cast("AWSCloudProvider", self.provider).s3_conn.meta.client
+        client.complete_multipart_upload(
+            Bucket=cast(Any, bucket).name, Key=upload.object_name,
+            UploadId=upload.id,
             MultipartUpload={'Parts': [
                 {'PartNumber': p.part_number, 'ETag': p.etag}
                 for p in ordered]})
-        return self.get(bucket, upload.object_name)
+        # get() may return None, but the completed object is expected to exist.
+        return cast(BucketObject, self.get(bucket, upload.object_name))
 
     @dispatch(event="provider.storage._bucket_objects.abort_multipart_upload",
               priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
-    def abort_multipart_upload(self, bucket, upload):
-        self.provider.s3_conn.meta.client.abort_multipart_upload(
-            Bucket=bucket.name, Key=upload.object_name, UploadId=upload.id)
+    def abort_multipart_upload(self, bucket: Bucket | str,
+                               upload: MultipartUpload) -> None:
+        client = cast("AWSCloudProvider", self.provider).s3_conn.meta.client
+        client.abort_multipart_upload(
+            Bucket=cast(Any, bucket).name, Key=upload.object_name,
+            UploadId=upload.id)
 
 
 class AWSComputeService(BaseComputeService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSComputeService, self).__init__(provider)
         self._vm_type_svc = AWSVMTypeService(self.provider)
         self._instance_svc = AWSInstanceService(self.provider)
@@ -660,35 +753,36 @@ class AWSComputeService(BaseComputeService):
         self._images_svc = AWSImageService(self.provider)
 
     @property
-    def images(self):
+    def images(self) -> AWSImageService:
         return self._images_svc
 
     @property
-    def vm_types(self):
+    def vm_types(self) -> AWSVMTypeService:
         return self._vm_type_svc
 
     @property
-    def instances(self):
+    def instances(self) -> AWSInstanceService:
         return self._instance_svc
 
     @property
-    def regions(self):
+    def regions(self) -> AWSRegionService:
         return self._region_svc
 
 
 class AWSImageService(BaseImageService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSImageService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSMachineImage,
-                                  boto_collection_name='images')
+        self.svc: Any = BotoEC2Service(
+            provider=cast("AWSCloudProvider", self.provider),
+            cb_resource=AWSMachineImage,
+            boto_collection_name='images')
 
-    def get(self, image_id):
+    def get(self, image_id: str) -> MachineImage | None:
         log.debug("Getting AWS Image Service with the id: %s", image_id)
         return self.svc.get(image_id)
 
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[MachineImage]:
         # Filter by name or label
         label = kwargs.pop('label', None)
         # Popped here, not used in the generic find
@@ -700,7 +794,7 @@ class AWSImageService(BaseImageService):
                 "Unrecognised parameters for search: %s. Supported "
                 "attributes: %s" % (kwargs, 'label'))
 
-        extra_args = {}
+        extra_args: dict[str, Any] = {}
         if owner:
             extra_args.update(Owners=owner)
 
@@ -708,16 +802,20 @@ class AWSImageService(BaseImageService):
         # and "AMI name" to allow for searches of public images
         if label:
             log.debug("Searching for AWS Image Service %s", label)
-            obj_list = []
+            obj_list: list[MachineImage] = []
             obj_list.extend(
                 self.svc.find(filters={'name': label}, **extra_args))
             obj_list.extend(
                 self.svc.find(filters={'tag:Name': label}, **extra_args))
-            return obj_list
+            return cast("ResultList[MachineImage]", obj_list)
         else:
-            return []
+            return cast("ResultList[MachineImage]", [])
 
-    def list(self, filter_by_owner=True, limit=None, marker=None):
+    # Intentionally extends the base list() with a leading filter_by_owner
+    # parameter (matches the interface's documented arguments-differ override).
+    def list(self,  # type: ignore[override]
+             filter_by_owner: bool = True, limit: int | None = None,
+             marker: str | None = None) -> ResultList[MachineImage]:
         return self.svc.list(Owners=['self'] if filter_by_owner else
                              ['amazon', 'self'],
                              limit=limit, marker=marker)
@@ -725,14 +823,18 @@ class AWSImageService(BaseImageService):
 
 class AWSInstanceService(BaseInstanceService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSInstanceService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSInstance,
-                                  boto_collection_name='instances')
+        self.svc: Any = BotoEC2Service(
+            provider=cast("AWSCloudProvider", self.provider),
+            cb_resource=AWSInstance,
+            boto_collection_name='instances')
 
-    def _resolve_launch_options(self, subnet=None, zone_id=None,
-                                vm_firewalls=None):
+    def _resolve_launch_options(
+            self, subnet: Subnet | None = None,
+            zone_id: str | None = None,
+            vm_firewalls: list[VMFirewall] | list[str] | None = None
+    ) -> tuple[str | None, str | None, list[str] | None]:
         """
         Work out interdependent launch options.
 
@@ -755,34 +857,37 @@ class AWSInstanceService(BaseInstanceService):
         """
         if subnet:
             # subnet's zone takes precedence
-            zone_id = subnet.zone.id
+            zone_id = cast("PlacementZone", subnet.zone).id
+        vm_firewall_ids: list[str] | None
         if vm_firewalls and isinstance(vm_firewalls, list) and isinstance(
                 vm_firewalls[0], VMFirewall):
-            vm_firewall_ids = [fw.id for fw in vm_firewalls]
+            vm_firewall_ids = [fw.id for fw in
+                               cast("list[VMFirewall]", vm_firewalls)]
         else:
-            vm_firewall_ids = vm_firewalls
+            vm_firewall_ids = cast("list[str] | None", vm_firewalls)
         return subnet.id if subnet else None, zone_id, vm_firewall_ids
 
-    def _process_block_device_mappings(self, launch_config):
+    def _process_block_device_mappings(
+            self, launch_config: LaunchConfig) -> list[dict[str, Any]]:
         """
         Processes block device mapping information
         and returns a Boto BlockDeviceMapping object. If new volumes
         are requested (source is None and destination is VOLUME), they will be
         created and the relevant volume ids included in the mapping.
         """
-        bdml = []
+        bdml: list[dict[str, Any]] = []
         # Assign letters from f onwards
         # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
         next_letter = iter(list(string.ascii_lowercase[6:]))
         # assign ephemeral devices from 0 onwards
         ephemeral_counter = 0
-        for device in launch_config.block_devices:
-            bdm = {}
+        for device in cast(Any, launch_config).block_devices:
+            bdm: dict[str, Any] = {}
             if device.is_volume:
                 # Generate the device path
                 bdm['DeviceName'] = \
                     '/dev/sd' + ('a1' if device.is_root else next(next_letter))
-                ebs_def = {}
+                ebs_def: dict[str, Any] = {}
                 if isinstance(device.source, Snapshot):
                     ebs_def['SnapshotId'] = device.source.id
                 elif isinstance(device.source, Volume):
@@ -813,20 +918,25 @@ class AWSInstanceService(BaseInstanceService):
 
         return bdml
 
-    def create_launch_config(self):
-        return AWSLaunchConfig(self.provider)
+    def create_launch_config(self) -> LaunchConfig:
+        return AWSLaunchConfig(cast("AWSCloudProvider", self.provider))
 
     @dispatch(event="provider.compute.instances.create",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, image, vm_type, subnet,
-               key_pair=None, vm_firewalls=None, user_data=None,
-               launch_config=None, **kwargs):
+    def create(self, label: str, image: MachineImage | str,
+               vm_type: VMType | str, subnet: Subnet | str,
+               key_pair: KeyPair | str | None = None,
+               vm_firewalls: list[VMFirewall] | list[str] | None = None,
+               user_data: str | None = None,
+               launch_config: LaunchConfig | None = None,
+               **kwargs: Any) -> Instance:
         AWSInstance.assert_valid_resource_label(label)
         image_id = image.id if isinstance(image, MachineImage) else image
         vm_size = vm_type.id if \
             isinstance(vm_type, VMType) else vm_type
-        subnet = (self.provider.networking.subnets.get(subnet)
-                  if isinstance(subnet, str) else subnet)
+        subnet_obj: Subnet | None = (
+            self.provider.networking.subnets.get(subnet)
+            if isinstance(subnet, str) else subnet)
         zone_name = self.provider.zone_name
         key_pair_name = key_pair.name if isinstance(
             key_pair,
@@ -837,7 +947,7 @@ class AWSInstanceService(BaseInstanceService):
             bdm = None
 
         subnet_id, zone_id, vm_firewall_ids = \
-            self._resolve_launch_options(subnet, zone_name, vm_firewalls)
+            self._resolve_launch_options(subnet_obj, zone_name, vm_firewalls)
 
         placement = {'AvailabilityZone': zone_id} if zone_id else None
         inst = self.svc.create(
@@ -875,12 +985,12 @@ class AWSInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.get",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def get(self, instance_id):
+    def get(self, instance_id: str) -> Instance | None:
         return self.svc.get(instance_id)
 
     @dispatch(event="provider.compute.instances.find",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Instance]:
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -895,14 +1005,15 @@ class AWSInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.list",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Instance]:
         return self.svc.find(
             filters={'availability-zone': self.provider.zone_name},
             limit=limit, marker=marker)
 
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def delete(self, instance):
+    def delete(self, instance: Instance | str) -> None:
         aws_inst = (instance if isinstance(instance, AWSInstance) else
                     self.get(instance))
         if aws_inst:
@@ -912,16 +1023,17 @@ class AWSInstanceService(BaseInstanceService):
 
 class AWSVMTypeService(BaseVMTypeService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSVMTypeService, self).__init__(provider)
 
     @dispatch(event="provider.compute.vm_types.get",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
-    def get(self, vm_type):
+    def get(self, vm_type: str) -> VMType | None:
         try:
-            t = self.provider.ec2_conn.meta.client.describe_instance_types(
+            ec2_conn = cast("AWSCloudProvider", self.provider).ec2_conn
+            t = ec2_conn.meta.client.describe_instance_types(
                 InstanceTypes=[vm_type]).get('InstanceTypes')[0]
-            return AWSVMType(self.provider, t)
+            return AWSVMType(cast("AWSCloudProvider", self.provider), t)
         except ClientError as e:
             if 'InvalidInstanceType' in e.response.get('Error',
                                                        {}).get('Code'):
@@ -931,8 +1043,9 @@ class AWSVMTypeService(BaseVMTypeService):
 
     @dispatch(event="provider.compute.vm_types.list",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit=None, marker=None):
-        client = self.provider.ec2_conn.meta.client
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[VMType]:
+        client = cast("AWSCloudProvider", self.provider).ec2_conn.meta.client
         vmt_list_resp = client.describe_instance_type_offerings(
             LocationType='availability-zone',
             Filters=[{'Name': 'location',
@@ -961,19 +1074,19 @@ class AWSVMTypeService(BaseVMTypeService):
             raw_chunk = client.describe_instance_types(
                 InstanceTypes=chunk).get('InstanceTypes')
             raw_types.extend(raw_chunk)
-        cb_types = [AWSVMType(self.provider, t) for t in raw_types]
+        cb_types = [AWSVMType(cast("AWSCloudProvider", self.provider), t) for t in raw_types]
         return ClientPagedResultList(self.provider, cb_types,
                                      limit=limit, marker=marker)
 
 
 class AWSRegionService(BaseRegionService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSRegionService, self).__init__(provider)
 
     @dispatch(event="provider.compute.regions.get",
               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
-    def get(self, region_id):
+    def get(self, region_id: str) -> Region | None:
         log.debug("Getting AWS Region Service with the id: %s",
                   region_id)
         region = [r for r in self if r.id == region_id]
@@ -984,22 +1097,23 @@ class AWSRegionService(BaseRegionService):
 
     @dispatch(event="provider.compute.regions.list",
               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Region]:
+        ec2_conn = cast("AWSCloudProvider", self.provider).ec2_conn
         regions = [
-            AWSRegion(self.provider, region) for region in
-            self.provider.ec2_conn.meta.client.describe_regions()
-            .get('Regions', [])]
+            AWSRegion(cast("AWSCloudProvider", self.provider), region) for region in
+            ec2_conn.meta.client.describe_regions().get('Regions', [])]
         return ClientPagedResultList(self.provider, regions,
                                      limit=limit, marker=marker)
 
     @property
-    def current(self):
+    def current(self) -> Region | None:
         return self.get(self._provider.region_name)
 
 
 class AWSNetworkingService(BaseNetworkingService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSNetworkingService, self).__init__(provider)
         self._network_service = AWSNetworkService(self.provider)
         self._subnet_service = AWSSubnetService(self.provider)
@@ -1008,47 +1122,49 @@ class AWSNetworkingService(BaseNetworkingService):
         self._floating_ip_service = AWSFloatingIPService(self.provider)
 
     @property
-    def networks(self):
+    def networks(self) -> AWSNetworkService:
         return self._network_service
 
     @property
-    def subnets(self):
+    def subnets(self) -> AWSSubnetService:
         return self._subnet_service
 
     @property
-    def routers(self):
+    def routers(self) -> AWSRouterService:
         return self._router_service
 
     @property
-    def _gateways(self):
+    def _gateways(self) -> AWSGatewayService:
         return self._gateway_service
 
     @property
-    def _floating_ips(self):
+    def _floating_ips(self) -> AWSFloatingIPService:
         return self._floating_ip_service
 
 
 class AWSNetworkService(BaseNetworkService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSNetworkService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSNetwork,
-                                  boto_collection_name='vpcs')
+        self.svc: Any = BotoEC2Service(
+            provider=cast("AWSCloudProvider", self.provider),
+            cb_resource=AWSNetwork,
+            boto_collection_name='vpcs')
 
     @dispatch(event="provider.networking.networks.get",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def get(self, network_id):
+    def get(self, network_id: str) -> Network | None:
         return self.svc.get(network_id)
 
     @dispatch(event="provider.networking.networks.list",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Network]:
         return self.svc.list(limit=limit, marker=marker)
 
     @dispatch(event="provider.networking.networks.find",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Network]:
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -1062,7 +1178,7 @@ class AWSNetworkService(BaseNetworkService):
 
     @dispatch(event="provider.networking.networks.create",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, cidr_block):
+    def create(self, label: str, cidr_block: str) -> Network:
         AWSNetwork.assert_valid_resource_label(label)
         cb_net = self.svc.create('create_vpc', CidrBlock=cidr_block,
                                  TagSpecifications=[
@@ -1078,20 +1194,21 @@ class AWSNetworkService(BaseNetworkService):
                                  ])
         # Wait until ready to tag instance
         cb_net.wait_till_ready()
-        self.provider.ec2_conn.meta.client.modify_vpc_attribute(
-            VpcId=cb_net.id, EnableDnsHostnames={'Value': True})
+        cast("AWSCloudProvider", self.provider).ec2_conn.meta.client \
+            .modify_vpc_attribute(
+                VpcId=cb_net.id, EnableDnsHostnames={'Value': True})
         return cb_net
 
     @dispatch(event="provider.networking.networks.delete",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def delete(self, network):
+    def delete(self, network: Network | str) -> None:
         network = (network if isinstance(network, AWSNetwork)
                    else self.get(network))
         if network:
             # pylint:disable=protected-access
             network._vpc.delete()
 
-    def get_or_create_default(self):
+    def get_or_create_default(self) -> Network:
         # # Look for provided default network
         # for net in self.provider.networking.networks:
         # pylint:disable=protected-access
@@ -1114,20 +1231,23 @@ class AWSNetworkService(BaseNetworkService):
 
 class AWSSubnetService(BaseSubnetService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSSubnetService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSSubnet,
-                                  boto_collection_name='subnets')
+        self.svc: Any = BotoEC2Service(
+            provider=cast("AWSCloudProvider", self.provider),
+            cb_resource=AWSSubnet,
+            boto_collection_name='subnets')
 
     @dispatch(event="provider.networking.subnets.get",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def get(self, subnet_id):
+    def get(self, subnet_id: str) -> Subnet | None:
         return self.svc.get(subnet_id)
 
     @dispatch(event="provider.networking.subnets.list",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def list(self, network=None, limit=None, marker=None):
+    def list(self, network: Network | str | None = None,
+             limit: int | None = None,
+             marker: str | None = None) -> ResultList[Subnet]:
         network_id = network.id if isinstance(network, AWSNetwork) else network
         if network_id:
             return self.svc.find(
@@ -1141,7 +1261,8 @@ class AWSSubnetService(BaseSubnetService):
 
     @dispatch(event="provider.networking.subnets.find",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def find(self, network=None, **kwargs):
+    def find(self, network: Network | None = None,
+             **kwargs: Any) -> ResultList[Subnet]:
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -1157,7 +1278,8 @@ class AWSSubnetService(BaseSubnetService):
 
     @dispatch(event="provider.networking.subnets.create",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, network, cidr_block):
+    def create(self, label: str, network: Network | str,
+               cidr_block: str) -> Subnet:
         AWSSubnet.assert_valid_resource_label(label)
         zone_name = self.provider.zone_name
 
@@ -1183,13 +1305,16 @@ class AWSSubnetService(BaseSubnetService):
 
     @dispatch(event="provider.networking.subnets.delete",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def delete(self, subnet):
+    def delete(self, subnet: Subnet | str) -> None:
         sn = subnet if isinstance(subnet, AWSSubnet) else self.get(subnet)
         if sn:
             # pylint:disable=protected-access
             sn._subnet.delete()
 
-    def get_or_create_default(self):
+    # The base declares -> Subnet, but this impl can return None when no
+    # matching zone is found for the configured availability zone.
+    def get_or_create_default(  # type: ignore[override]
+            self) -> Subnet | None:
         zone_name = self.provider.zone_name
 
         # # Look for provider default subnet in current zone
@@ -1230,7 +1355,8 @@ class AWSSubnetService(BaseSubnetService):
         # Internet connectivity.
 
         # Check if a default net already exists and get it or create on
-        default_net = self.provider.networking.networks.get_or_create_default()
+        default_net = cast(
+            Any, self.provider.networking.networks).get_or_create_default()
 
         # Get/create an internet gateway for the default network and a
         # corresponding router if it does not already exist.
@@ -1252,7 +1378,9 @@ class AWSSubnetService(BaseSubnetService):
         #     default_router = default_routers[0]
 
         # Create a subnet in each of the region's zones
-        region = self.provider.compute.regions.get(self.provider.region_name)
+        region = cast(
+            Region, self.provider.compute.regions.get(
+                self.provider.region_name))
         default_sn = None
 
         # Determine how many subnets we'll need for the default network and the
@@ -1267,7 +1395,7 @@ class AWSSubnetService(BaseSubnetService):
         # more potential subnets than any region has zones.
         ip_net = ipaddress.ip_network(AWSNetwork.CB_DEFAULT_IPV4RANGE)
         for x in range(5):
-            if len(region.zones) <= len(list(ip_net.subnets(
+            if len(list(region.zones)) <= len(list(ip_net.subnets(
                     prefixlen_diff=x))):
                 prefixlen_diff = x
                 break
@@ -1290,20 +1418,21 @@ class AWSSubnetService(BaseSubnetService):
 class AWSRouterService(BaseRouterService):
     """For AWS, a CloudBridge router corresponds to an AWS Route Table."""
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSRouterService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSRouter,
-                                  boto_collection_name='route_tables')
+        self.svc: Any = BotoEC2Service(
+            provider=cast("AWSCloudProvider", self.provider),
+            cb_resource=AWSRouter,
+            boto_collection_name='route_tables')
 
     @dispatch(event="provider.networking.routers.get",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def get(self, router_id):
+    def get(self, router_id: str) -> Router | None:
         return self.svc.get(router_id)
 
     @dispatch(event="provider.networking.routers.find",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[Router]:
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -1317,12 +1446,13 @@ class AWSRouterService(BaseRouterService):
 
     @dispatch(event="provider.networking.routers.list",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[Router]:
         return self.svc.list(limit=limit, marker=marker)
 
     @dispatch(event="provider.networking.routers.create",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, network):
+    def create(self, label: str, network: Network | str) -> Router:
         network_id = network.id if isinstance(network, AWSNetwork) else network
 
         cb_router = self.svc.create('create_route_table', VpcId=network_id,
@@ -1342,7 +1472,7 @@ class AWSRouterService(BaseRouterService):
 
     @dispatch(event="provider.networking.routers.delete",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def delete(self, router):
+    def delete(self, router: Router | str) -> None:
         r = router if isinstance(router, AWSRouter) else self.get(router)
         if r:
             # pylint:disable=protected-access
@@ -1351,15 +1481,16 @@ class AWSRouterService(BaseRouterService):
 
 class AWSGatewayService(BaseGatewayService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSGatewayService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=provider,
-                                  cb_resource=AWSInternetGateway,
-                                  boto_collection_name='internet_gateways')
+        self.svc: Any = BotoEC2Service(
+            provider=cast("AWSCloudProvider", provider),
+            cb_resource=AWSInternetGateway,
+            boto_collection_name='internet_gateways')
 
     @dispatch(event="provider.networking.gateways.get_or_create",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
-    def get_or_create(self, network):
+    def get_or_create(self, network: Network | str) -> InternetGateway:
         network_id = network.id if isinstance(
             network, AWSNetwork) else network
         # Don't filter by label because it may conflict with at least the
@@ -1387,7 +1518,7 @@ class AWSGatewayService(BaseGatewayService):
 
     @dispatch(event="provider.networking.gateways.delete",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
-    def delete(self, network, gateway):
+    def delete(self, network: Network | str, gateway: Gateway) -> None:
         gw = (gateway if isinstance(gateway, AWSInternetGateway)
               else self.svc.get(gateway))
         try:
@@ -1395,51 +1526,57 @@ class AWSGatewayService(BaseGatewayService):
                 # pylint:disable=protected-access
                 gw._gateway.detach_from_vpc(VpcId=gw.network_id)
         except ClientError as e:
-            log.warn("Error deleting gateway {0}: {1}".format(self.id, e))
+            # NB: self.id is a pre-existing latent bug (a service has no id);
+            # preserved as-is for this typing pass. Only runs on an error path.
+            log.warn("Error deleting gateway {0}: {1}".format(
+                self.id, e))  # type: ignore[attr-defined]
         # pylint:disable=protected-access
         gw._gateway.delete()
 
     @dispatch(event="provider.networking.gateways.list",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
-    def list(self, network, limit=None, marker=None):
+    def list(self, network: Network | str, limit: int | None = None,
+             marker: str | None = None) -> ResultList[InternetGateway]:
         log.debug("Listing current AWS internet gateways for net %s.",
-                  network.id)
-        fltr = [{'Name': 'attachment.vpc-id', 'Values': [network.id]}]
+                  cast(Any, network).id)
+        fltr = [{'Name': 'attachment.vpc-id', 'Values': [cast(Any, network).id]}]
         return self.svc.list(limit=None, marker=None, Filters=fltr)
 
 
 class AWSFloatingIPService(BaseFloatingIPService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSFloatingIPService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSFloatingIP,
-                                  boto_collection_name='vpc_addresses')
+        self.svc: Any = BotoEC2Service(
+            provider=cast("AWSCloudProvider", self.provider),
+            cb_resource=AWSFloatingIP,
+            boto_collection_name='vpc_addresses')
 
     @dispatch(event="provider.networking.floating_ips.get",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
-    def get(self, gateway, fip_id):
+    def get(self, gateway: Gateway, fip_id: str) -> FloatingIP | None:
         log.debug("Getting AWS Floating IP Service with the id: %s", fip_id)
         return self.svc.get(fip_id)
 
     @dispatch(event="provider.networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
-    def list(self, gateway, limit=None, marker=None):
+    def list(self, gateway: Gateway, limit: int | None = None,
+             marker: str | None = None) -> ResultList[FloatingIP]:
         return self.svc.list(limit, marker)
 
     @dispatch(event="provider.networking.floating_ips.create",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
-    def create(self, gateway):
+    def create(self, gateway: Gateway) -> FloatingIP:
         log.debug("Creating a floating IP under gateway %s", gateway)
-        ip = self.provider.ec2_conn.meta.client.allocate_address(
-            Domain='vpc')
+        aws_provider = cast("AWSCloudProvider", self.provider)
+        ec2_conn = aws_provider.ec2_conn
+        ip = ec2_conn.meta.client.allocate_address(Domain='vpc')
         return AWSFloatingIP(
-            self.provider,
-            self.provider.ec2_conn.VpcAddress(ip.get('AllocationId')))
+            aws_provider, ec2_conn.VpcAddress(ip.get('AllocationId')))
 
     @dispatch(event="provider.networking.floating_ips.delete",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
-    def delete(self, gateway, fip):
+    def delete(self, gateway: Gateway, fip: FloatingIP | str) -> None:
         if isinstance(fip, AWSFloatingIP):
             # pylint:disable=protected-access
             aws_fip = fip._ip
@@ -1450,37 +1587,39 @@ class AWSFloatingIPService(BaseFloatingIPService):
 
 class AWSDnsService(BaseDnsService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSDnsService, self).__init__(provider)
-        self.client = self._provider.session.client(
-            'route53', region_name=self._provider.region_name)
+        aws_provider = cast("AWSCloudProvider", self._provider)
+        self.client = aws_provider.session.client(
+            'route53', region_name=aws_provider.region_name)
 
         # Initialize provider services
         self._zone_svc = AWSDnsZoneService(self.provider)
         self._record_svc = AWSDnsRecordService(self.provider)
 
     @property
-    def host_zones(self):
+    def host_zones(self) -> AWSDnsZoneService:
         return self._zone_svc
 
     @property
-    def _records(self):
+    def _records(self) -> AWSDnsRecordService:
         return self._record_svc
 
 
 class AWSDnsZoneService(BaseDnsZoneService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSDnsZoneService, self).__init__(provider)
 
     @dispatch(event="provider.dns.host_zones.get",
               priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
-    def get(self, dns_zone_id):
+    def get(self, dns_zone_id: str) -> DnsZone | None:
+        client = cast(AWSDnsService, self.provider.dns).client
         try:
-            dns_zone = self.provider.dns.client.get_hosted_zone(
+            dns_zone = client.get_hosted_zone(
                 Id=AWSDnsZone.unescape_zone_id(dns_zone_id))
-            return AWSDnsZone(self.provider, dns_zone.get('HostedZone'))
-        except self.provider.dns.client.exceptions.NoSuchHostedZone:
+            return AWSDnsZone(cast("AWSCloudProvider", self.provider), dns_zone.get('HostedZone'))
+        except client.exceptions.NoSuchHostedZone:
             return None
         except ClientError as exc:
             error_code = exc.response['Error']['Code']
@@ -1493,10 +1632,12 @@ class AWSDnsZoneService(BaseDnsZoneService):
 
     @dispatch(event="provider.dns.host_zones.list",
               priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit=None, marker=None):
-        response = self.provider.dns.client.list_hosted_zones(
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[DnsZone]:
+        client = cast(AWSDnsService, self.provider.dns).client
+        response = client.list_hosted_zones(
             **trim_empty_params({'MaxItems': limit, 'Marker': marker}))
-        cb_objs = [AWSDnsZone(self.provider, zone)
+        cb_objs = [AWSDnsZone(cast("AWSCloudProvider", self.provider), zone)
                    for zone in response.get('HostedZones')]
         return ServerPagedResultList(is_truncated=response.get('IsTruncated'),
                                      marker=response.get('NextMarker'),
@@ -1505,49 +1646,55 @@ class AWSDnsZoneService(BaseDnsZoneService):
 
     @dispatch(event="provider.dns.host_zones.find",
               priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
-    def find(self, **kwargs):
+    def find(self, **kwargs: Any) -> ResultList[DnsZone]:
         filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, self)
+        matches = cb_helpers.generic_find(filters, kwargs, list(self))
         return ClientPagedResultList(self.provider, list(matches),
                                      limit=None, marker=None)
 
     @dispatch(event="provider.dns.host_zones.create",
               priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
-    def create(self, name, admin_email):
+    def create(self, name: str, admin_email: str) -> DnsZone:
         AWSDnsZone.assert_valid_resource_name(name)
 
-        response = self.provider.dns.client.create_hosted_zone(
+        client = cast(AWSDnsService, self.provider.dns).client
+        response = client.create_hosted_zone(
             Name=name, CallerReference=uuid.uuid4().hex,
             HostedZoneConfig={
                 'Comment': 'admin_email=' + admin_email
             }
         )
-        return AWSDnsZone(self.provider, response.get('HostedZone'))
+        return AWSDnsZone(cast("AWSCloudProvider", self.provider), response.get('HostedZone'))
 
     @dispatch(event="provider.dns.host_zones.delete",
               priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
-    def delete(self, dns_zone):
+    def delete(self, dns_zone: DnsZone | str) -> None:
         dns_zone = (dns_zone if isinstance(dns_zone, AWSDnsZone)
                     else self.get(dns_zone))
         if dns_zone:
-            self.provider.dns.client.delete_hosted_zone(Id=dns_zone.aws_id)
+            client = cast(AWSDnsService, self.provider.dns).client
+            client.delete_hosted_zone(Id=dns_zone.aws_id)
 
 
 class AWSDnsRecordService(BaseDnsRecordService):
 
-    def __init__(self, provider):
+    def __init__(self, provider: CloudProvider) -> None:
         super(AWSDnsRecordService, self).__init__(provider)
 
-    def get(self, dns_zone, rec_id):
+    def get(self, dns_zone: DnsZone | str,
+            rec_id: str) -> DnsRecord | None:
         try:
             if rec_id and ":" in rec_id:
                 rec_name, rec_type = rec_id.split(":")
-                response = self.provider.dns.client.list_resource_record_sets(
-                    HostedZoneId=dns_zone.aws_id,
+                client = cast(AWSDnsService, self.provider.dns).client
+                response = client.list_resource_record_sets(
+                    HostedZoneId=cast(Any, dns_zone).aws_id,
                     StartRecordName=rec_name,
                     StartRecordType=rec_type)
-                return AWSDnsRecord(self.provider, dns_zone,
-                                    response.get('ResourceRecordSets')[0])
+                return AWSDnsRecord(
+                    cast("AWSCloudProvider", self.provider),
+                    cast("AWSDnsZone", dns_zone),
+                    response.get('ResourceRecordSets')[0])
             else:
                 return None
         except ClientError as exc:
@@ -1559,28 +1706,36 @@ class AWSDnsRecordService(BaseDnsRecordService):
             else:
                 raise exc
 
-    def list(self, dns_zone, limit=None, marker=None):
-        response = self.provider.dns.client.list_resource_record_sets(
+    def list(self,  # type: ignore[override]
+             dns_zone: DnsZone | str, limit: int | None = None,
+             marker: str | None = None) -> ResultList[DnsRecord]:
+        client = cast(AWSDnsService, self.provider.dns).client
+        response = client.list_resource_record_sets(
             **trim_empty_params({
-                'HostedZoneId': dns_zone.aws_id,
+                'HostedZoneId': cast(Any, dns_zone).aws_id,
                 'MaxItems': limit,
                 'StartRecordIdentifier': marker
             })
         )
-        cb_objs = [AWSDnsRecord(self.provider, dns_zone, rec)
+        cb_objs = [AWSDnsRecord(cast("AWSCloudProvider", self.provider),
+                                cast("AWSDnsZone", dns_zone), rec)
                    for rec in response.get('ResourceRecordSets')]
         return ServerPagedResultList(
             is_truncated=response.get('IsTruncated'),
             marker=response.get('NextRecordIdentifier'),
             supports_total=False, data=cb_objs)
 
-    def find(self, dns_zone, **kwargs):
+    def find(self, dns_zone: DnsZone | str,
+             **kwargs: Any) -> ResultList[DnsRecord]:
         filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, dns_zone.records)
+        matches = cb_helpers.generic_find(filters, kwargs,
+                                          cast(Any, dns_zone).records)
         return ClientPagedResultList(self.provider, list(matches),
                                      limit=None, marker=None)
 
-    def _to_resource_records(self, data, rec_type):
+    def _to_resource_records(self, data: str | builtins.list[str],
+                             rec_type: str
+                             ) -> builtins.list[dict[str, str]]:
         if isinstance(data, list):
             records = data
         else:
@@ -1588,11 +1743,13 @@ class AWSDnsRecordService(BaseDnsRecordService):
         return [{'Value': self._standardize_record(r, rec_type)}
                 for r in records]
 
-    def create(self, dns_zone, name, type, data, ttl=None):
+    def create(self, dns_zone: DnsZone | str, name: str, type: str,
+               data: str, ttl: int | None = None) -> DnsRecord:
         AWSDnsRecord.assert_valid_resource_name(name)
 
-        response = self.provider.dns.client.change_resource_record_sets(
-            HostedZoneId=dns_zone.aws_id,
+        client = cast(AWSDnsService, self.provider.dns).client
+        response = client.change_resource_record_sets(
+            HostedZoneId=cast(Any, dns_zone).aws_id,
             ChangeBatch={
                 'Changes': [{
                     'Action': 'CREATE',
@@ -1608,33 +1765,34 @@ class AWSDnsRecordService(BaseDnsRecordService):
         )
         # FIXME: Since Moto's implementation of route53 doesn't support
         # waiting, this is skipped for mock tests.
-        if not self.provider.PROVIDER_ID == 'mock':
-            waiter = self.provider.dns.client.get_waiter(
-                'resource_record_sets_changed')
+        if not cast("AWSCloudProvider", self.provider).PROVIDER_ID == 'mock':
+            waiter = client.get_waiter('resource_record_sets_changed')
             waiter.wait(Id=response.get('ChangeInfo').get('Id'))
-        return self.get(dns_zone, name + ":" + type)
+        return cast(DnsRecord, self.get(dns_zone, name + ":" + type))
 
-    def delete(self, dns_zone, record):
-        rec_id = record.id if isinstance(record, AWSDnsRecord) else record
+    def delete(self, dns_zone: DnsZone | str,
+               record: DnsRecord | str) -> None:
+        rec_id = cast(
+            str, record.id if isinstance(record, AWSDnsRecord) else record)
 
         rec_name, rec_type = rec_id.split(":")
-        response = self.provider.dns.client.change_resource_record_sets(
-            HostedZoneId=dns_zone.aws_id,
+        client = cast(AWSDnsService, self.provider.dns).client
+        response = client.change_resource_record_sets(
+            HostedZoneId=cast(Any, dns_zone).aws_id,
             ChangeBatch={
                 'Changes': [{
                     'Action': 'DELETE',
                     'ResourceRecordSet': {
                         'Name': rec_name,
                         'Type': rec_type,
-                        'TTL': record.ttl,
+                        'TTL': cast(Any, record).ttl,
                         'ResourceRecords': self._to_resource_records(
-                            record.data, rec_type)
+                            cast(Any, record).data, rec_type)
                     }
                 }]
             })
         # FIXME: Since Moto's implementation of route53 doesn't support
         # waiting, this is skipped for mock tests.
-        if not self.provider.PROVIDER_ID == 'mock':
-            waiter = self.provider.dns.client.get_waiter(
-                'resource_record_sets_changed')
+        if not cast("AWSCloudProvider", self.provider).PROVIDER_ID == 'mock':
+            waiter = client.get_waiter('resource_record_sets_changed')
             waiter.wait(Id=response.get('ChangeInfo').get('Id'))
