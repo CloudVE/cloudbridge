@@ -691,7 +691,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def key_pair_id(self) -> str:
+    def key_pair_id(self) -> str | None:
         """
         Get the id of the key pair associated with this instance.
 
@@ -1268,7 +1268,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractproperty
-    def subnets(self) -> list[Subnet]:
+    def subnets(self) -> Iterable[Subnet]:
         """
         List of subnets attached to this router.
 
@@ -1490,7 +1490,7 @@ class AttachmentInfo(object):
         pass
 
     @abstractproperty
-    def device(self) -> str:
+    def device(self) -> str | None:
         """
         Get the device the volume is mapped as.
 
@@ -2082,7 +2082,7 @@ class VMFirewallRule(CloudResource):
         pass
 
     @abstractproperty
-    def protocol(self) -> str:
+    def protocol(self) -> str | None:
         """
         IP protocol used. Either ``tcp`` | ``udp`` | ``icmp``.
 

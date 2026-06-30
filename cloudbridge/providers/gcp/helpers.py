@@ -3,6 +3,10 @@ import collections
 import datetime
 import hashlib
 import re
+from typing import Any
+from typing import Callable
+from typing import Iterator
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from googleapiclient.errors import HttpError
@@ -11,12 +15,15 @@ import tenacity
 
 from cloudbridge.interfaces.exceptions import ProviderInternalException
 
+if TYPE_CHECKING:
+    from .provider import GCPCloudProvider
 
-def gcp_projects(provider):
+
+def gcp_projects(provider: "GCPCloudProvider") -> Any:
     return provider.gcp_compute.projects()
 
 
-def iter_all(resource, **kwargs):
+def iter_all(resource: Any, **kwargs: Any) -> Iterator[Any]:
     token = None
     while True:
         response = resource.list(pageToken=token, **kwargs).execute()
@@ -27,7 +34,7 @@ def iter_all(resource, **kwargs):
         token = response['nextPageToken']
 
 
-def get_common_metadata(provider):
+def get_common_metadata(provider: "GCPCloudProvider") -> Any:
     """
     Get a project's commonInstanceMetadata entry
     """
@@ -36,7 +43,7 @@ def get_common_metadata(provider):
     return metadata["commonInstanceMetadata"]
 
 
-def __if_fingerprint_differs(e):
+def __if_fingerprint_differs(e: BaseException) -> bool:
     # return True if the CloudError exception is due to subnet being in use
     if isinstance(e, HttpError):
         expected_message = 'Supplied fingerprint does not match current ' \
@@ -50,7 +57,8 @@ def __if_fingerprint_differs(e):
                 retry=tenacity.retry_if_exception(__if_fingerprint_differs),
                 wait=tenacity.wait_exponential(max=10),
                 reraise=True)
-def gcp_metadata_save_op(provider, callback):
+def gcp_metadata_save_op(provider: "GCPCloudProvider",
+                         callback: Callable[[Any], Any]) -> None:
     """
     Carries out a metadata save operation. In GCP, a fingerprint based
     locking mechanism is used to prevent lost updates. A new fingerprint
@@ -59,7 +67,7 @@ def gcp_metadata_save_op(provider, callback):
     metadata, and saves the metadata using the original fingerprint
     immediately afterwards, ensuring that update conflicts can be detected.
     """
-    def _save_common_metadata(provider):
+    def _save_common_metadata(provider: "GCPCloudProvider") -> None:
         # get the latest metadata (so we get the latest fingerprint)
         metadata = get_common_metadata(provider)
         # allow callback to do processing on it
@@ -73,8 +81,9 @@ def gcp_metadata_save_op(provider, callback):
     _save_common_metadata(provider)
 
 
-def modify_or_add_metadata_item(provider, key, value):
-    def _update_metadata_key(metadata):
+def modify_or_add_metadata_item(provider: "GCPCloudProvider", key: str,
+                                value: str) -> None:
+    def _update_metadata_key(metadata: Any) -> None:
         entries = [item for item in metadata.get('items', [])
                    if item['key'] == key]
         if entries:
@@ -92,8 +101,9 @@ def modify_or_add_metadata_item(provider, key, value):
 # This function will raise an HttpError with message containing
 # "Metadata has duplicate key" if it's not unique, unlike the previous
 # method which either adds or updates the value corresponding to that key
-def add_metadata_item(provider, key, value):
-    def _add_metadata_key(metadata):
+def add_metadata_item(provider: "GCPCloudProvider", key: str,
+                      value: str) -> None:
+    def _add_metadata_key(metadata: Any) -> None:
         entry = {'key': key, 'value': value}
         entries = metadata.get('items', [])
         entries.append(entry)
@@ -104,7 +114,9 @@ def add_metadata_item(provider, key, value):
     gcp_metadata_save_op(provider, _add_metadata_key)
 
 
-def find_matching_metadata_items(provider, key_regex):
+def find_matching_metadata_items(provider: "GCPCloudProvider",
+                                 key_regex: str | re.Pattern[str]
+                                 ) -> list[Any]:
     metadata = get_common_metadata(provider)
     items = metadata.get('items', [])
     if not items:
@@ -113,7 +125,7 @@ def find_matching_metadata_items(provider, key_regex):
             if re.search(key_regex, item['key'])]
 
 
-def get_metadata_item_value(provider, key):
+def get_metadata_item_value(provider: "GCPCloudProvider", key: str) -> Any:
     metadata = get_common_metadata(provider)
     entries = [item['value'] for item in metadata.get('items', [])
                if item['key'] == key]
@@ -123,8 +135,8 @@ def get_metadata_item_value(provider, key):
         return None
 
 
-def remove_metadata_item(provider, key):
-    def _remove_metadata_by_key(metadata):
+def remove_metadata_item(provider: "GCPCloudProvider", key: str) -> bool:
+    def _remove_metadata_by_key(metadata: Any) -> bool | None:
         items = metadata.get('items', [])
         # No metadata to delete
         if not items:
@@ -144,12 +156,13 @@ def remove_metadata_item(provider, key):
 
             else:
                 metadata['items'] = entries
+                return None
 
     gcp_metadata_save_op(provider, _remove_metadata_by_key)
     return True
 
 
-def __if_label_fingerprint_differs(e):
+def __if_label_fingerprint_differs(e: BaseException) -> bool:
     # return True if the CloudError exception is due to subnet being in use
     if isinstance(e, HttpError):
         expected_message = 'Labels fingerprint either invalid or ' \
@@ -164,7 +177,8 @@ def __if_label_fingerprint_differs(e):
                     __if_label_fingerprint_differs),
                 wait=tenacity.wait_exponential(max=10),
                 reraise=True)
-def change_label(resource, key, value, res_att, request):
+def change_label(resource: Any, key: str, value: str, res_att: str,
+                 request: Any) -> None:
     resource.assert_valid_resource_label(value)
     labels = getattr(resource, res_att).get("labels", {})
     labels[key] = str(value)
@@ -188,9 +202,11 @@ def change_label(resource, key, value, res_att, request):
 
 
 # https://cloud.google.com/storage/docs/access-control/signing-urls-manually#python-sample
-def generate_signed_url(credentials, bucket_name, object_name,
-                        subresource=None, expiration=604800, http_method='GET',
-                        query_parameters=None, headers=None):
+def generate_signed_url(credentials: Any, bucket_name: str, object_name: str,
+                        subresource: str | None = None,
+                        expiration: int = 604800, http_method: str = 'GET',
+                        query_parameters: dict[str, Any] | None = None,
+                        headers: dict[str, str] | None = None) -> str:
 
     if expiration > 604800:
         # max allowed expiration time is 7 days

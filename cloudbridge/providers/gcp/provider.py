@@ -8,8 +8,13 @@ import os
 import re
 import time
 from string import Template
+from typing import Any
+from typing import Callable
 
 import google.auth
+from google.auth.credentials import with_scopes_if_required
+from google.oauth2.service_account import Credentials
+
 import google_auth_httplib2
 
 import googleapiclient
@@ -17,12 +22,13 @@ from googleapiclient import discovery
 
 import httplib2
 
-from google.auth.credentials import with_scopes_if_required
-
-from google.oauth2.service_account import Credentials
-
 from cloudbridge.base import BaseCloudProvider
 from cloudbridge.interfaces.exceptions import ProviderConnectionException
+from cloudbridge.interfaces.services import ComputeService
+from cloudbridge.interfaces.services import DnsService
+from cloudbridge.interfaces.services import NetworkingService
+from cloudbridge.interfaces.services import SecurityService
+from cloudbridge.interfaces.services import StorageService
 
 from .services import GCPComputeService
 from .services import GCPDnsService
@@ -37,12 +43,12 @@ CLOUD_SCOPES = ['https://www.googleapis.com/auth/cloud-platform']
 
 class GCPResourceUrl(object):
 
-    def __init__(self, resource, connection):
+    def __init__(self, resource: str, connection: Any) -> None:
         self._resource = resource
         self._connection = connection
-        self.parameters = {}
+        self.parameters: dict[str, Any] = {}
 
-    def get_resource(self):
+    def get_resource(self) -> Any:
         """
         The format of the returned resource is explained in details in
         https://cloud.google.com/compute/docs/reference/latest/ and
@@ -71,7 +77,7 @@ class GCPResourceUrl(object):
 
 class GCPResources(object):
 
-    def __init__(self, connection, **kwargs):
+    def __init__(self, connection: Any, **kwargs: Any) -> None:
         self._connection = connection
         self._parameter_defaults = kwargs
 
@@ -116,7 +122,7 @@ class GCPResources(object):
         self.RESOURCE_REGEX = re.compile(
             r"(https://.*\.googleapis\.com/{0})(.*)".format(
                 desc['servicePath']))
-        self._resources = {}
+        self._resources: dict[str, dict[str, Any]] = {}
 
         # We will not mutate self._desc; it's OK to use items() in Python 2.x.
         for resource, resource_desc in desc['resources'].items():
@@ -149,7 +155,7 @@ class GCPResources(object):
             self._resources[resource] = {'parameters': parameters,
                                          'pattern': re.compile(pattern)}
 
-    def parse_url(self, url):
+    def parse_url(self, url: str) -> "GCPResourceUrl | None":
         """
         Build a GCPResourceUrl from a resource's URL string. One can then call
         the get() method on the returned object to fetch resource details from
@@ -180,8 +186,11 @@ class GCPResources(object):
             for index, parameter in enumerate(desc['parameters']):
                 out.parameters[parameter] = m.group(index + 1)
             return out
+        return None
 
-    def get_resource_url_with_default(self, resource, url_or_name, **kwargs):
+    def get_resource_url_with_default(
+            self, resource: str, url_or_name: str,
+            **kwargs: Any) -> "GCPResourceUrl | None":
         """
         Build a GCPResourceUrl from a service's name and resource url or name.
         If the url_or_name is a valid GCP resource URL, then we build the
@@ -210,7 +219,7 @@ class GCPResources(object):
 class GCPCloudProvider(BaseCloudProvider):
     PROVIDER_ID = 'gcp'
 
-    def __init__(self, config):
+    def __init__(self, config: dict[str, Any]) -> None:
         super(GCPCloudProvider, self).__init__(config)
 
         # Disable warnings about file_cache not being available when using
@@ -248,12 +257,12 @@ class GCPCloudProvider(BaseCloudProvider):
             self.project_name = os.environ.get('GCP_PROJECT_NAME')
 
         # service connections, lazily initialized
-        self._gcp_compute = None
-        self._gcp_storage = None
-        self._gcp_dns = None
-        self._compute_resources_cache = None
-        self._storage_resources_cache = None
-        self._dns_resources_cache = None
+        self._gcp_compute: Any = None
+        self._gcp_storage: Any = None
+        self._gcp_dns: Any = None
+        self._compute_resources_cache: GCPResources | None = None
+        self._storage_resources_cache: GCPResources | None = None
+        self._dns_resources_cache: GCPResources | None = None
 
         # Initialize provider services
         self._compute = GCPComputeService(self)
@@ -265,49 +274,49 @@ class GCPCloudProvider(BaseCloudProvider):
     # Override base class implementation because it will cause
     # an infinite loop
     @property
-    def zone_name(self):
+    def zone_name(self) -> str | None:
         return self._zone_name
 
     @property
-    def compute(self):
+    def compute(self) -> ComputeService:
         return self._compute
 
     @property
-    def networking(self):
+    def networking(self) -> NetworkingService:
         return self._networking
 
     @property
-    def security(self):
+    def security(self) -> SecurityService:
         return self._security
 
     @property
-    def storage(self):
+    def storage(self) -> StorageService:
         return self._storage
 
     @property
-    def dns(self):
+    def dns(self) -> DnsService:
         return self._dns
 
     @property
-    def gcp_compute(self):
+    def gcp_compute(self) -> Any:
         if not self._gcp_compute:
             self._gcp_compute = self._connect_gcp_compute()
         return self._gcp_compute
 
     @property
-    def gcp_storage(self):
+    def gcp_storage(self) -> Any:
         if not self._gcp_storage:
             self._gcp_storage = self._connect_gcp_storage()
         return self._gcp_storage
 
     @property
-    def gcp_dns(self):
+    def gcp_dns(self) -> Any:
         if not self._gcp_dns:
             self._gcp_dns = self._connect_gcp_dns()
         return self._gcp_dns
 
     @property
-    def _compute_resources(self):
+    def _compute_resources(self) -> GCPResources:
         if not self._compute_resources_cache:
             self._compute_resources_cache = GCPResources(
                 self.gcp_compute,
@@ -317,13 +326,13 @@ class GCPCloudProvider(BaseCloudProvider):
         return self._compute_resources_cache
 
     @property
-    def _storage_resources(self):
+    def _storage_resources(self) -> GCPResources:
         if not self._storage_resources_cache:
             self._storage_resources_cache = GCPResources(self.gcp_storage)
         return self._storage_resources_cache
 
     @property
-    def _dns_resources(self):
+    def _dns_resources(self) -> GCPResources:
         if not self._dns_resources_cache:
             self._dns_resources_cache = GCPResources(
                 self.gcp_dns,
@@ -331,7 +340,7 @@ class GCPCloudProvider(BaseCloudProvider):
         return self._dns_resources_cache
 
     @property
-    def _credentials(self):
+    def _credentials(self) -> Any:
         if not self.credentials_obj:
             if self.credentials_dict:
                 self.credentials_obj = Credentials.from_service_account_info(
@@ -341,42 +350,43 @@ class GCPCloudProvider(BaseCloudProvider):
         return self.credentials_obj
 
     @property
-    def client_id(self):
+    def client_id(self) -> str:
         return self._credentials.service_account_email
 
-    def _get_build_request(self):
+    def _get_build_request(self) -> Callable[..., Any]:
         credentials = with_scopes_if_required(
             self._credentials, list(CLOUD_SCOPES))
 
         # FROM: https://github.com/googleapis/google-api-python-client/blob/
         # master/docs/thread_safety.md
         # Create a new Http() object for every request
-        def build_request(http, *args, **kwargs):
+        def build_request(http: Any, *args: Any, **kwargs: Any) -> Any:
             new_http = google_auth_httplib2.AuthorizedHttp(
                 credentials, http=httplib2.Http())
             return googleapiclient.http.HttpRequest(new_http, *args, **kwargs)
 
         return build_request
 
-    def _connect_gcp_storage(self):
+    def _connect_gcp_storage(self) -> Any:
         return discovery.build('storage', 'v1', credentials=self._credentials,
                                cache_discovery=False,
                                requestBuilder=self._get_build_request()
                                )
 
-    def _connect_gcp_compute(self):
+    def _connect_gcp_compute(self) -> Any:
         return discovery.build('compute', 'v1', credentials=self._credentials,
                                cache_discovery=False,
                                requestBuilder=self._get_build_request()
                                )
 
-    def _connect_gcp_dns(self):
+    def _connect_gcp_dns(self) -> Any:
         return discovery.build('dns', 'v1', credentials=self._credentials,
                                cache_discovery=False,
                                requestBuilder=self._get_build_request()
                                )
 
-    def wait_for_operation(self, operation, region=None, zone=None):
+    def wait_for_operation(self, operation: Any, region: str | None = None,
+                           zone: str | None = None) -> Any:
         args = {'project': self.project_name, 'operation': operation['name']}
         if not region and not zone:
             operations = self.gcp_compute.globalOperations()
@@ -396,11 +406,12 @@ class GCPCloudProvider(BaseCloudProvider):
 
             time.sleep(0.5)
 
-    def parse_url(self, url):
+    def parse_url(self, url: str) -> "GCPResourceUrl | None":
         out = self._compute_resources.parse_url(url)
         return out if out else self._storage_resources.parse_url(url)
 
-    def get_resource(self, resource, url_or_name, **kwargs):
+    def get_resource(self, resource: str, url_or_name: str,
+                     **kwargs: Any) -> Any:
         if not url_or_name:
             return None
         resource_url = (
@@ -424,7 +435,7 @@ class GCPCloudProvider(BaseCloudProvider):
             else:
                 raise
 
-    def authenticate(self):
+    def authenticate(self) -> bool:
         try:
             self.gcp_compute
             return True

@@ -468,7 +468,8 @@ class BaseMachineImage(
 
 class BaseAttachmentInfo(AttachmentInfo):
 
-    def __init__(self, volume: Volume, instance_id: str, device: str) -> None:
+    def __init__(self, volume: Volume, instance_id: str,
+                 device: str | None) -> None:
         self._volume = volume
         self._instance_id = instance_id
         self._device = device
@@ -482,7 +483,7 @@ class BaseAttachmentInfo(AttachmentInfo):
         return self._instance_id
 
     @property
-    def device(self) -> str:
+    def device(self) -> str | None:
         return self._device
 
 

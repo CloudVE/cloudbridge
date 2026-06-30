@@ -152,6 +152,7 @@ module = [
     "cloudbridge.providers.aws.*",
     "cloudbridge.providers.mock.*",
     "cloudbridge.providers.openstack.*",
+    "cloudbridge.providers.gcp.*",
 ]
 ignore_errors = false
 warn_return_any = false
