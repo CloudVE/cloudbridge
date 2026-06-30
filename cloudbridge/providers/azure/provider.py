@@ -1,5 +1,6 @@
 import logging
 import uuid
+from typing import Any
 
 from azure.core.exceptions import HttpResponseError
 from azure.core.exceptions import ResourceNotFoundError
@@ -12,6 +13,11 @@ import cloudbridge
 from cloudbridge.base import BaseCloudProvider
 from cloudbridge.base.helpers import get_env
 from cloudbridge.interfaces.exceptions import ProviderConnectionException
+from cloudbridge.interfaces.services import ComputeService
+from cloudbridge.interfaces.services import DnsService
+from cloudbridge.interfaces.services import NetworkingService
+from cloudbridge.interfaces.services import SecurityService
+from cloudbridge.interfaces.services import StorageService
 from cloudbridge.providers.azure.azure_client import AzureClient
 
 from .services import AzureComputeService
@@ -24,9 +30,9 @@ log = logging.getLogger(__name__)
 
 
 class AzureCloudProvider(BaseCloudProvider):
-    PROVIDER_ID = 'azure'
+    PROVIDER_ID: str = 'azure'
 
-    def __init__(self, config):
+    def __init__(self, config: dict[str, Any]) -> None:
         super(AzureCloudProvider, self).__init__(config)
 
         # mandatory config values
@@ -74,7 +80,7 @@ class AzureCloudProvider(BaseCloudProvider):
             'azure_public_key_storage_table_name', get_env(
                 'AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME', 'cbcerts'))
 
-        self._azure_client = None
+        self._azure_client: AzureClient | None = None
 
         self._security = AzureSecurityService(self)
         self._storage = AzureStorageService(self)
@@ -82,7 +88,7 @@ class AzureCloudProvider(BaseCloudProvider):
         self._networking = AzureNetworkingService(self)
         self._dns = AzureDnsService(self)
 
-    def __get_deprecated_username(self, default):
+    def __get_deprecated_username(self, default: str) -> str:
         username = self._get_config_value(
             'azure_vm_default_user_name', get_env(
                 'AZURE_VM_DEFAULT_USER_NAME', None))
@@ -96,31 +102,31 @@ class AzureCloudProvider(BaseCloudProvider):
                 current_version=cloudbridge.__version__,
                 details='AZURE_VM_DEFAULT_USER_NAME was deprecated in favor '
                         'of AZURE_VM_DEFAULT_USERNAME')
-    def __wrap_deprecated_username(self, username):
+    def __wrap_deprecated_username(self, username: str) -> str:
         return username
 
     @property
-    def compute(self):
+    def compute(self) -> ComputeService:
         return self._compute
 
     @property
-    def networking(self):
+    def networking(self) -> NetworkingService:
         return self._networking
 
     @property
-    def security(self):
+    def security(self) -> SecurityService:
         return self._security
 
     @property
-    def storage(self):
+    def storage(self) -> StorageService:
         return self._storage
 
     @property
-    def dns(self):
+    def dns(self) -> DnsService:
         return self._dns
 
     @property
-    def azure_client(self):
+    def azure_client(self) -> Any:
         if not self._azure_client:
 
             # create a dict with both optional and mandatory configuration
@@ -148,12 +154,16 @@ class AzureCloudProvider(BaseCloudProvider):
     @tenacity.retry(stop=tenacity.stop_after_attempt(2),
                     retry=tenacity.retry_if_exception_type(HttpResponseError),
                     reraise=True)
-    def _initialize(self):
+    def _initialize(self) -> None:
         """
         Verifying that resource group and storage account exists
         if not create one with the name provided in the
         configuration
         """
+        # ``_initialize`` is only ever invoked by the ``azure_client`` property
+        # immediately after assigning ``self._azure_client``, so the client is
+        # guaranteed to be set here.
+        assert self._azure_client is not None
         try:
             self._azure_client.get_resource_group(self.resource_group)
 
@@ -164,7 +174,7 @@ class AzureCloudProvider(BaseCloudProvider):
                     create_resource_group(self.resource_group,
                                           resource_group_params)
             except HttpResponseError as cloud_error2:  # pragma: no cover
-                if getattr(cloud_error2, 'error', None) and \
+                if cloud_error2.error and \
                         cloud_error2.error.code == "AuthorizationFailed":
                     mess = 'The following error was returned by Azure:\n' \
                            '%s\n\nThis is likely because the Role' \

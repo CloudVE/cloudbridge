@@ -669,10 +669,9 @@ class GCPInstanceService(BaseInstanceService):
         if vm_firewalls and isinstance(vm_firewalls, list):
             vm_firewall_names: builtins.list[str] = []
             if isinstance(vm_firewalls[0], VMFirewall):
-                vm_firewall_names = [
-                    f.name for f in cast("list[VMFirewall]", vm_firewalls)]
+                vm_firewall_names = [f.name for f in vm_firewalls]
             elif isinstance(vm_firewalls[0], str):
-                vm_firewall_names = cast("list[str]", vm_firewalls)
+                vm_firewall_names = vm_firewalls
             if len(vm_firewall_names) > 0:
                 config['tags'] = {}
                 config['tags']['items'] = vm_firewall_names

@@ -1,4 +1,5 @@
 import re
+from typing import Any
 
 from cloudbridge.interfaces.exceptions import InvalidValueException
 
@@ -6,7 +7,7 @@ from cloudbridge.interfaces.exceptions import InvalidValueException
 _RG_NAME_RE = re.compile(r'(/resourceGroups/)([^/]+)', re.IGNORECASE)
 
 
-def normalize_rg_case(azure_id):
+def normalize_rg_case(azure_id: str | None) -> str | None:
     # Microsoft.Compute/images list_by_resource_group returns the RG segment
     # in a case that can differ from what create/get echo back (we've seen
     # uppercase from list, lowercase from create/get for the same RG).
@@ -38,7 +39,7 @@ def normalize_rg_case(azure_id):
 #         return list_items
 
 
-def parse_url(template_urls, original_url):
+def parse_url(template_urls: list[str], original_url: str) -> dict[str, str]:
     """
     In Azure all the resource IDs are returned as URIs.
     ex: '/subscriptions/{subscriptionId}/resourceGroups/' \
@@ -52,7 +53,7 @@ def parse_url(template_urls, original_url):
     https://docs.microsoft.com/en-us/azure/virtual-machines/linux/cli-ps-findimage
     """
     if not original_url:
-        raise InvalidValueException(template_urls, original_url)
+        raise InvalidValueException(str(template_urls), original_url)
     original_url_parts = original_url.split('/')
     if len(original_url_parts) == 1:
         original_url_parts = original_url.split(':')
@@ -63,15 +64,15 @@ def parse_url(template_urls, original_url):
         if len(template_url_parts) == len(original_url_parts):
             break
     if len(template_url_parts) != len(original_url_parts):
-        raise InvalidValueException(template_urls, original_url)
-    resource_param = {}
+        raise InvalidValueException(str(template_urls), original_url)
+    resource_param: dict[str, str] = {}
     for key, value in zip(template_url_parts, original_url_parts):
         if key.startswith('{') and key.endswith('}'):
             resource_param.update({key[1:-1]: value})
     return resource_param
 
 
-def generate_urn(gallery_image):
+def generate_urn(gallery_image: Any) -> str:
     """
     This function takes an azure gallery image and outputs a corresponding URN
     :param gallery_image: a GalleryImageReference object

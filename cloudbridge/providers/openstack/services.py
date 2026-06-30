@@ -1025,11 +1025,10 @@ class OpenStackInstanceService(BaseInstanceService):
             if vm_firewalls:
                 if isinstance(vm_firewalls, list) and \
                         isinstance(vm_firewalls[0], VMFirewall):
-                    sg_name_list = [sg.name for sg in
-                                    cast("list[VMFirewall]", vm_firewalls)]
+                    sg_name_list = [sg.name for sg in vm_firewalls]
                 else:
                     sg_list = (self.provider.security.vm_firewalls.get(sg)
-                               for sg in cast("list[str]", vm_firewalls))
+                               for sg in vm_firewalls)
                     sg_name_list = (sg[0].name for sg in sg_list if sg)
 
         log.debug("Launching in subnet %s", subnet_id)

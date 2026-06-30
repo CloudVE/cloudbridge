@@ -91,7 +91,7 @@ dev = [
     "pydevd",
     "flake8>=3.3.0",
     "flake8-import-order>=0.12",
-    "mypy>=1.11",
+    "mypy>=2.1,<3",
 ]
 
 [tool.setuptools.dynamic]
@@ -153,6 +153,7 @@ module = [
     "cloudbridge.providers.mock.*",
     "cloudbridge.providers.openstack.*",
     "cloudbridge.providers.gcp.*",
+    "cloudbridge.providers.azure.*",
 ]
 ignore_errors = false
 warn_return_any = false

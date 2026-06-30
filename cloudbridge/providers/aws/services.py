@@ -850,8 +850,7 @@ class AWSInstanceService(BaseInstanceService):
         vm_firewall_ids: list[str] | None
         if vm_firewalls and isinstance(vm_firewalls, list) and isinstance(
                 vm_firewalls[0], VMFirewall):
-            vm_firewall_ids = [fw.id for fw in
-                               cast("list[VMFirewall]", vm_firewalls)]
+            vm_firewall_ids = [fw.id for fw in vm_firewalls]
         else:
             vm_firewall_ids = cast("list[str] | None", vm_firewalls)
         return subnet.id if subnet else None, zone_id, vm_firewall_ids
