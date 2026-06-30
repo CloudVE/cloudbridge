@@ -135,32 +135,16 @@ implicit_reexport = true
 # `deprecation` library's decorators are untyped; don't fail the build on them.
 disallow_untyped_decorators = false
 
-# Not-yet-typed internal modules: stay exempt until annotated, then move them
-# into the pragmatic tier below (or, if fully strict-clean, delete the entry).
+# Providers (all typed) wrap untyped cloud SDKs, so they get a pragmatic tier:
+# complete annotations are required (disallow_untyped_defs etc. from the strict
+# baseline), but warn_return_any and disallow_untyped_calls are off -- every
+# getter reads an attribute off an Any-typed SDK object, and forcing those
+# through cast()/ignore adds noise without value.
 [[tool.mypy.overrides]]
 module = ["cloudbridge.providers.*"]
-ignore_errors = true
-
-# Typed providers (pragmatic tier). Providers wrap untyped cloud SDKs, so we
-# require complete annotations (disallow_untyped_defs etc. from the strict
-# baseline) but turn off warn_return_any and disallow_untyped_calls: every
-# getter reads an attribute off an Any-typed SDK object, and forcing those
-# through cast()/ignore adds noise without value. A more-specific module pattern
-# here wins over the broad providers.* exemption above.
-[[tool.mypy.overrides]]
-module = [
-    "cloudbridge.providers.aws.*",
-    "cloudbridge.providers.mock.*",
-    "cloudbridge.providers.openstack.*",
-    "cloudbridge.providers.gcp.*",
-    "cloudbridge.providers.azure.*",
-]
-ignore_errors = false
 warn_return_any = false
 disallow_untyped_calls = false
 
 # base/ is held to the FULL strict bar (it orchestrates through the typed
 # interface layer and never touches the cloud SDKs directly), so it falls under
-# the global strict baseline with no override. The providers will get a
-# pragmatic tier (warn_return_any / disallow_untyped_calls off) when they are
-# typed, because they DO read from untyped SDK objects.
+# the global strict baseline with no override.
