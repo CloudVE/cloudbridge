@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from typing import Any
 from typing import TypeVar
 from typing import cast
+from typing import overload
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
@@ -119,7 +120,17 @@ def cleanup_action(cleanup_func: Callable[[], object]) -> Iterator[None]:
         log.exception("Error during exception cleanup: ")
 
 
-def get_env(varname: str, default_value: Any = None) -> Any:
+@overload
+def get_env(varname: str) -> str | None:
+    ...
+
+
+@overload
+def get_env(varname: str, default_value: T) -> str | T:
+    ...
+
+
+def get_env(varname: str, default_value: object = None) -> object:
     """
     Return the value of the environment variable or default_value.
 

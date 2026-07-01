@@ -322,6 +322,16 @@ class InstanceService(PageableObjectMixin[Instance], CloudService):
         """
         pass
 
+    @abstractmethod
+    def delete(self, instance: Instance | str) -> None:
+        """
+        Permanently delete an instance.
+
+        :type instance: :class:`.Instance` or ``str``
+        :param instance: The object or ID of the instance to be deleted.
+        """
+        pass
+
 
 class VolumeService(PageableObjectMixin[Volume], CloudService):
     """
@@ -1175,6 +1185,16 @@ class BucketService(PageableObjectMixin[Bucket], CloudService):
 
         :return:  a Bucket object
         :rtype: ``object`` of :class:`.Bucket`
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, bucket: Bucket | str) -> None:
+        """
+        Delete a bucket.
+
+        :type bucket: :class:`.Bucket` or ``str``
+        :param bucket: The object or ID of the bucket to be deleted.
         """
         pass
 

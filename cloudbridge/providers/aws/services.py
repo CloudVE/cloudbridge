@@ -48,6 +48,7 @@ from cloudbridge.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.interfaces.exceptions import InvalidParamException
 from cloudbridge.interfaces.exceptions import InvalidValueException
+from cloudbridge.interfaces.exceptions import ProviderInternalException
 from cloudbridge.interfaces.resources import Bucket
 from cloudbridge.interfaces.resources import BucketObject
 from cloudbridge.interfaces.resources import DnsRecord
@@ -1366,9 +1367,12 @@ class AWSSubnetService(BaseSubnetService):
         #     default_router = default_routers[0]
 
         # Create a subnet in each of the region's zones
-        region = cast(
-            Region, self.provider.compute.regions.get(
-                self.provider.region_name))
+        region_name = self.provider.region_name
+        if region_name is None:
+            raise ProviderInternalException(
+                "Cannot create default network resources: provider has no "
+                "region")
+        region = cast(Region, self.provider.compute.regions.get(region_name))
         default_sn = None
 
         # Determine how many subnets we'll need for the default network and the

@@ -16,7 +16,6 @@ from ..interfaces import CloudProvider
 from ..interfaces.exceptions import ProviderConnectionException
 from ..interfaces.resources import Configuration
 from ..interfaces.resources import PlacementZone
-from ..interfaces.resources import Region
 
 log = logging.getLogger(__name__)
 
@@ -100,17 +99,14 @@ class BaseCloudProvider(CloudProvider):
         self._zone_name: str | None = None
 
     @property
-    def region_name(self) -> str:
-        return cast(str, self._region_name)
+    def region_name(self) -> str | None:
+        return self._region_name
 
     @property
     def zone_name(self) -> str | None:
         if not self._zone_name:
             region = self.compute.regions.current
-            # ``default_zone`` is provided by the concrete Region
-            # implementation rather than the public Region interface.
-            zone = cast("PlacementZone | None",
-                        getattr(cast(Region, region), 'default_zone'))
+            zone = region.default_zone if region else None
             self._zone_name = zone.name if zone else None
             return self._zone_name
         else:

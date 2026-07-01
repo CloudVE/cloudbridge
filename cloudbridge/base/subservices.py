@@ -1,6 +1,7 @@
 import builtins
 import logging
 from typing import Any
+from typing import TYPE_CHECKING
 from typing import cast
 
 from cloudbridge.interfaces.provider import CloudProvider
@@ -27,6 +28,9 @@ from cloudbridge.interfaces.subservices import VMFirewallRuleSubService
 
 from .resources import BasePageableObjectMixin
 
+if TYPE_CHECKING:
+    from .services import BaseStorageService
+
 log = logging.getLogger(__name__)
 
 
@@ -43,10 +47,10 @@ class BaseBucketObjectSubService(BasePageableObjectMixin[BucketObject],
 
     @property
     def _bucket_objects(self) -> BucketObjectService:
-        # ``_bucket_objects`` is a provider-internal service not declared on
-        # the StorageService interface; reach it through ``Any``.
-        storage: Any = self._provider.storage
-        return cast(BucketObjectService, storage._bucket_objects)
+        # ``_bucket_objects`` is a base-layer member (BaseStorageService), not
+        # part of the public StorageService interface.
+        storage = cast("BaseStorageService", self._provider.storage)
+        return storage._bucket_objects
 
     def get(self, name: str) -> BucketObject | None:
         return self._bucket_objects.get(self.bucket, name)

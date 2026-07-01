@@ -2,6 +2,7 @@
 Base implementation for services available through a provider
 """
 import logging
+from abc import abstractmethod
 from typing import Any
 from typing import cast
 
@@ -161,6 +162,20 @@ class BaseStorageService(StorageService, BaseCloudService):
 
     def __init__(self, provider: CloudProvider) -> None:
         super(BaseStorageService, self).__init__(provider)
+
+    @property
+    @abstractmethod
+    def _bucket_objects(self) -> BucketObjectService:
+        """
+        Provider-internal service backing bucket-object operations.
+
+        This is the service that ``bucket.objects`` (BucketObjectSubService)
+        and the base multipart-upload code delegate to. It is a base-layer
+        implementation detail, deliberately not part of the public
+        StorageService interface; every provider's storage service implements
+        it.
+        """
+        pass
 
 
 class BaseVolumeService(

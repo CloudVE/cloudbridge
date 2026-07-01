@@ -72,13 +72,15 @@ from . import helpers as cb_helpers
 if TYPE_CHECKING:
     from _typeshed import SupportsRead
 
+    from cloudbridge.base.provider import BaseCloudProvider
+    from cloudbridge.base.services import BaseStorageService
     from cloudbridge.interfaces.services import BucketObjectService
 
 log = logging.getLogger(__name__)
 
 # Element type for the generic pageable collections defined in this module
 # (mirrors ``cloudbridge.interfaces.resources.T``).
-T = TypeVar("T")
+T = TypeVar("T", bound=CloudResource)
 
 
 class BaseCloudResource(CloudResource):
@@ -132,8 +134,12 @@ class BaseCloudResource(CloudResource):
         return name
 
     @property
-    def _provider(self) -> CloudProvider:
-        return self.__provider
+    def _provider(self) -> "BaseCloudProvider":
+        # Base resources are always constructed with a base provider, so expose
+        # the base type here. This makes base-layer implementation details
+        # (e.g. ``_get_config_value``) visible to subclasses without per-call
+        # casts, while ``CloudResource._provider`` keeps the public type.
+        return cast("BaseCloudProvider", self.__provider)
 
     def to_json(self) -> dict[str, Any]:
         # Get all attributes but filter methods and private/magic ones
@@ -266,7 +272,7 @@ class ClientPagedResultList(BaseResultList[T]):
         total_size = len(objects)
         if marker:
             from_marker = itertools.dropwhile(
-                lambda obj: not cast(CloudResource, obj).id == marker, objects)
+                lambda obj: not obj.id == marker, objects)
             # skip one past the marker
             next(from_marker, None)
             objects = list(from_marker)
@@ -274,7 +280,7 @@ class ClientPagedResultList(BaseResultList[T]):
         results = list(itertools.islice(objects, limit))
         super(ClientPagedResultList, self).__init__(
             is_truncated,
-            cast(CloudResource, results[-1]).id if is_truncated else None,
+            results[-1].id if is_truncated else None,
             True, total=total_size,
             data=results)
 
@@ -355,9 +361,7 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
             interval=interval)
 
     def delete(self) -> None:
-        # InstanceService.delete is implemented by every provider but is not
-        # declared on the public typed interface, hence the ignore.
-        self._provider.compute.instances.delete(self)  # type: ignore[attr-defined]
+        self._provider.compute.instances.delete(self)
 
 
 class BaseLaunchConfig(LaunchConfig):
@@ -807,11 +811,10 @@ class BaseMultipartUpload(BaseCloudResource, MultipartUpload):
 
     @property
     def _bucket_objects(self) -> "BucketObjectService":
-        # _bucket_objects is a provider-internal service not exposed on the
-        # public StorageService interface, hence the typed cast + ignore.
-        return cast(
-            "BucketObjectService",
-            self._provider.storage._bucket_objects)  # type: ignore[attr-defined]
+        # ``_bucket_objects`` is a base-layer member (BaseStorageService), not
+        # part of the public StorageService interface.
+        storage = cast("BaseStorageService", self._provider.storage)
+        return storage._bucket_objects
 
 
 class BaseBucketObject(BaseCloudResource, BucketObject):
@@ -854,11 +857,10 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
 
     @property
     def _bucket_objects(self) -> "BucketObjectService":
-        # _bucket_objects is a provider-internal service not exposed on the
-        # public StorageService interface, hence the typed cast + ignore.
-        return cast(
-            "BucketObjectService",
-            self._provider.storage._bucket_objects)  # type: ignore[attr-defined]
+        # ``_bucket_objects`` is a base-layer member (BaseStorageService), not
+        # part of the public StorageService interface.
+        storage = cast("BaseStorageService", self._provider.storage)
+        return storage._bucket_objects
 
     @staticmethod
     def is_valid_resource_name(name: str) -> bool:
@@ -888,25 +890,20 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     def _multipart_threshold(self, config: UploadConfig | None = None) -> int:
         if config is not None and config.threshold is not None:
             return int(config.threshold)
-        # pylint:disable=protected-access
-        # _get_config_value is a provider-internal helper not on the public
-        # CloudProvider interface, hence the ignore.
-        return int(self._provider._get_config_value(  # type: ignore[attr-defined]
+        return int(self._provider._get_config_value(
             'multipart_threshold', self.CB_MULTIPART_THRESHOLD))
 
     def _multipart_part_size(self, config: UploadConfig | None = None) -> int:
         if config is not None and config.part_size is not None:
             return int(config.part_size)
-        # pylint:disable=protected-access
-        return int(self._provider._get_config_value(  # type: ignore[attr-defined]
+        return int(self._provider._get_config_value(
             'multipart_part_size', self.CB_MULTIPART_PART_SIZE))
 
     def _multipart_max_concurrency(
             self, config: UploadConfig | None = None) -> int:
         if config is not None and config.max_concurrency is not None:
             return int(config.max_concurrency)
-        # pylint:disable=protected-access
-        return int(self._provider._get_config_value(  # type: ignore[attr-defined]
+        return int(self._provider._get_config_value(
             'multipart_max_concurrency', self.CB_MULTIPART_MAX_CONCURRENCY))
 
     @staticmethod
@@ -1005,12 +1002,9 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
         # thread touches an isolated provider/connection.
         clones: "queue.Queue[BucketObjectService]" = queue.Queue()
         for _ in range(concurrency):
-            # pylint:disable=protected-access
-            # _bucket_objects is a provider-internal service not exposed on the
-            # public StorageService interface, hence the typed cast + ignore.
-            clones.put(cast(
-                "BucketObjectService",
-                self._provider.clone().storage._bucket_objects))  # type: ignore[attr-defined]
+            storage = cast("BaseStorageService",
+                           self._provider.clone().storage)
+            clones.put(storage._bucket_objects)
 
         def upload_one(part_number: int, chunk: bytes) -> UploadPart:
             service = clones.get()
@@ -1103,9 +1097,7 @@ class BaseBucket(BaseCloudResource, Bucket):
         if delete_contents:
             for obj in self.objects:
                 obj.delete()
-        # BucketService.delete is implemented by every provider but is not
-        # declared on the public typed interface, hence the ignore.
-        self._provider.storage.buckets.delete(self.id)  # type: ignore[attr-defined]
+        self._provider.storage.buckets.delete(self.id)
 
     # TODO: Discuss creating `create_object` method, or change docs
 

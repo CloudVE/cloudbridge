@@ -165,7 +165,7 @@ class CloudProvider(object):
         pass
 
     @abstractproperty
-    def region_name(self) -> str:
+    def region_name(self) -> str | None:
         """
         Returns the region that this provider is connected to.
         All provider operations will take place within this region.

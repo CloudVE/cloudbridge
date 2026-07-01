@@ -25,8 +25,10 @@ if TYPE_CHECKING:
     from cloudbridge.interfaces.subservices import SubnetSubService
     from cloudbridge.interfaces.subservices import VMFirewallRuleSubService
 
-# Element type for pageable collections (services and ResultList).
-T = TypeVar("T")
+# Element type for pageable collections (services and ResultList). Every such
+# element is a CloudResource, so the bound lets paging code read `.id` without
+# casting.
+T = TypeVar("T", bound="CloudResource")
 
 
 class CloudServiceType(object):
@@ -1889,6 +1891,16 @@ class Region(CloudResource):
 
         :rtype: Iterable
         :return: Iterable of available placement zones in this region.
+        """
+        pass
+
+    @abstractproperty
+    def default_zone(self) -> PlacementZone:
+        """
+        Access the default placement zone for this region.
+
+        :rtype: :class:`.PlacementZone`
+        :return: The default placement zone for this region.
         """
         pass
 
