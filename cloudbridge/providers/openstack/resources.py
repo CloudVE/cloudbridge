@@ -1314,20 +1314,29 @@ class OpenStackBucketObject(BaseBucketObject):
             self.cbcontainer.name, self.name, resp_chunk_size=65536)
         return content
 
-    def upload(self, data):
-        """
-        Set the contents of this object to the data read from the source
-        string.
+    @property
+    def bucket(self):
+        return self.cbcontainer
 
-        .. warning:: Will fail if the data is larger than 5 Gig.
+    def _upload_single_shot(self, data):
+        """
+        Set the contents of this object in a single request.
+
+        Inputs larger than the multipart threshold are handled transparently
+        by the base class via the Static Large Object (SLO) multipart path, so
+        this single-request path only runs for smaller payloads.
         """
         self._provider.swift.put_object(self.cbcontainer.name, self.name,
                                         data)
 
-    def upload_from_file(self, path):
+    def upload_from_file(self, path, config=None):
         """
         Stores the contents of the file pointed by the ``path`` variable.
         If the file is bigger than 5 Gig, it will be broken into segments.
+
+        Swift uses ``SwiftService`` here, which manages its own segmenting and
+        concurrency; the ``config`` argument is accepted for interface
+        consistency but does not affect this path.
 
         :type path: ``str``
         :param path: Absolute path to the file to be uploaded to Swift.

@@ -2,18 +2,24 @@
 Base implementation for data objects exposed through a provider or service
 """
 import inspect
+import io
 import itertools
 import logging
 import os
+import queue
 import re
 import shutil
 import time
 import uuid
+from concurrent.futures import FIRST_COMPLETED
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import wait
 
 from cloudbridge.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.interfaces.exceptions import InvalidLabelException
 from cloudbridge.interfaces.exceptions import InvalidNameException
+from cloudbridge.interfaces.exceptions import InvalidValueException
 from cloudbridge.interfaces.exceptions import WaitStateException
 from cloudbridge.interfaces.resources import AttachmentInfo
 from cloudbridge.interfaces.resources import Bucket
@@ -31,6 +37,7 @@ from cloudbridge.interfaces.resources import KeyPair
 from cloudbridge.interfaces.resources import LaunchConfig
 from cloudbridge.interfaces.resources import MachineImage
 from cloudbridge.interfaces.resources import MachineImageState
+from cloudbridge.interfaces.resources import MultipartUpload
 from cloudbridge.interfaces.resources import Network
 from cloudbridge.interfaces.resources import NetworkState
 from cloudbridge.interfaces.resources import ObjectLifeCycleMixin
@@ -43,6 +50,7 @@ from cloudbridge.interfaces.resources import Snapshot
 from cloudbridge.interfaces.resources import SnapshotState
 from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import SubnetState
+from cloudbridge.interfaces.resources import UploadPart
 from cloudbridge.interfaces.resources import VMFirewall
 from cloudbridge.interfaces.resources import VMFirewallRule
 from cloudbridge.interfaces.resources import VMType
@@ -680,6 +688,76 @@ class BaseRegion(BaseCloudResource, Region):
         return next(iter(self.zones))
 
 
+class BaseUploadPart(UploadPart):
+    """
+    A simple, serializable handle for a single uploaded part. Concrete
+    providers return these from ``upload_part`` and consume them in
+    ``complete_multipart_upload``.
+    """
+
+    def __init__(self, part_number, etag):
+        self._part_number = part_number
+        self._etag = etag
+
+    @property
+    def part_number(self):
+        return self._part_number
+
+    @property
+    def etag(self):
+        return self._etag
+
+    def __repr__(self):
+        return "<CB-{0}: {1} ({2})>".format(
+            self.__class__.__name__, self._part_number, self._etag)
+
+
+class BaseMultipartUpload(BaseCloudResource, MultipartUpload):
+    """
+    Base implementation of an in-progress multipart upload. It is a thin
+    handle that delegates the actual work to the provider's bucket-object
+    service, mirroring how other base resources delegate to their service
+    (e.g. ``BaseBucket.delete``).
+    """
+
+    def __init__(self, provider, bucket, object_name, upload_id):
+        super(BaseMultipartUpload, self).__init__(provider)
+        self._bucket = bucket
+        self._object_name = object_name
+        self._upload_id = upload_id
+
+    @property
+    def id(self):
+        return self._upload_id
+
+    @property
+    def name(self):
+        return self._object_name
+
+    @property
+    def bucket(self):
+        return self._bucket
+
+    @property
+    def object_name(self):
+        return self._object_name
+
+    def upload_part(self, part_number, data):
+        # pylint:disable=protected-access
+        return self._provider.storage._bucket_objects.upload_part(
+            self._bucket, self, part_number, data)
+
+    def complete(self, parts):
+        # pylint:disable=protected-access
+        return self._provider.storage._bucket_objects\
+            .complete_multipart_upload(self._bucket, self, parts)
+
+    def abort(self):
+        # pylint:disable=protected-access
+        return self._provider.storage._bucket_objects\
+            .abort_multipart_upload(self._bucket, self)
+
+
 class BaseBucketObject(BaseCloudResource, BucketObject):
 
     # Regular expression for valid bucket keys.
@@ -689,6 +767,19 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     # Note: The following regex is based on: https://stackoverflow.com/question
     # s/537772/what-is-the-most-correct-regular-expression-for-a-unix-file-path
     CB_NAME_PATTERN = re.compile(r"[^\0]+")
+
+    # Uploads larger than this many bytes are split into parts.
+    CB_MULTIPART_THRESHOLD = int(os.environ.get(
+        'CB_MULTIPART_THRESHOLD', 100 * 1024 * 1024))   # 100 MiB
+    # The size of each part for multipart uploads.
+    CB_MULTIPART_PART_SIZE = int(os.environ.get(
+        'CB_MULTIPART_PART_SIZE', 50 * 1024 * 1024))    # 50 MiB
+    # Portable floor: S3 and Swift reject non-final parts smaller than 5 MiB,
+    # so part sizes below this are rejected up-front.
+    CB_MULTIPART_MIN_PART_SIZE = 5 * 1024 * 1024
+    # Number of parts uploaded in parallel by the transparent multipart path.
+    CB_MULTIPART_MAX_CONCURRENCY = int(os.environ.get(
+        'CB_MULTIPART_MAX_CONCURRENCY', 5))
 
     def __init__(self, provider):
         super(BaseBucketObject, self).__init__(provider)
@@ -710,6 +801,183 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
 
     def save_content(self, target_stream):
         shutil.copyfileobj(self.iter_content(), target_stream)
+
+    # The three resolvers below pick, in order of precedence: an explicit
+    # per-call UploadConfig field, the provider/global config, then the class
+    # default constant.
+    def _multipart_threshold(self, config=None):
+        if config is not None and config.threshold is not None:
+            return int(config.threshold)
+        # pylint:disable=protected-access
+        return int(self._provider._get_config_value(
+            'multipart_threshold', self.CB_MULTIPART_THRESHOLD))
+
+    def _multipart_part_size(self, config=None):
+        if config is not None and config.part_size is not None:
+            return int(config.part_size)
+        # pylint:disable=protected-access
+        return int(self._provider._get_config_value(
+            'multipart_part_size', self.CB_MULTIPART_PART_SIZE))
+
+    def _multipart_max_concurrency(self, config=None):
+        if config is not None and config.max_concurrency is not None:
+            return int(config.max_concurrency)
+        # pylint:disable=protected-access
+        return int(self._provider._get_config_value(
+            'multipart_max_concurrency', self.CB_MULTIPART_MAX_CONCURRENCY))
+
+    @staticmethod
+    def _data_size(data):
+        """
+        Best-effort size of an upload payload, or ``None`` if it cannot be
+        determined without consuming the data (e.g. a non-seekable stream).
+        """
+        if isinstance(data, str):
+            return len(data.encode('utf-8'))
+        if isinstance(data, (bytes, bytearray)):
+            return len(data)
+        if hasattr(data, 'seek') and hasattr(data, 'tell'):
+            try:
+                pos = data.tell()
+                data.seek(0, os.SEEK_END)
+                size = data.tell()
+                data.seek(pos)
+                return size
+            except (OSError, ValueError):
+                return None
+        return None
+
+    @staticmethod
+    def _as_stream(data):
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        if isinstance(data, (bytes, bytearray)):
+            return io.BytesIO(data)
+        return data
+
+    def upload(self, data, config=None):
+        size = self._data_size(data)
+        if size is not None and size > self._multipart_threshold(config):
+            return self._upload_multipart(self._as_stream(data), config)
+        return self._upload_single_shot(data)
+
+    def upload_from_file(self, path, config=None):
+        if os.path.getsize(path) > self._multipart_threshold(config):
+            with open(path, 'rb') as f:
+                return self._upload_multipart(f, config)
+        return self._upload_from_file_single_shot(path)
+
+    def _upload_multipart(self, stream, config=None):
+        """
+        Drive the explicit multipart lifecycle over a stream, reading it one
+        part at a time so the whole payload is never held in memory.
+
+        Parts are uploaded across a bounded thread pool. To stay safe even on
+        providers whose SDK client/connection is not thread-safe, each worker
+        uploads through its own cloned provider (see :meth:`.CloudProvider.
+        clone`), so no provider state is shared between threads. Any failure
+        aborts the upload to avoid leaking staged parts.
+
+        Providers with an efficient, thread-safe native uploader (e.g. AWS via
+        boto3's ``upload_fileobj``) override this method to use it directly.
+        """
+        part_size = self._multipart_part_size(config)
+        if part_size < self.CB_MULTIPART_MIN_PART_SIZE:
+            raise InvalidValueException('multipart_part_size', part_size)
+
+        concurrency = max(1, self._multipart_max_concurrency(config))
+        upload = self.create_multipart_upload()
+        try:
+            if concurrency == 1:
+                parts = self._upload_parts_serially(upload, stream, part_size)
+            else:
+                parts = self._upload_parts_concurrently(
+                    upload, stream, part_size, concurrency)
+            return upload.complete(parts)
+        except Exception:
+            upload.abort()
+            raise
+
+    def _upload_parts_serially(self, upload, stream, part_size):
+        parts = []
+        part_number = 1
+        while True:
+            chunk = self._read_part(stream, part_size)
+            if not chunk:
+                break
+            parts.append(upload.upload_part(part_number, chunk))
+            part_number += 1
+        return parts
+
+    def _upload_parts_concurrently(self, upload, stream, part_size,
+                                   concurrency):
+        # A pool of cloned bucket-object services, one per worker, so each
+        # thread touches an isolated provider/connection.
+        clones = queue.Queue()
+        for _ in range(concurrency):
+            # pylint:disable=protected-access
+            clones.put(self._provider.clone().storage._bucket_objects)
+
+        def upload_one(part_number, chunk):
+            service = clones.get()
+            try:
+                return service.upload_part(
+                    upload.bucket, upload, part_number, chunk)
+            finally:
+                clones.put(service)
+
+        parts = []
+        in_flight = set()
+        part_number = 1
+        depleted = False
+        with ThreadPoolExecutor(max_workers=concurrency) as executor:
+            while not depleted or in_flight:
+                # Keep the pool fed but never read more than ``concurrency``
+                # parts ahead, bounding memory to ~concurrency * part_size.
+                while not depleted and len(in_flight) < concurrency:
+                    chunk = self._read_part(stream, part_size)
+                    if not chunk:
+                        depleted = True
+                        break
+                    in_flight.add(
+                        executor.submit(upload_one, part_number, chunk))
+                    part_number += 1
+                if not in_flight:
+                    break
+                done, in_flight = wait(
+                    in_flight, return_when=FIRST_COMPLETED)
+                for future in done:
+                    parts.append(future.result())
+        return parts
+
+    @staticmethod
+    def _read_part(stream, part_size):
+        """
+        Read exactly ``part_size`` bytes from ``stream`` (fewer only at EOF),
+        coalescing short reads so non-final parts always meet the provider
+        minimum part size.
+        """
+        buffer = bytearray()
+        while len(buffer) < part_size:
+            chunk = stream.read(part_size - len(buffer))
+            if not chunk:
+                break
+            buffer.extend(chunk)
+        return bytes(buffer)
+
+    def _upload_from_file_single_shot(self, path):
+        """
+        Default small-file upload: read the file and hand it to the provider's
+        single-shot upload. Providers with a more efficient native file upload
+        (e.g. AWS ``upload_file``) override :meth:`upload_from_file` directly.
+        """
+        with open(path, 'rb') as f:
+            return self._upload_single_shot(f)
+
+    def create_multipart_upload(self):
+        # pylint:disable=protected-access
+        return self._provider.storage._bucket_objects.create_multipart_upload(
+            self.bucket, self.name)
 
     def __eq__(self, other):
         return (isinstance(other, BucketObject) and

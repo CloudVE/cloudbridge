@@ -1949,14 +1949,22 @@ class GCPBucketObject(BaseBucketObject):
                                          object=self.name)
                               .execute())
 
-    def upload(self, data):
+    @property
+    def bucket(self):
+        return self._bucket
+
+    def _upload_single_shot(self, data):
         """
-        Set the contents of this object to the given text.
+        Set the contents of this object in a single request. ``data`` may be
+        text, bytes or a seekable file-like object. Larger uploads are handled
+        transparently by the base class via the multipart (compose) path.
         """
-        if type(data) is str:
+        if isinstance(data, str):
             data = data.encode()
+        if isinstance(data, (bytes, bytearray)):
+            data = io.BytesIO(data)
         media_body = googleapiclient.http.MediaIoBaseUpload(
-                io.BytesIO(data), mimetype='plain/text')
+                data, mimetype='application/octet-stream')
         # pylint:disable=protected-access
         response = (self._provider
                         .storage._bucket_objects
@@ -1966,9 +1974,13 @@ class GCPBucketObject(BaseBucketObject):
         if response:
             self._obj = response
 
-    def upload_from_file(self, path):
+    def upload_from_file(self, path, config=None):
         """
         Upload a binary file.
+
+        GCP uses a resumable upload here, which streams the file in chunks on a
+        single session; the ``config`` argument is accepted for interface
+        consistency but does not affect this path.
         """
         with open(path, 'rb') as f:
             media_body = googleapiclient.http.MediaIoBaseUpload(

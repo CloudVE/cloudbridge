@@ -1225,6 +1225,77 @@ class BucketObjectService(CloudService):
         """
         pass
 
+    @abstractmethod
+    def create_multipart_upload(self, bucket, object_name):
+        """
+        Begin an explicit, multi-part upload of an object to a bucket.
+
+        :type bucket: :class:`.Bucket`
+        :param bucket: The bucket to upload into.
+
+        :type object_name: ``str``
+        :param object_name: The key of the object being uploaded.
+
+        :rtype: :class:`.MultipartUpload`
+        :return: An in-progress multipart upload handle.
+        """
+        pass
+
+    @abstractmethod
+    def upload_part(self, bucket, upload, part_number, data):
+        """
+        Upload a single part of an in-progress multipart upload.
+
+        :type bucket: :class:`.Bucket`
+        :param bucket: The bucket being uploaded into.
+
+        :type upload: :class:`.MultipartUpload`
+        :param upload: The in-progress upload, as returned by
+            :meth:`create_multipart_upload`.
+
+        :type part_number: ``int``
+        :param part_number: 1-based index of the part.
+
+        :type data: ``bytes`` or file-like object
+        :param data: The part payload.
+
+        :rtype: :class:`.UploadPart`
+        :return: A handle for the uploaded part.
+        """
+        pass
+
+    @abstractmethod
+    def complete_multipart_upload(self, bucket, upload, parts):
+        """
+        Finalize a multipart upload, assembling parts in part-number order.
+
+        :type bucket: :class:`.Bucket`
+        :param bucket: The bucket being uploaded into.
+
+        :type upload: :class:`.MultipartUpload`
+        :param upload: The in-progress upload to finalize.
+
+        :type parts: ``list`` of :class:`.UploadPart`
+        :param parts: The part handles returned by :meth:`upload_part`.
+
+        :rtype: :class:`.BucketObject`
+        :return: The completed object.
+        """
+        pass
+
+    @abstractmethod
+    def abort_multipart_upload(self, bucket, upload):
+        """
+        Cancel a multipart upload and release any staged parts.
+
+        :type bucket: :class:`.Bucket`
+        :param bucket: The bucket being uploaded into.
+
+        :type upload: :class:`.MultipartUpload`
+        :param upload: The in-progress upload to cancel.
+        """
+        pass
+
 
 class SecurityService(CloudService):
 

@@ -5,6 +5,8 @@ import hashlib
 import inspect
 import logging
 
+from boto3.s3.transfer import TransferConfig
+
 from botocore.exceptions import ClientError
 
 import tenacity
@@ -866,14 +868,37 @@ class AWSBucketObject(BaseBucketObject):
     def last_modified(self):
         return self._obj.last_modified.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
+    @property
+    def bucket(self):
+        return AWSBucket(self._provider,
+                         self._provider.s3_conn.Bucket(self._obj.bucket_name))
+
     def iter_content(self):
         return self.BucketObjIterator(self._obj.get().get('Body'))
 
-    def upload(self, data):
+    def _upload_single_shot(self, data):
         self._obj.put(Body=data)
 
-    def upload_from_file(self, path):
-        self._obj.upload_file(path)
+    def _upload_multipart(self, stream, config=None):
+        # boto3's TransferManager uploads parts concurrently with a thread-safe
+        # client, so the transparent multipart path delegates to it rather than
+        # CloudBridge's generic clone-pool driver.
+        transfer_config = TransferConfig(
+            multipart_threshold=self._multipart_part_size(config),
+            multipart_chunksize=self._multipart_part_size(config),
+            max_concurrency=self._multipart_max_concurrency(config))
+        self._obj.upload_fileobj(stream, Config=transfer_config)
+
+    def upload_from_file(self, path, config=None):
+        # boto3's upload_file streams large files in parts via its
+        # TransferManager. Drive it with CloudBridge's multipart knobs so that
+        # upload_from_file and upload() honour the same configuration rather
+        # than boto3's own defaults.
+        transfer_config = TransferConfig(
+            multipart_threshold=self._multipart_threshold(config),
+            multipart_chunksize=self._multipart_part_size(config),
+            max_concurrency=self._multipart_max_concurrency(config))
+        self._obj.upload_file(path, Config=transfer_config)
 
     def delete(self):
         self._obj.delete()

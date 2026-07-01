@@ -228,26 +228,33 @@ class AzureBucketObject(BaseBucketObject):
 
         return iterable_to_stream(blob_iterator())
 
-    def upload(self, data):
+    @property
+    def bucket(self):
+        return self._container
+
+    def _upload_single_shot(self, data):
         """
-        Set the contents of this object to the data read from the source
-        string.
+        Upload the object in a single request. ``data`` may be text, bytes or
+        a file-like object; the Azure SDK streams file-like data rather than
+        buffering it all in memory. Larger uploads are handled transparently
+        by the base class via the multipart path.
         """
         try:
-            self._provider.azure_client.create_blob_from_text(
+            self._provider.azure_client.upload_blob(
                 self._container.id, self.id, data)
             return True
         except AzureException as azureEx:
             log.exception(azureEx)
             return False
 
-    def upload_from_file(self, path):
-        """
-        Store the contents of the file pointed by the "path" variable.
-        """
+    def _upload_multipart(self, stream, config=None):
+        # The Azure SDK's upload_blob stages blocks concurrently (max_concurrency
+        # workers) over a thread-safe client, so the transparent multipart path
+        # delegates to it rather than CloudBridge's generic clone-pool driver.
         try:
-            self._provider.azure_client.create_blob_from_file(
-                self._container.name, self.name, path)
+            self._provider.azure_client.upload_blob(
+                self._container.id, self.id, stream,
+                max_concurrency=self._multipart_max_concurrency(config))
             return True
         except AzureException as azureEx:
             log.exception(azureEx)

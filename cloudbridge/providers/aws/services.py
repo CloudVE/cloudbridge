@@ -8,6 +8,8 @@ from botocore.exceptions import ClientError
 
 import cloudbridge.base.helpers as cb_helpers
 from cloudbridge.base.middleware import dispatch
+from cloudbridge.base.resources import BaseMultipartUpload
+from cloudbridge.base.resources import BaseUploadPart
 from cloudbridge.base.resources import ClientPagedResultList
 from cloudbridge.base.resources import ServerPagedResultList
 from cloudbridge.base.services import BaseBucketObjectService
@@ -612,6 +614,40 @@ class AWSBucketObjectService(BaseBucketObjectService):
         # pylint:disable=protected-access
         obj = bucket._bucket.Object(name)
         return AWSBucketObject(self.provider, obj)
+
+    @dispatch(event="provider.storage._bucket_objects.create_multipart_upload",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def create_multipart_upload(self, bucket, object_name):
+        response = self.provider.s3_conn.meta.client.create_multipart_upload(
+            Bucket=bucket.name, Key=object_name)
+        return BaseMultipartUpload(self.provider, bucket, object_name,
+                                   response['UploadId'])
+
+    @dispatch(event="provider.storage._bucket_objects.upload_part",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def upload_part(self, bucket, upload, part_number, data):
+        response = self.provider.s3_conn.meta.client.upload_part(
+            Bucket=bucket.name, Key=upload.object_name,
+            UploadId=upload.id, PartNumber=part_number, Body=data)
+        return BaseUploadPart(part_number, response['ETag'])
+
+    @dispatch(event="provider.storage._bucket_objects."
+                    "complete_multipart_upload",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def complete_multipart_upload(self, bucket, upload, parts):
+        ordered = sorted(parts, key=lambda p: p.part_number)
+        self.provider.s3_conn.meta.client.complete_multipart_upload(
+            Bucket=bucket.name, Key=upload.object_name, UploadId=upload.id,
+            MultipartUpload={'Parts': [
+                {'PartNumber': p.part_number, 'ETag': p.etag}
+                for p in ordered]})
+        return self.get(bucket, upload.object_name)
+
+    @dispatch(event="provider.storage._bucket_objects.abort_multipart_upload",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def abort_multipart_upload(self, bucket, upload):
+        self.provider.s3_conn.meta.client.abort_multipart_upload(
+            Bucket=bucket.name, Key=upload.object_name, UploadId=upload.id)
 
 
 class AWSComputeService(BaseComputeService):
