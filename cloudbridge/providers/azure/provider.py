@@ -5,11 +5,8 @@ from typing import Any
 from azure.core.exceptions import HttpResponseError
 from azure.core.exceptions import ResourceNotFoundError
 
-from deprecation import deprecated
-
 import tenacity
 
-import cloudbridge
 from cloudbridge.base import BaseCloudProvider
 from cloudbridge.base.helpers import get_env
 from cloudbridge.interfaces.exceptions import ProviderConnectionException
@@ -74,7 +71,7 @@ class AzureCloudProvider(BaseCloudProvider):
         self.vm_default_user_name = self._get_config_value(
                 'azure_vm_default_username', get_env(
                     'AZURE_VM_DEFAULT_USERNAME')) \
-            or self.__get_deprecated_username('cbuser')
+            or 'cbuser'
 
         self.public_key_storage_table_name = self._get_config_value(
             'azure_public_key_storage_table_name', get_env(
@@ -87,23 +84,6 @@ class AzureCloudProvider(BaseCloudProvider):
         self._compute = AzureComputeService(self)
         self._networking = AzureNetworkingService(self)
         self._dns = AzureDnsService(self)
-
-    def __get_deprecated_username(self, default: str) -> str:
-        username = self._get_config_value(
-            'azure_vm_default_user_name', get_env(
-                'AZURE_VM_DEFAULT_USER_NAME', None))
-        if username:
-            return self.__wrap_deprecated_username(username)
-        else:
-            return default
-
-    @deprecated(deprecated_in='1.1',
-                removed_in='2.0',
-                current_version=cloudbridge.__version__,
-                details='AZURE_VM_DEFAULT_USER_NAME was deprecated in favor '
-                        'of AZURE_VM_DEFAULT_USERNAME')
-    def __wrap_deprecated_username(self, username: str) -> str:
-        return username
 
     @property
     def compute(self) -> ComputeService:

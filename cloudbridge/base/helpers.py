@@ -1,5 +1,4 @@
 import fnmatch
-import functools
 import logging
 import os
 import re
@@ -8,23 +7,17 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
 from typing import TypeVar
-from typing import cast
 from typing import overload
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from deprecation import deprecated
-
-import cloudbridge
-
 from ..interfaces.exceptions import InvalidParamException
 
 log = logging.getLogger(__name__)
 
 T = TypeVar("T")
-F = TypeVar("F", bound=Callable[..., Any])
 
 
 def generate_key_pair() -> tuple[str, str]:
@@ -144,36 +137,6 @@ def get_env(varname: str, default_value: object = None) -> object:
              ``default_value`` otherwise.
     """
     return os.environ.get(varname, default_value)
-
-
-# Alias deprecation decorator, following:
-# https://stackoverflow.com/questions/49802412/
-# how-to-implement-deprecation-in-python-with-argument-alias
-def deprecated_alias(**aliases: str) -> Callable[[F], F]:
-    def deco(f: F) -> F:
-        @functools.wraps(f)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            rename_kwargs(f.__name__, kwargs, aliases)
-            return f(*args, **kwargs)
-        return cast(F, wrapper)
-    return deco
-
-
-def rename_kwargs(func_name: str, kwargs: dict[str, Any],
-                  aliases: dict[str, str]) -> None:
-    for alias, new in aliases.items():
-        if alias in kwargs:
-            if new in kwargs:
-                raise InvalidParamException(
-                    '{} received both {} and {}'.format(func_name, alias, new))
-            # Manually invoke the deprecated decorator with an empty lambda
-            # to signal deprecation
-            deprecated(deprecated_in='1.1',
-                       removed_in='2.0',
-                       current_version=cloudbridge.__version__,
-                       details='{} is deprecated, use {} instead'.format(
-                           alias, new))(lambda: None)()
-            kwargs[new] = kwargs.pop(alias)
 
 
 NON_ALPHA_NUM = re.compile(r"[^A-Za-z0-9]+")

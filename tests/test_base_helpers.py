@@ -1,7 +1,6 @@
 import unittest
 
 from cloudbridge.base import helpers as cb_helpers
-from cloudbridge.interfaces.exceptions import InvalidParamException
 
 
 class BaseHelpersTestCase(unittest.TestCase):
@@ -59,44 +58,3 @@ class BaseHelpersTestCase(unittest.TestCase):
                 invoke_order[0] += "body_"
                 raise CustomException()
         self.assertEqual(invoke_order[0], "body_cleanup")
-
-    def test_deprecated_alias_no_rename(self):
-        param_values = {}
-
-        @cb_helpers.deprecated_alias(old_param='new_param')
-        def custom_func(new_param=None, old_param=None):
-            param_values['new_param'] = new_param
-            param_values['old_param'] = old_param
-
-        custom_func(new_param="hello")
-        self.assertDictEqual(param_values,
-                             {
-                                 'new_param': "hello",
-                                 'old_param': None
-                             })
-
-    def test_deprecated_alias_force_rename(self):
-        param_values = {}
-
-        @cb_helpers.deprecated_alias(old_param='new_param')
-        def custom_func(new_param=None, old_param=None):
-            param_values['new_param'] = new_param
-            param_values['old_param'] = old_param
-
-        custom_func(old_param="hello")
-        self.assertDictEqual(param_values,
-                             {
-                                 'new_param': "hello",
-                                 'old_param': None
-                             })
-
-    def test_deprecated_alias_force_conflict(self):
-        param_values = {}
-
-        @cb_helpers.deprecated_alias(old_param='new_param')
-        def custom_func(new_param=None, old_param=None):
-            param_values['new_param'] = new_param
-            param_values['old_param'] = old_param
-
-        with self.assertRaises(InvalidParamException):
-            custom_func(new_param="world", old_param="hello")
