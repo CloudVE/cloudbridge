@@ -6,6 +6,8 @@
     boto being hijacked, which will cause AWS to malfunction.
     See notes below.
 """
+from typing import Any
+
 from moto import mock_aws
 
 from ..aws import AWSCloudProvider
@@ -22,18 +24,18 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
     """
     PROVIDER_ID = 'mock'
 
-    def __init__(self, config):
+    def __init__(self, config: dict[str, Any]) -> None:
         self.setUpMock()
         super(MockAWSCloudProvider, self).__init__(config)
 
-    def setUpMock(self):
+    def setUpMock(self) -> None:
         """
         Let Moto take over all socket communications
         """
         self.mock_aws = mock_aws()
         self.mock_aws.start()
 
-    def tearDownMock(self):
+    def tearDownMock(self) -> None:
         """
         Stop Moto intercepting all socket communications
         """

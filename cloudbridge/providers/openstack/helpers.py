@@ -1,13 +1,19 @@
 """
 Helper functions
 """
+from __future__ import annotations
+
 import itertools
 import logging as log
+from typing import Any
+from typing import Sequence
 
 from cloudbridge.base.resources import ServerPagedResultList
+from cloudbridge.interfaces.provider import CloudProvider
 
 
-def os_result_limit(provider, requested_limit=None):
+def os_result_limit(provider: CloudProvider,
+                    requested_limit: int | None = None) -> int:
     """
     Calculates the limit for OpenStack.
     """
@@ -21,7 +27,8 @@ def os_result_limit(provider, requested_limit=None):
     return limit + 1
 
 
-def to_server_paged_list(provider, objects, limit=None):
+def to_server_paged_list(provider: CloudProvider, objects: Sequence[Any],
+                         limit: int | None = None) -> ServerPagedResultList[Any]:
     """
     A convenience function for wrapping a list of OpenStack native objects in
     a ServerPagedResultList. OpenStack
@@ -32,9 +39,9 @@ def to_server_paged_list(provider, objects, limit=None):
     limit = limit or provider.config.default_result_limit
     is_truncated = len(objects) > limit
     next_token = objects[limit-1].id if is_truncated else None
-    results = ServerPagedResultList(is_truncated,
-                                    next_token,
-                                    False)
+    results: ServerPagedResultList[Any] = ServerPagedResultList(is_truncated,
+                                                                next_token,
+                                                                False)
     for obj in itertools.islice(objects, limit):
         results.append(obj)
     return results

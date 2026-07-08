@@ -1,5 +1,6 @@
 """Provider implementation based on boto library for AWS-compatible clouds."""
 import logging
+from typing import Any
 
 import boto3
 
@@ -7,6 +8,11 @@ from botocore.client import Config
 
 from cloudbridge.base import BaseCloudProvider
 from cloudbridge.base.helpers import get_env
+from cloudbridge.interfaces.services import ComputeService
+from cloudbridge.interfaces.services import DnsService
+from cloudbridge.interfaces.services import NetworkingService
+from cloudbridge.interfaces.services import SecurityService
+from cloudbridge.interfaces.services import StorageService
 
 from .services import AWSComputeService
 from .services import AWSDnsService
@@ -20,9 +26,9 @@ log = logging.getLogger(__name__)
 
 class AWSCloudProvider(BaseCloudProvider):
     '''AWS cloud provider interface'''
-    PROVIDER_ID = 'aws'
+    PROVIDER_ID: str = 'aws'
 
-    def __init__(self, config):
+    def __init__(self, config: dict[str, Any]) -> None:
         super(AWSCloudProvider, self).__init__(config)
 
         # Initialize cloud connection fields
@@ -70,59 +76,59 @@ class AWSCloudProvider(BaseCloudProvider):
         self._dns = AWSDnsService(self)
 
     @property
-    def session(self):
+    def session(self) -> Any:
         '''Get a low-level session object or create one if needed'''
         if not self._session:
             if self.config.debug_mode:
-                boto3.set_stream_logger(level=log.DEBUG)
+                boto3.set_stream_logger(level=logging.DEBUG)
             self._session = boto3.session.Session(
                 region_name=self.region_name, **self.session_cfg)
         return self._session
 
     @property
-    def ec2_conn(self):
+    def ec2_conn(self) -> Any:
         if not self._ec2_conn:
             self._ec2_conn = self._connect_ec2()
         return self._ec2_conn
 
     @property
-    def s3_conn(self):
+    def s3_conn(self) -> Any:
         if not self._s3_conn:
             self._s3_conn = self._connect_s3()
         return self._s3_conn
 
     @property
-    def compute(self):
+    def compute(self) -> ComputeService:
         return self._compute
 
     @property
-    def networking(self):
+    def networking(self) -> NetworkingService:
         return self._networking
 
     @property
-    def security(self):
+    def security(self) -> SecurityService:
         return self._security
 
     @property
-    def storage(self):
+    def storage(self) -> StorageService:
         return self._storage
 
     @property
-    def dns(self):
+    def dns(self) -> DnsService:
         return self._dns
 
-    def _connect_ec2(self):
+    def _connect_ec2(self) -> Any:
         """
         Get a boto ec2 connection object.
         """
         return self._connect_ec2_region(region_name=self.region_name)
 
-    def _connect_ec2_region(self, region_name=None):
+    def _connect_ec2_region(self, region_name: str | None = None) -> Any:
         '''Get an EC2 resource object'''
         return self.session.resource(
             'ec2', region_name=region_name, **self.ec2_cfg)
 
-    def _connect_s3(self):
+    def _connect_s3(self) -> Any:
         '''Get an S3 resource object'''
         return self.session.resource(
             's3', region_name=self.region_name, **self.s3_cfg)

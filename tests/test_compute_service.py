@@ -436,7 +436,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                                   subnet=subnet)
 
             # check whether stopping aws instance works
-            resp = test_inst.stop()
+            test_inst.stop()
             test_inst.wait_for([InstanceState.STOPPED])
             test_inst.refresh()
             self.assertTrue(
@@ -445,11 +445,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 "'stop' operation but got %s"
                 % test_inst.state)
 
-            self.assertTrue(resp, "Response from method was suppose to be"
-                            + " True but got False")
-
             # check whether starting aws instance works
-            resp = test_inst.start()
+            test_inst.start()
             test_inst.wait_for([InstanceState.RUNNING])
             test_inst.refresh()
             self.assertTrue(
@@ -457,6 +454,3 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 "Instance state must be running when refreshing after a "
                 "'start' operation but got %s"
                 % test_inst.state)
-
-            self.assertTrue(resp, "Response from method was suppose to be"
-                            + " True but got False")

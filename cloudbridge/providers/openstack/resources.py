@@ -1,19 +1,24 @@
 """
 DataTypes used by this provider
 """
+from __future__ import annotations
+
 import inspect
 import ipaddress
 import logging
 import os
 import re
-
 from datetime import datetime
+from typing import Any
+from typing import IO
+from typing import Iterable
+from typing import TYPE_CHECKING
+from typing import cast
 from urllib.parse import urljoin
 from urllib.parse import urlparse
 
-from keystoneclient.v3.regions import Region
-
 import keystoneclient.exceptions as keystoneex
+from keystoneclient.v3.regions import Region
 
 import swiftclient
 from swiftclient.service import SwiftService
@@ -40,14 +45,28 @@ from cloudbridge.base.resources import BaseVMFirewall
 from cloudbridge.base.resources import BaseVMFirewallRule
 from cloudbridge.base.resources import BaseVMType
 from cloudbridge.base.resources import BaseVolume
+from cloudbridge.interfaces.exceptions import ProviderInternalException
+from cloudbridge.interfaces.resources import AttachmentInfo
+from cloudbridge.interfaces.resources import Bucket
+from cloudbridge.interfaces.resources import BucketObject
+from cloudbridge.interfaces.resources import FloatingIP
+from cloudbridge.interfaces.resources import Gateway
 from cloudbridge.interfaces.resources import GatewayState
+from cloudbridge.interfaces.resources import Instance
 from cloudbridge.interfaces.resources import InstanceState
+from cloudbridge.interfaces.resources import MachineImage
 from cloudbridge.interfaces.resources import MachineImageState
 from cloudbridge.interfaces.resources import NetworkState
 from cloudbridge.interfaces.resources import RouterState
+from cloudbridge.interfaces.resources import Snapshot
 from cloudbridge.interfaces.resources import SnapshotState
+from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import SubnetState
 from cloudbridge.interfaces.resources import TrafficDirection
+from cloudbridge.interfaces.resources import UploadConfig
+from cloudbridge.interfaces.resources import VMFirewall
+from cloudbridge.interfaces.resources import VMType
+from cloudbridge.interfaces.resources import Volume
 from cloudbridge.interfaces.resources import VolumeState
 
 from .subservices import OpenStackBucketObjectSubService
@@ -56,6 +75,9 @@ from .subservices import OpenStackFloatingIPSubService
 from .subservices import OpenStackGatewaySubService
 from .subservices import OpenStackSubnetSubService
 from .subservices import OpenStackVMFirewallRuleSubService
+
+if TYPE_CHECKING:
+    from cloudbridge.providers.openstack.provider import OpenStackCloudProvider
 
 ONE_GIG = 1048576000  # in bytes
 FIVE_GIG = ONE_GIG * 5  # in bytes
@@ -76,30 +98,31 @@ class OpenStackMachineImage(BaseMachineImage):
         'deactivated': MachineImageState.ERROR
     }
 
-    def __init__(self, provider, os_image):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 os_image: Any) -> None:
         super(OpenStackMachineImage, self).__init__(provider)
         if isinstance(os_image, OpenStackMachineImage):
             # pylint:disable=protected-access
-            self._os_image = os_image._os_image
+            self._os_image = cast(Any, os_image)._os_image
         else:
             self._os_image = os_image
 
     @property
-    def id(self):
+    def id(self) -> str:
         """
         Get the image identifier.
         """
         return self._os_image.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Get the image identifier.
         """
         return self._os_image.id
 
     @property
-    def label(self):
+    def label(self) -> str | None:
         """
         Get the image label.
         """
@@ -107,23 +130,23 @@ class OpenStackMachineImage(BaseMachineImage):
 
     @label.setter
     # pylint:disable=arguments-differ
-    def label(self, value):
+    def label(self, value: str) -> None:
         """
         Set the image label.
         """
         self.assert_valid_resource_label(value)
-        self._provider.os_conn.image.update_image(
-            self._os_image, name=value or "")
+        cast("OpenStackCloudProvider", self._provider).os_conn.image \
+            .update_image(self._os_image, name=value or "")
 
     @property
-    def description(self):
+    def description(self) -> str | None:
         """
         Get the image description.
         """
         return None
 
     @property
-    def min_disk(self):
+    def min_disk(self) -> int | None:
         """
         Returns the minimum size of the disk that's required to
         boot this image (in GB)
@@ -133,18 +156,19 @@ class OpenStackMachineImage(BaseMachineImage):
         """
         return self._os_image.min_disk
 
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this image
         """
-        self._os_image.delete(self._provider.os_conn.image)
+        self._os_image.delete(
+            cast("OpenStackCloudProvider", self._provider).os_conn.image)
 
     @property
-    def state(self):
+    def state(self) -> str:
         return OpenStackMachineImage.IMAGE_STATE_MAP.get(
             self._os_image.status, MachineImageState.UNKNOWN)
 
-    def refresh(self):
+    def refresh(self) -> None:
         """
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
@@ -153,7 +177,7 @@ class OpenStackMachineImage(BaseMachineImage):
         image = self._provider.compute.images.get(self.id)
         if image:
             # pylint:disable=protected-access
-            self._os_image = image._os_image
+            self._os_image = cast(Any, image)._os_image
         else:
             # The image no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -162,19 +186,20 @@ class OpenStackMachineImage(BaseMachineImage):
 
 class OpenStackPlacementZone(BasePlacementZone):
 
-    def __init__(self, provider, zone, region):
+    def __init__(self, provider: OpenStackCloudProvider, zone: Any,
+                 region: Any) -> None:
         super(OpenStackPlacementZone, self).__init__(provider)
         if isinstance(zone, OpenStackPlacementZone):
             # pylint:disable=protected-access
-            self._os_zone = zone._os_zone
+            self._os_zone = cast(Any, zone)._os_zone
             # pylint:disable=protected-access
-            self._os_region = zone._os_region
+            self._os_region = cast(Any, zone)._os_region
         else:
             self._os_zone = zone
             self._os_region = region
 
     @property
-    def id(self):
+    def id(self) -> str:
         """
         Get the zone id
 
@@ -184,7 +209,7 @@ class OpenStackPlacementZone(BasePlacementZone):
         return self._os_zone
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Get the zone name.
 
@@ -195,7 +220,7 @@ class OpenStackPlacementZone(BasePlacementZone):
         return self._os_zone
 
     @property
-    def region_name(self):
+    def region_name(self) -> str:
         """
         Get the region that this zone belongs to.
 
@@ -207,49 +232,50 @@ class OpenStackPlacementZone(BasePlacementZone):
 
 class OpenStackVMType(BaseVMType):
 
-    def __init__(self, provider, os_flavor):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 os_flavor: Any) -> None:
         super(OpenStackVMType, self).__init__(provider)
         self._os_flavor = os_flavor
-        self._extra_data = None
+        self._extra_data: dict[str, Any] | None = None
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._os_flavor.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._os_flavor.name
 
     @property
-    def family(self):
+    def family(self) -> str | None:
         # TODO: This may not be standardised across OpenStack
         # but NeCTAR is using it this way
         return self.extra_data.get('flavor_class:name')
 
     @property
-    def vcpus(self):
+    def vcpus(self) -> int:
         return self._os_flavor.vcpus
 
     @property
-    def ram(self):
+    def ram(self) -> float:
         return int(self._os_flavor.ram) / 1024
 
     @property
-    def size_root_disk(self):
+    def size_root_disk(self) -> int:
         return self._os_flavor.disk
 
     @property
-    def size_ephemeral_disks(self):
+    def size_ephemeral_disks(self) -> int:
         return 0 if self._os_flavor.ephemeral == 'N/A' else \
             self._os_flavor.ephemeral
 
     @property
-    def num_ephemeral_disks(self):
+    def num_ephemeral_disks(self) -> int:
         return 0 if self._os_flavor.ephemeral == 'N/A' else \
             self._os_flavor.ephemeral
 
     @property
-    def extra_data(self):
+    def extra_data(self) -> dict[str, Any]:
         # get_keys() hits Nova's /flavors/<id>/os-extra_specs endpoint.
         # Cache the result so repeat property accesses (and family, which
         # delegates here) don't fan out to N concurrent API calls under
@@ -288,19 +314,20 @@ class OpenStackInstance(BaseInstance):
         'VERIFY_RESIZE': InstanceState.CONFIGURING
     }
 
-    def __init__(self, provider, os_instance):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 os_instance: Any) -> None:
         super(OpenStackInstance, self).__init__(provider)
         self._os_instance = os_instance
 
     @property
-    def id(self):
+    def id(self) -> str:
         """
         Get the instance identifier.
         """
         return self._os_instance.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Get the instance identifier.
         """
@@ -308,7 +335,7 @@ class OpenStackInstance(BaseInstance):
 
     @property
     # pylint:disable=arguments-differ
-    def label(self):
+    def label(self) -> str | None:
         """
         Get the instance label.
         """
@@ -316,7 +343,7 @@ class OpenStackInstance(BaseInstance):
 
     @label.setter
     # pylint:disable=arguments-differ
-    def label(self, value):
+    def label(self, value: str) -> None:
         """
         Set the instance label.
         """
@@ -325,7 +352,7 @@ class OpenStackInstance(BaseInstance):
         self._os_instance.name = value
         self._os_instance.update(name=value or "cb-inst")
 
-    def _all_addresses(self):
+    def _all_addresses(self) -> set[str]:
         """All IP addresses associated with this instance.
 
         Nova's info_cache (which backs ``server.addresses``) is refreshed
@@ -335,7 +362,7 @@ class OpenStackInstance(BaseInstance):
         Neutron will still appear. So we deliberately read only fixed
         IPs from Nova and ask Neutron live for the current floating IPs.
         """
-        addrs = set()
+        addrs: set[str] = set()
         for _, addr_list in self._os_instance.addresses.items():
             for entry in addr_list:
                 if entry.get('OS-EXT-IPS:type') == 'floating':
@@ -344,10 +371,9 @@ class OpenStackInstance(BaseInstance):
                 if ip:
                     addrs.add(ip)
         try:
-            for port in self._provider.os_conn.network.ports(
-                    device_id=self.id):
-                for fip in self._provider.os_conn.network.ips(
-                        port_id=port.id):
+            os_conn = cast("OpenStackCloudProvider", self._provider).os_conn
+            for port in os_conn.network.ports(device_id=self.id):
+                for fip in os_conn.network.ips(port_id=port.id):
                     if fip.floating_ip_address:
                         addrs.add(fip.floating_ip_address)
         except Exception as e:
@@ -357,7 +383,7 @@ class OpenStackInstance(BaseInstance):
         return addrs
 
     @property
-    def public_ips(self):
+    def public_ips(self) -> list[str]:
         """
         Get all the public IP addresses for this instance.
         """
@@ -369,7 +395,7 @@ class OpenStackInstance(BaseInstance):
                 if not ipaddress.ip_address(a).is_private]
 
     @property
-    def private_ips(self):
+    def private_ips(self) -> list[str]:
         """
         Get all the private IP addresses for this instance.
         """
@@ -377,36 +403,44 @@ class OpenStackInstance(BaseInstance):
                 if ipaddress.ip_address(a).is_private]
 
     @property
-    def vm_type_id(self):
+    def vm_type_id(self) -> str:
         """
         Get the VM type name.
         """
         return self._os_instance.flavor.get('id')
 
     @property
-    def vm_type(self):
+    def vm_type(self) -> VMType:
         """
         Get the VM type object.
         """
-        flavor = self._provider.nova.flavors.get(
-            self._os_instance.flavor.get('id'))
-        return OpenStackVMType(self._provider, flavor)
+        flavor = cast("OpenStackCloudProvider", self._provider).nova \
+            .flavors.get(self._os_instance.flavor.get('id'))
+        return OpenStackVMType(
+            cast("OpenStackCloudProvider", self._provider), flavor)
 
     @property
-    def create_time(self):
+    def create_time(self) -> str | datetime:
         """
         Get the instance creation time
         """
-        return datetime.strptime(self._os_instance.created, '%Y-%m-%dT%H:%M:%SZ')
+        return datetime.strptime(
+            self._os_instance.created, '%Y-%m-%dT%H:%M:%SZ')
 
-    def reboot(self):
+    def start(self) -> None:
+        pass
+
+    def stop(self) -> None:
+        pass
+
+    def reboot(self) -> None:
         """
         Reboot this instance (using the cloud middleware API).
         """
         self._os_instance.reboot()
 
     @property
-    def image_id(self):
+    def image_id(self) -> str:
         """
         Get the image ID for this instance.
         """
@@ -417,14 +451,19 @@ class OpenStackInstance(BaseInstance):
                 if self._os_instance.image else "")
 
     @property
-    def zone_id(self):
+    def zone_id(self) -> str:
         """
         Get the placement zone where this instance is running.
         """
-        return getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None)
+        zone = getattr(
+            self._os_instance, 'OS-EXT-AZ:availability_zone', None)
+        if zone is None:
+            raise ProviderInternalException(
+                "Instance {0} has no availability zone".format(self.id))
+        return zone
 
     @property
-    def subnet_id(self):
+    def subnet_id(self) -> str:
         """
         Extract (one) subnet id associated with this instance.
 
@@ -438,6 +477,8 @@ class OpenStackInstance(BaseInstance):
         # MAC address can be used to identify a port so extract the MAC
         # address corresponding to the (first) private IP associated with the
         # instance.
+        port = None
+        addr = None
         for net in self._os_instance.to_dict().get('addresses').keys():
             for iface in self._os_instance.to_dict().get('addresses')[net]:
                 if iface.get('OS-EXT-IPS:type') == 'fixed':
@@ -446,34 +487,37 @@ class OpenStackInstance(BaseInstance):
                     break
         # Now get a handle to a port with the given MAC address and get the
         # subnet to which the private IP is connected as the desired id.
-        for prt in self._provider.neutron.list_ports().get('ports'):
+        neutron = cast("OpenStackCloudProvider", self._provider).neutron
+        for prt in neutron.list_ports().get('ports'):
             if prt.get('mac_address') == port:
                 for ip in prt.get('fixed_ips'):
                     if ip.get('ip_address') == addr:
                         return ip.get('subnet_id')
+        raise ProviderInternalException(
+            "Could not determine a subnet for instance {0}".format(self.id))
 
     @property
-    def vm_firewalls(self):
-        return [
+    def vm_firewalls(self) -> list[VMFirewall]:
+        return cast("list[VMFirewall]", [
             self._provider.security.vm_firewalls.get(group.id)
             for group in self._os_instance.list_security_group()
-        ]
+        ])
 
     @property
-    def vm_firewall_ids(self):
+    def vm_firewall_ids(self) -> list[str]:
         """
         Get the VM firewall IDs associated with this instance.
         """
         return [fw.id for fw in self.vm_firewalls]
 
     @property
-    def key_pair_id(self):
+    def key_pair_id(self) -> str:
         """
         Get the id of the key pair associated with this instance.
         """
         return self._os_instance.key_name
 
-    def create_image(self, label):
+    def create_image(self, label: str) -> MachineImage:
         """
         Create a new image based on this instance.
         """
@@ -482,21 +526,27 @@ class OpenStackInstance(BaseInstance):
 
         image_id = self._os_instance.create_image(label)
         img = OpenStackMachineImage(
-            self._provider, self._provider.compute.images.get(image_id))
+            cast("OpenStackCloudProvider", self._provider),
+            self._provider.compute.images.get(image_id))
         return img
 
-    def _get_fip(self, floating_ip):
+    def _get_fip(self, floating_ip: FloatingIP | str) -> Any:
         """Get a floating IP object based on the supplied ID."""
-        return self._provider.networking._floating_ips.get(None, floating_ip)
+        # The OpenStack FloatingIP service looks up by id alone and ignores
+        # the gateway argument, so None is passed deliberately.
+        # pylint:disable=protected-access
+        return self._provider.networking._floating_ips.get(
+            cast(Gateway, None), cast(str, floating_ip))
 
-    def _primary_port(self):
+    def _primary_port(self) -> Any:
         """Return the first Neutron port on this instance, or None."""
         # pylint:disable=protected-access
+        os_conn = cast("OpenStackCloudProvider", self._provider).os_conn
         return next(
-            iter(self._provider.os_conn.network.ports(device_id=self.id)),
+            iter(os_conn.network.ports(device_id=self.id)),
             None)
 
-    def add_floating_ip(self, floating_ip):
+    def add_floating_ip(self, floating_ip: FloatingIP | str) -> None:
         """
         Add a floating IP address to this instance.
 
@@ -513,9 +563,10 @@ class OpenStackInstance(BaseInstance):
                 "Cannot add floating IP: instance {0} has no network port"
                 .format(self.id))
         # pylint:disable=protected-access
-        self._provider.os_conn.network.update_ip(fip._ip, port_id=port.id)
+        cast("OpenStackCloudProvider", self._provider).os_conn.network \
+            .update_ip(fip._ip, port_id=port.id)
 
-    def remove_floating_ip(self, floating_ip):
+    def remove_floating_ip(self, floating_ip: FloatingIP | str) -> None:
         """
         Remove a floating IP address from this instance.
 
@@ -531,17 +582,17 @@ class OpenStackInstance(BaseInstance):
                else self._get_fip(floating_ip))
         if fip is None:
             return
-        self._provider.neutron.update_floatingip(
-            fip.id, {'floatingip': {'port_id': None}})
+        cast("OpenStackCloudProvider", self._provider).neutron \
+            .update_floatingip(fip.id, {'floatingip': {'port_id': None}})
 
-    def add_vm_firewall(self, firewall):
+    def add_vm_firewall(self, firewall: VMFirewall) -> None:
         """
         Add a VM firewall to this instance
         """
         log.debug("Adding firewall: %s", firewall)
         self._os_instance.add_security_group(firewall.id)
 
-    def remove_vm_firewall(self, firewall):
+    def remove_vm_firewall(self, firewall: VMFirewall) -> None:
         """
         Remove a VM firewall from this instance
         """
@@ -549,11 +600,11 @@ class OpenStackInstance(BaseInstance):
         self._os_instance.remove_security_group(firewall.id)
 
     @property
-    def state(self):
+    def state(self) -> str:
         return OpenStackInstance.INSTANCE_STATE_MAP.get(
             self._os_instance.status, InstanceState.UNKNOWN)
 
-    def refresh(self):
+    def refresh(self) -> None:
         """
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
@@ -562,7 +613,7 @@ class OpenStackInstance(BaseInstance):
             self.id)
         if instance:
             # pylint:disable=protected-access
-            self._os_instance = instance._os_instance
+            self._os_instance = cast(Any, instance)._os_instance
         else:
             # The instance no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -571,36 +622,38 @@ class OpenStackInstance(BaseInstance):
 
 class OpenStackRegion(BaseRegion):
 
-    def __init__(self, provider, os_region):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 os_region: Any) -> None:
         super(OpenStackRegion, self).__init__(provider)
         self._os_region = os_region
 
     @property
-    def id(self):
+    def id(self) -> str:
         return (self._os_region.id if type(self._os_region) is Region else
                 self._os_region)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def zones(self):
+    def zones(self) -> Iterable[OpenStackPlacementZone]:
         # ``detailed`` param must be set to ``False`` because the (default)
         # ``True`` value requires Admin privileges
+        provider = cast("OpenStackCloudProvider", self._provider)
         if self.name == self._provider.region_name:  # optimisation
-            zones = self._provider.nova.availability_zones.list(detailed=False)
+            zones = provider.nova.availability_zones.list(detailed=False)
         else:
             try:
                 # pylint:disable=protected-access
-                region_nova = self._provider._connect_nova_region(self.name)
+                region_nova = provider._connect_nova_region(self.name)
                 zones = region_nova.availability_zones.list(detailed=False)
             except keystoneex.EndpointNotFound:
                 # This region may not have a compute endpoint. If so just
                 # return an empty list
                 zones = []
 
-        return [OpenStackPlacementZone(self._provider, z.zoneName, self.name)
+        return [OpenStackPlacementZone(provider, z.zoneName, self.name)
                 for z in zones]
 
 
@@ -621,21 +674,22 @@ class OpenStackVolume(BaseVolume):
         'error_extending': VolumeState.ERROR
     }
 
-    def __init__(self, provider, volume):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 volume: Any) -> None:
         super(OpenStackVolume, self).__init__(provider)
         self._volume = volume
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._volume.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
     # pylint:disable=arguments-differ
-    def label(self):
+    def label(self) -> str | None:
         """
         Get the volume label.
         """
@@ -643,44 +697,48 @@ class OpenStackVolume(BaseVolume):
 
     @label.setter
     # pylint:disable=arguments-differ
-    def label(self, value):
+    def label(self, value: str) -> None:
         """
         Set the volume label.
         """
         self.assert_valid_resource_label(value)
         self._volume.name = value
-        self._volume.commit(self._provider.os_conn.block_storage)
+        self._volume.commit(
+            cast("OpenStackCloudProvider", self._provider).os_conn
+            .block_storage)
 
     @property
-    def description(self):
+    def description(self) -> str:
         return self._volume.description
 
     @description.setter
-    def description(self, value):
+    def description(self, value: str) -> None:
         self._volume.description = value
-        self._volume.commit(self._provider.os_conn.block_storage)
+        self._volume.commit(
+            cast("OpenStackCloudProvider", self._provider).os_conn
+            .block_storage)
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self._volume.size
 
     @property
-    def create_time(self):
+    def create_time(self) -> str | datetime:
         return self._volume.created_at
 
     @property
-    def zone_id(self):
+    def zone_id(self) -> str:
         return self._volume.availability_zone
 
     @property
-    def source(self):
+    def source(self) -> Snapshot | MachineImage | None:
         if self._volume.snapshot_id:
             return self._provider.storage.snapshots.get(
                 self._volume.snapshot_id)
         return None
 
     @property
-    def attachments(self):
+    def attachments(self) -> AttachmentInfo | None:
         if self._volume.attachments:
             return BaseAttachmentInfo(
                 self,
@@ -689,7 +747,7 @@ class OpenStackVolume(BaseVolume):
         else:
             return None
 
-    def attach(self, instance, device):
+    def attach(self, instance: str | Instance, device: str) -> None:
         """
         Attach this volume to an instance.
         """
@@ -697,18 +755,21 @@ class OpenStackVolume(BaseVolume):
         instance_id = instance.id if isinstance(
             instance,
             OpenStackInstance) else instance
-        self._provider.os_conn.compute.create_volume_attachment(
-            server=instance_id, volume_id=self.id, device=device)
+        cast("OpenStackCloudProvider", self._provider).os_conn.compute \
+            .create_volume_attachment(
+                server=instance_id, volume_id=self.id, device=device)
 
-    def detach(self, force=False):
+    def detach(self, force: bool = False) -> None:
         """
         Detach this volume from an instance.
         """
         for attachment in self._volume.attachments:
-            self._provider.os_conn.compute.delete_volume_attachment(
-                attachment['id'], attachment['server_id'])
+            cast("OpenStackCloudProvider", self._provider).os_conn.compute \
+                .delete_volume_attachment(
+                    attachment['id'], attachment['server_id'])
 
-    def create_snapshot(self, label, description=None):
+    def create_snapshot(self, label: str,
+                        description: str | None = None) -> Snapshot:
         """
         Create a snapshot of this Volume.
         """
@@ -718,11 +779,11 @@ class OpenStackVolume(BaseVolume):
             label, self, description=description)
 
     @property
-    def state(self):
+    def state(self) -> str:
         return OpenStackVolume.VOLUME_STATE_MAP.get(
             self._volume.status, VolumeState.UNKNOWN)
 
-    def refresh(self):
+    def refresh(self) -> None:
         """
         Refreshes the state of this volume by re-querying the cloud provider
         for its latest state.
@@ -731,7 +792,7 @@ class OpenStackVolume(BaseVolume):
             self.id)
         if vol:
             # pylint:disable=protected-access
-            self._volume = vol._volume  # pylint:disable=protected-access
+            self._volume = cast(Any, vol)._volume
         else:
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -749,21 +810,22 @@ class OpenStackSnapshot(BaseSnapshot):
         'error_deleting': SnapshotState.ERROR
     }
 
-    def __init__(self, provider, snapshot):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 snapshot: Any) -> None:
         super(OpenStackSnapshot, self).__init__(provider)
         self._snapshot = snapshot
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._snapshot.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
     # pylint:disable=arguments-differ
-    def label(self):
+    def label(self) -> str | None:
         """
         Get the snapshot label.
         """
@@ -771,41 +833,45 @@ class OpenStackSnapshot(BaseSnapshot):
 
     @label.setter
     # pylint:disable=arguments-differ
-    def label(self, value):
+    def label(self, value: str) -> None:
         """
         Set the snapshot label.
         """
         self.assert_valid_resource_label(value)
         self._snapshot.name = value
-        self._snapshot.commit(self._provider.os_conn.block_storage)
+        self._snapshot.commit(
+            cast("OpenStackCloudProvider", self._provider).os_conn
+            .block_storage)
 
     @property
-    def description(self):
+    def description(self) -> str:
         return self._snapshot.description
 
     @description.setter
-    def description(self, value):
+    def description(self, value: str) -> None:
         self._snapshot.description = value
-        self._snapshot.commit(self._provider.os_conn.block_storage)
+        self._snapshot.commit(
+            cast("OpenStackCloudProvider", self._provider).os_conn
+            .block_storage)
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self._snapshot.size
 
     @property
-    def volume_id(self):
+    def volume_id(self) -> str | None:
         return self._snapshot.volume_id
 
     @property
-    def create_time(self):
+    def create_time(self) -> str | datetime:
         return self._snapshot.created_at
 
     @property
-    def state(self):
+    def state(self) -> str:
         return OpenStackSnapshot.SNAPSHOT_STATE_MAP.get(
             self._snapshot.status, SnapshotState.UNKNOWN)
 
-    def refresh(self):
+    def refresh(self) -> None:
         """
         Refreshes the state of this snapshot by re-querying the cloud provider
         for its latest state.
@@ -814,23 +880,26 @@ class OpenStackSnapshot(BaseSnapshot):
             self.id)
         if snap:
             # pylint:disable=protected-access
-            self._snapshot = snap._snapshot
+            self._snapshot = cast(Any, snap)._snapshot
         else:
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
             self._snapshot.status = 'unknown'
 
-    def create_volume(self, size=None, volume_type=None, iops=None):
+    def create_volume(self, size: int | None = None,
+                      volume_type: str | None = None,
+                      iops: int | None = None) -> Volume:
         """
         Create a new Volume from this Snapshot.
         """
         vol_label = "from-snap-{0}".format(self.label or self.id)
         self.assert_valid_resource_label(vol_label)
         size = size if size else self._snapshot.size
-        os_vol = self._provider.os_conn.block_storage.create_volume(
+        provider = cast("OpenStackCloudProvider", self._provider)
+        os_vol = provider.os_conn.block_storage.create_volume(
             size=size, name=vol_label, snapshot_id=self._snapshot.id,
-            availability_zone=self._provider.zone_name)
-        cb_vol = OpenStackVolume(self._provider, os_vol)
+            availability_zone=provider.zone_name)
+        cb_vol = OpenStackVolume(provider, os_vol)
         return cb_vol
 
 
@@ -849,112 +918,114 @@ class OpenStackNetwork(BaseNetwork):
         'ACTIVE': NetworkState.AVAILABLE
     }
 
-    def __init__(self, provider, network):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 network: Any) -> None:
         super(OpenStackNetwork, self).__init__(provider)
         self._network = network
         self._gateway_service = OpenStackGatewaySubService(provider, self)
         self._subnet_svc = OpenStackSubnetSubService(provider, self)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._network.get('id', None)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def label(self):
+    def label(self) -> str | None:
         return self._network.get('name', None)
 
     @label.setter
-    def label(self, value):
+    def label(self, value: str) -> None:
         """
         Set the network label.
         """
         self.assert_valid_resource_label(value)
-        self._provider.neutron.update_network(
+        cast("OpenStackCloudProvider", self._provider).neutron.update_network(
             self.id, {'network': {'name': value or ""}})
         self.refresh()
 
     @property
-    def external(self):
+    def external(self) -> bool:
         return self._network.get('router:external', False)
 
     @property
-    def shared(self):
+    def shared(self) -> bool:
         return self._network.get('shared', False)
 
     @property
-    def state(self):
+    def state(self) -> str:
         self.refresh()
         return OpenStackNetwork._NETWORK_STATE_MAP.get(
             self._network.get('status', None),
             NetworkState.UNKNOWN)
 
     @property
-    def cidr_block(self):
+    def cidr_block(self) -> str:
         # OpenStack does not define a CIDR block for networks
         return ''
 
     @property
-    def subnets(self):
+    def subnets(self) -> OpenStackSubnetSubService:
         return self._subnet_svc
 
-    def refresh(self):
+    def refresh(self) -> None:
         """Refresh the state of this network by re-querying the provider."""
         network = self._provider.networking.networks.get(self.id)
         if network:
             # pylint:disable=protected-access
-            self._network = network._network
+            self._network = cast(Any, network)._network
         else:
             # Network no longer exists
             self._network = {}
 
     @property
-    def gateways(self):
+    def gateways(self) -> OpenStackGatewaySubService:
         return self._gateway_service
 
 
 class OpenStackSubnet(BaseSubnet):
 
-    def __init__(self, provider, subnet):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 subnet: Any) -> None:
         super(OpenStackSubnet, self).__init__(provider)
         self._subnet = subnet
-        self._state = None
+        self._state: str | None = None
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._subnet.get('id', None)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def label(self):
+    def label(self) -> str | None:
         return self._subnet.get('name', None)
 
     @label.setter
-    def label(self, value):  # pylint:disable=arguments-differ
+    def label(self, value: str) -> None:  # pylint:disable=arguments-differ
         """
         Set the subnet label.
         """
         self.assert_valid_resource_label(value)
-        self._provider.neutron.update_subnet(
+        cast("OpenStackCloudProvider", self._provider).neutron.update_subnet(
             self.id, {'subnet': {'name': value or ""}})
         self._subnet['name'] = value
 
     @property
-    def cidr_block(self):
+    def cidr_block(self) -> str:
         return self._subnet.get('cidr', None)
 
     @property
-    def network_id(self):
+    def network_id(self) -> str:
         return self._subnet.get('network_id', None)
 
     @property
-    def zone(self):
+    def zone(self) -> None:
         """
         OpenStack does not have a notion of placement zone for subnets.
 
@@ -963,15 +1034,15 @@ class OpenStackSubnet(BaseSubnet):
         return None
 
     @property
-    def state(self):
+    def state(self) -> str:
         return SubnetState.UNKNOWN if self._state == SubnetState.UNKNOWN \
              else SubnetState.AVAILABLE
 
-    def refresh(self):
+    def refresh(self) -> None:
         subnet = self._provider.networking.subnets.get(self.id)
         if subnet:
             # pylint:disable=protected-access
-            self._subnet = subnet._subnet
+            self._subnet = cast(Any, subnet)._subnet
             self._state = SubnetState.AVAILABLE
         else:
             # subnet no longer exists
@@ -980,117 +1051,121 @@ class OpenStackSubnet(BaseSubnet):
 
 class OpenStackFloatingIP(BaseFloatingIP):
 
-    def __init__(self, provider, floating_ip):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 floating_ip: Any) -> None:
         super(OpenStackFloatingIP, self).__init__(provider)
         self._ip = floating_ip
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._ip.id
 
     @property
-    def public_ip(self):
+    def public_ip(self) -> str:
         return self._ip.floating_ip_address
 
     @property
-    def private_ip(self):
+    def private_ip(self) -> str | None:
         return self._ip.fixed_ip_address
 
     @property
-    def in_use(self):
+    def in_use(self) -> bool:
         return bool(self._ip.port_id)
 
-    def refresh(self):
-        net = self._provider.networking.networks.get(
-            self._ip.floating_network_id)
+    def refresh(self) -> None:
+        net = cast("OpenStackNetwork", self._provider.networking.networks.get(
+            self._ip.floating_network_id))
         gw = net.gateways.get_or_create()
         fip = gw.floating_ips.get(self.id)
         # pylint:disable=protected-access
-        self._ip = fip._ip
+        self._ip = cast(Any, fip)._ip
 
     @property
-    def _gateway_id(self):
+    def _gateway_id(self) -> str:
         return self._ip.floating_network_id
 
 
 class OpenStackRouter(BaseRouter):
 
-    def __init__(self, provider, router):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 router: Any) -> None:
         super(OpenStackRouter, self).__init__(provider)
         self._router = router
 
     @property
-    def id(self):
-        return getattr(self._router, 'id', None)
+    def id(self) -> str:
+        router_id = getattr(self._router, 'id', None)
+        if router_id is None:
+            raise ProviderInternalException("Router has no id")
+        return router_id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def label(self):
+    def label(self) -> str | None:
         return self._router.name
 
     @label.setter
-    def label(self, value):  # pylint:disable=arguments-differ
+    def label(self, value: str) -> None:  # pylint:disable=arguments-differ
         """
         Set the router label.
         """
         self.assert_valid_resource_label(value)
-        self._router = self._provider.os_conn.update_router(self.id, value)
+        self._router = cast("OpenStackCloudProvider", self._provider) \
+            .os_conn.update_router(self.id, value)
 
-    def refresh(self):
-        self._router = self._provider.os_conn.get_router(self.id)
+    def refresh(self) -> None:
+        self._router = cast("OpenStackCloudProvider", self._provider) \
+            .os_conn.get_router(self.id)
 
     @property
-    def state(self):
+    def state(self) -> str:
         if self._router.external_gateway_info:
             return RouterState.ATTACHED
         return RouterState.DETACHED
 
     @property
-    def network_id(self):
-        ports = self._provider.os_conn.list_ports(
-            filters={'device_id': self.id})
+    def network_id(self) -> str | None:
+        ports = cast("OpenStackCloudProvider", self._provider).os_conn \
+            .list_ports(filters={'device_id': self.id})
         if ports:
             return ports[0].network_id
         return None
 
-    def attach_subnet(self, subnet):
-        ret = self._provider.os_conn.add_router_interface(
-            self._router.toDict(), subnet.id)
-        if subnet.id in ret.get('subnet_ids', ""):
-            return True
-        return False
+    def attach_subnet(self, subnet: Subnet | str) -> None:
+        subnet_id = subnet.id if isinstance(subnet, OpenStackSubnet) else subnet
+        cast("OpenStackCloudProvider", self._provider).os_conn \
+            .add_router_interface(self._router.toDict(), subnet_id)
 
-    def detach_subnet(self, subnet):
-        ret = self._provider.os_conn.remove_router_interface(
-            self._router.toDict(), subnet.id)
-        if not ret or subnet.id not in ret.get('subnet_ids', ""):
-            return True
-        return False
+    def detach_subnet(self, subnet: Subnet | str) -> None:
+        subnet_id = subnet.id if isinstance(subnet, OpenStackSubnet) else subnet
+        cast("OpenStackCloudProvider", self._provider).os_conn \
+            .remove_router_interface(self._router.toDict(), subnet_id)
 
     @property
-    def subnets(self):
+    def subnets(self) -> list[Subnet]:
         # A router and a subnet are linked via a port, so traverse ports
         # associated with the current router to find a list of subnets
         # associated with it.
-        subnets = []
-        for port in self._provider.os_conn.list_ports(
-                filters={'device_id': self.id}):
+        subnets: list[Subnet | None] = []
+        os_conn = cast("OpenStackCloudProvider", self._provider).os_conn
+        for port in os_conn.list_ports(filters={'device_id': self.id}):
             for fixed_ip in port.fixed_ips:
                 subnets.append(self._provider.networking.subnets.get(
                     fixed_ip.get('subnet_id')))
-        return subnets
+        return cast("list[Subnet]", subnets)
 
-    def attach_gateway(self, gateway):
-        self._provider.os_conn.update_router(
+    def attach_gateway(self, gateway: Gateway) -> None:
+        cast("OpenStackCloudProvider", self._provider).os_conn.update_router(
             self.id, ext_gateway_net_id=gateway.id)
 
-    def detach_gateway(self, gateway):
+    def detach_gateway(self, gateway: Gateway) -> None:
         # TODO: OpenStack SDK Connection object doesn't appear to have a method
         # for detaching/clearing the external gateway.
-        self._provider.neutron.remove_gateway_router(self.id)
+        cast("OpenStackCloudProvider", self._provider).neutron \
+            .remove_gateway_router(self.id)
 
 
 class OpenStackInternetGateway(BaseInternetGateway):
@@ -1103,7 +1178,8 @@ class OpenStackInternetGateway(BaseInternetGateway):
         NetworkState.UNKNOWN: GatewayState.UNKNOWN
     }
 
-    def __init__(self, provider, gateway_net):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 gateway_net: Any) -> None:
         super(OpenStackInternetGateway, self).__init__(provider)
         if isinstance(gateway_net, OpenStackNetwork):
             # pylint:disable=protected-access
@@ -1112,52 +1188,54 @@ class OpenStackInternetGateway(BaseInternetGateway):
         self._fips_container = OpenStackFloatingIPSubService(provider, self)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._gateway_net.get('id', None)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._gateway_net.get('name', None)
 
     @property
-    def network_id(self):
+    def network_id(self) -> str:
         return self._gateway_net.get('id')
 
-    def refresh(self):
+    def refresh(self) -> None:
         """Refresh the state of this network by re-querying the provider."""
         network = self._provider.networking.networks.get(self.id)
         if network:
             # pylint:disable=protected-access
-            self._gateway_net = network._network
+            self._gateway_net = cast(Any, network)._network
         else:
             # subnet no longer exists
             self._gateway_net.state = NetworkState.UNKNOWN
 
     @property
-    def state(self):
+    def state(self) -> str:
         return self.GATEWAY_STATE_MAP.get(
             self._gateway_net.state, GatewayState.UNKNOWN)
 
     @property
-    def floating_ips(self):
+    def floating_ips(self) -> OpenStackFloatingIPSubService:
         return self._fips_container
 
 
 class OpenStackKeyPair(BaseKeyPair):
 
-    def __init__(self, provider, key_pair):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 key_pair: Any) -> None:
         super(OpenStackKeyPair, self).__init__(provider, key_pair)
 
 
 class OpenStackVMFirewall(BaseVMFirewall):
     _network_id_tag = "CB-auto-associated-network-id: "
 
-    def __init__(self, provider, vm_firewall):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 vm_firewall: Any) -> None:
         super(OpenStackVMFirewall, self).__init__(provider, vm_firewall)
         self._rule_svc = OpenStackVMFirewallRuleSubService(provider, self)
 
     @property
-    def network_id(self):
+    def network_id(self) -> str | None:
         """
         OpenStack does not associate a fw with a network so extract from desc.
 
@@ -1176,11 +1254,11 @@ class OpenStackVMFirewall(BaseVMFirewall):
             return None
 
     @property
-    def _description(self):
+    def _description(self) -> str:
         return self._vm_firewall.description or ""
 
     @property
-    def description(self):
+    def description(self) -> str | None:
         desc_fragment = " [{}{}]".format(self._network_id_tag,
                                          self.network_id)
         desc = self._description
@@ -1190,43 +1268,44 @@ class OpenStackVMFirewall(BaseVMFirewall):
             return None
 
     @description.setter
-    def description(self, value):
+    def description(self, value: str) -> None:
         if not value:
             value = ""
         value += " [{}{}]".format(self._network_id_tag,
                                   self.network_id)
-        self._provider.os_conn.network.update_security_group(
-            self.id, description=value)
+        cast("OpenStackCloudProvider", self._provider).os_conn.network \
+            .update_security_group(self.id, description=value)
         self.refresh()
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Return the name of this VM firewall.
         """
         return self.id
 
     @property
-    def label(self):
+    def label(self) -> str | None:
         return self._vm_firewall.name
 
     @label.setter
     # pylint:disable=arguments-differ
-    def label(self, value):
+    def label(self, value: str) -> None:
         self.assert_valid_resource_label(value)
-        self._provider.os_conn.network.update_security_group(
-            self.id, name=value or "")
+        cast("OpenStackCloudProvider", self._provider).os_conn.network \
+            .update_security_group(self.id, name=value or "")
         self.refresh()
 
     @property
-    def rules(self):
+    def rules(self) -> OpenStackVMFirewallRuleSubService:
         return self._rule_svc
 
-    def refresh(self):
-        self._vm_firewall = self._provider.os_conn.network.get_security_group(
-            self.id)
+    def refresh(self) -> None:
+        self._vm_firewall = cast(
+            "OpenStackCloudProvider", self._provider).os_conn.network \
+            .get_security_group(self.id)
 
-    def to_json(self):
+    def to_json(self) -> dict[str, Any]:
         attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
         js = {k: v for (k, v) in attr if not k.startswith('_')}
         json_rules = [r.to_json() for r in self.rules]
@@ -1236,48 +1315,48 @@ class OpenStackVMFirewall(BaseVMFirewall):
 
 class OpenStackVMFirewallRule(BaseVMFirewallRule):
 
-    def __init__(self, parent_fw, rule):
+    def __init__(self, parent_fw: VMFirewall, rule: Any) -> None:
         super(OpenStackVMFirewallRule, self).__init__(parent_fw, rule)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._rule.get('id')
 
     @property
-    def direction(self):
+    def direction(self) -> TrafficDirection:
         direction = self._rule.get('direction')
         if direction == 'ingress':
             return TrafficDirection.INBOUND
         elif direction == 'egress':
             return TrafficDirection.OUTBOUND
-        else:
-            return None
+        raise ProviderInternalException(
+            "Unknown firewall rule direction: {0}".format(direction))
 
     @property
-    def protocol(self):
+    def protocol(self) -> str:
         return self._rule.get('protocol')
 
     @property
-    def from_port(self):
+    def from_port(self) -> int:
         return self._rule.get('port_range_min')
 
     @property
-    def to_port(self):
+    def to_port(self) -> int:
         return self._rule.get('port_range_max')
 
     @property
-    def cidr(self):
+    def cidr(self) -> str | None:
         return self._rule.get('remote_ip_prefix')
 
     @property
-    def src_dest_fw_id(self):
+    def src_dest_fw_id(self) -> str | None:
         fw = self.src_dest_fw
         if fw:
             return fw.id
         return None
 
     @property
-    def src_dest_fw(self):
+    def src_dest_fw(self) -> VMFirewall | None:
         fw_id = self._rule.get('remote_group_id')
         if fw_id:
             return self._provider.security.vm_firewalls.get(fw_id)
@@ -1286,39 +1365,41 @@ class OpenStackVMFirewallRule(BaseVMFirewallRule):
 
 class OpenStackBucketObject(BaseBucketObject):
 
-    def __init__(self, provider, cbcontainer, obj):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 cbcontainer: Any, obj: Any) -> None:
         super(OpenStackBucketObject, self).__init__(provider)
         self.cbcontainer = cbcontainer
         self._obj = obj
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._obj.get("name")
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Get this object's name."""
         return self.id
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self._obj.get("bytes")
 
     @property
-    def last_modified(self):
+    def last_modified(self) -> str:
         return self._obj.get("last_modified")
 
-    def iter_content(self):
+    def iter_content(self) -> Iterable[bytes]:
         """Returns this object's content as an iterable."""
-        _, content = self._provider.swift.get_object(
-            self.cbcontainer.name, self.name, resp_chunk_size=65536)
+        _, content = cast("OpenStackCloudProvider", self._provider).swift \
+            .get_object(self.cbcontainer.name, self.name, resp_chunk_size=65536)
         return content
 
     @property
-    def bucket(self):
+    def bucket(self) -> Bucket:
         return self.cbcontainer
 
-    def _upload_single_shot(self, data):
+    def _upload_single_shot(
+            self, data: str | bytes | IO[bytes]) -> BucketObject:
         """
         Set the contents of this object in a single request.
 
@@ -1326,10 +1407,12 @@ class OpenStackBucketObject(BaseBucketObject):
         by the base class via the Static Large Object (SLO) multipart path, so
         this single-request path only runs for smaller payloads.
         """
-        self._provider.swift.put_object(self.cbcontainer.name, self.name,
-                                        data)
+        cast("OpenStackCloudProvider", self._provider).swift.put_object(
+            self.cbcontainer.name, self.name, data)
+        return self
 
-    def upload_from_file(self, path, config=None):
+    def upload_from_file(self, path: str,
+                         config: UploadConfig | None = None) -> BucketObject:
         """
         Stores the contents of the file pointed by the ``path`` variable.
         If the file is bigger than 5 Gig, it will be broken into segments.
@@ -1352,25 +1435,25 @@ class OpenStackBucketObject(BaseBucketObject):
 
         .. seealso:: https://github.com/CloudVE/cloudbridge/issues/35#issuecomment-297629661 # noqa
         """
-        upload_options = {}
+        upload_options: dict[str, Any] = {}
         if 'segment_size' not in upload_options:
             if os.path.getsize(path) >= FIVE_GIG:
                 upload_options['segment_size'] = FIVE_GIG
 
         # remap the swift service's connection factory method
         # pylint:disable=protected-access
-        swiftclient.service.get_conn = self._provider._connect_swift
+        swiftclient.service.get_conn = cast(
+            "OpenStackCloudProvider", self._provider)._connect_swift
 
-        result = True
         with SwiftService() as swift:
             upload_object = SwiftUploadObject(path, object_name=self.name)
             for up_res in swift.upload(self.cbcontainer.name,
                                        [upload_object, ],
                                        options=upload_options):
-                result = result and up_res['success']
-        return result
+                up_res['success']
+        return self
 
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this object.
 
@@ -1384,107 +1467,111 @@ class OpenStackBucketObject(BaseBucketObject):
 
         # remap the swift service's connection factory method
         # pylint:disable=protected-access
-        swiftclient.service.get_conn = self._provider._connect_swift
+        swiftclient.service.get_conn = cast(
+            "OpenStackCloudProvider", self._provider)._connect_swift
 
-        result = True
         with SwiftService() as swift:
             for del_res in swift.delete(self.cbcontainer.name, [self.name, ]):
-                result = result and del_res['success']
-        return result
+                del_res['success']
 
-    def generate_url(self, expires_in, writable=False):
+    def generate_url(self, expires_in: int, writable: bool = False) -> str:
         http_method = "PUT" if writable else "GET"
         # Set a temp url key on the object (http://bit.ly/2NBiXGD)
         temp_url_key = "cloudbridge-tmp-url-key"
-        self._provider.swift.post_account(
+        swift = cast("OpenStackCloudProvider", self._provider).swift
+        swift.post_account(
             headers={"x-account-meta-temp-url-key": temp_url_key})
-        base_url = urlparse(self._provider.swift.get_service_auth()[0])
+        base_url = urlparse(swift.get_service_auth()[0])
         access_point = "{0}://{1}".format(base_url.scheme, base_url.netloc)
         url_path = "/".join([base_url.path, self.cbcontainer.name, self.name])
         return urljoin(access_point, generate_temp_url(url_path, expires_in,
                                                        temp_url_key, http_method))
 
-    def refresh(self):
+    def refresh(self) -> None:
         self._obj = self.cbcontainer.objects.get(self.id)._obj
 
 
 class OpenStackBucket(BaseBucket):
 
-    def __init__(self, provider, bucket):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 bucket: Any) -> None:
         super(OpenStackBucket, self).__init__(provider)
         self._bucket = bucket
         self._object_container = OpenStackBucketObjectSubService(provider,
                                                                  self)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._bucket.get("name")
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.id
 
     @property
-    def objects(self):
+    def objects(self) -> OpenStackBucketObjectSubService:
         return self._object_container
 
 
 class OpenStackDnsZone(BaseDnsZone):
 
-    def __init__(self, provider, dns_zone):
+    def __init__(self, provider: OpenStackCloudProvider,
+                 dns_zone: Any) -> None:
         super(OpenStackDnsZone, self).__init__(provider)
         self._dns_zone = dns_zone
         self._dns_record_container = OpenStackDnsRecordSubService(
             provider, self)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._dns_zone.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._dns_zone.name
 
     @property
-    def admin_email(self):
+    def admin_email(self) -> str | None:
         return self._dns_zone.email
 
     @property
-    def records(self):
+    def records(self) -> OpenStackDnsRecordSubService:
         return self._dns_record_container
 
 
 class OpenStackDnsRecord(BaseDnsRecord):
 
-    def __init__(self, provider, dns_zone, dns_record):
+    def __init__(self, provider: OpenStackCloudProvider, dns_zone: Any,
+                 dns_record: Any) -> None:
         super(OpenStackDnsRecord, self).__init__(provider)
         self._dns_zone = dns_zone
         self._dns_rec = dns_record
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._dns_rec.id
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._dns_rec.name
 
     @property
-    def zone_id(self):
+    def zone_id(self) -> str:
         return self._dns_zone.id
 
     @property
-    def type(self):
+    def type(self) -> str:
         return self._dns_rec.type
 
     @property
-    def data(self):
+    def data(self) -> list[str]:
         return self._dns_rec.records
 
     @property
-    def ttl(self):
+    def ttl(self) -> int:
         return self._dns_rec.ttl
 
-    def delete(self):
+    def delete(self) -> None:
         # pylint:disable=protected-access
-        return self._provider.dns._records.delete(self._dns_zone, self)
+        records: Any = self._provider.dns._records
+        records.delete(self._dns_zone, self)

@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from pyeventsystem.middleware import dispatch as pyevent_dispatch
 from pyeventsystem.middleware import intercept
@@ -19,12 +20,14 @@ class EventDebugLoggingMiddleware(object):
     access keys.
     """
     @observe(event_pattern="*", priority=100)
-    def pre_log_event(self, event_args, *args, **kwargs):
+    def pre_log_event(self, event_args: dict[str, Any],
+                      *args: Any, **kwargs: Any) -> None:
         log.debug("Event: {0}, args: {1} kwargs: {2}".format(
             event_args.get("event"), args, kwargs))
 
     @observe(event_pattern="*", priority=4900)
-    def post_log_event(self, event_args, *args, **kwargs):
+    def post_log_event(self, event_args: dict[str, Any],
+                       *args: Any, **kwargs: Any) -> None:
         log.debug("Event: {0}, result: {1}".format(
             event_args.get("event"), event_args.get("result")))
 
@@ -34,7 +37,8 @@ class ExceptionWrappingMiddleware(object):
     Wraps all unhandled exceptions in cloudbridge exceptions.
     """
     @intercept(event_pattern="*", priority=1050)
-    def wrap_exception(self, event_args, *args, **kwargs):
+    def wrap_exception(self, event_args: dict[str, Any],
+                       *args: Any, **kwargs: Any) -> Any:
         next_handler = event_args.pop("next_handler")
         if not next_handler:
             return

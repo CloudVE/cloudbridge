@@ -1,6 +1,9 @@
 """Provider implementation based on OpenStack Python clients for OpenStack."""
+from __future__ import annotations
 
 import inspect
+from collections.abc import Callable
+from typing import Any
 
 from keystoneauth1 import session
 
@@ -17,8 +20,13 @@ from swiftclient import client as swift_client
 
 from cloudbridge.base import BaseCloudProvider
 from cloudbridge.base.helpers import get_env
-
+from cloudbridge.base.services import BaseCloudService
 from cloudbridge.interfaces.exceptions import ProviderConnectionException
+from cloudbridge.interfaces.services import ComputeService
+from cloudbridge.interfaces.services import DnsService
+from cloudbridge.interfaces.services import NetworkingService
+from cloudbridge.interfaces.services import SecurityService
+from cloudbridge.interfaces.services import StorageService
 
 from .services import OpenStackComputeService
 from .services import OpenStackDnsService
@@ -30,9 +38,9 @@ from .services import OpenStackStorageService
 class OpenStackCloudProvider(BaseCloudProvider):
     """OpenStack provider implementation."""
 
-    PROVIDER_ID = 'openstack'
+    PROVIDER_ID: str = 'openstack'
 
-    def __init__(self, config):
+    def __init__(self, config: dict[str, Any]) -> None:
         super(OpenStackCloudProvider, self).__init__(config)
 
         # Initialize cloud connection fields
@@ -64,14 +72,14 @@ class OpenStackCloudProvider(BaseCloudProvider):
             get_env('OS_USER_DOMAIN_NAME'))
 
         # Service connections, lazily initialized
-        self._nova = None
-        self._keystone = None
-        self._swift = None
-        self._neutron = None
-        self._os_conn = None
+        self._nova: Any = None
+        self._keystone: Any = None
+        self._swift: Any = None
+        self._neutron: Any = None
+        self._os_conn: Any = None
 
         # Additional cached variables
-        self._cached_keystone_session = None
+        self._cached_keystone_session: Any = None
 
         # Initialize provider services
         self._compute = OpenStackComputeService(self)
@@ -81,19 +89,19 @@ class OpenStackCloudProvider(BaseCloudProvider):
         self._dns = OpenStackDnsService(self)
 
     @property
-    def nova(self):
+    def nova(self) -> Any:
         if not self._nova:
             self._nova = self._connect_nova()
         return self._nova
 
     @property
-    def keystone(self):
+    def keystone(self) -> Any:
         if not self._keystone:
             self._keystone = self._connect_keystone()
         return self._keystone
 
     @property
-    def _keystone_version(self):
+    def _keystone_version(self) -> int:
         """
         Return the numeric version of remote Keystone server.
 
@@ -106,7 +114,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return 2
 
     @property
-    def _keystone_session(self):
+    def _keystone_session(self) -> Any:
         """
         Connect to Keystone and return a session object.
 
@@ -118,6 +126,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
         if self._keystone_version == 3:
             from keystoneauth1.identity import v3
+            auth: Any
             if self.username and self.password:
                 auth = v3.Password(auth_url=self.auth_url,
                                    username=self.username,
@@ -143,7 +152,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
             self._cached_keystone_session = session.Session(auth=auth)
         return self._cached_keystone_session
 
-    def _connect_openstack(self):
+    def _connect_openstack(self) -> Any:
         return connection.Connection(
             region_name=self.region_name,
             user_agent='cloudbridge',
@@ -152,47 +161,47 @@ class OpenStackCloudProvider(BaseCloudProvider):
         )
 
     @property
-    def swift(self):
+    def swift(self) -> Any:
         if not self._swift:
             self._swift = self._connect_swift()
         return self._swift
 
     @property
-    def neutron(self):
+    def neutron(self) -> Any:
         if not self._neutron:
             self._neutron = self._connect_neutron()
         return self._neutron
 
     @property
-    def os_conn(self):
+    def os_conn(self) -> Any:
         if not self._os_conn:
             self._os_conn = self._connect_openstack()
         return self._os_conn
 
     @property
-    def compute(self):
+    def compute(self) -> ComputeService:
         return self._compute
 
     @property
-    def networking(self):
+    def networking(self) -> NetworkingService:
         return self._networking
 
     @property
-    def security(self):
+    def security(self) -> SecurityService:
         return self._security
 
     @property
-    def storage(self):
+    def storage(self) -> StorageService:
         return self._storage
 
     @property
-    def dns(self):
+    def dns(self) -> DnsService:
         return self._dns
 
-    def _connect_nova(self):
+    def _connect_nova(self) -> Any:
         return self._connect_nova_region(self.region_name)
 
-    def _connect_nova_region(self, region_name):
+    def _connect_nova_region(self, region_name: str | None) -> Any:
         """Get an OpenStack Nova (compute) client object."""
         # Force reauthentication with Keystone
         self._cached_keystone_session = None
@@ -215,7 +224,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
                 http_log_debug=True if self.config.debug_mode else False)
         return nova
 
-    def _connect_keystone(self):
+    def _connect_keystone(self) -> Any:
         """Get an OpenStack Keystone (identity) client object."""
         if self._keystone_version == 3:
             return keystone_client.Client(session=self._keystone_session,
@@ -237,7 +246,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
             return keystone
 
     @staticmethod
-    def _clean_options(options, method_to_match):
+    def _clean_options(options: dict[str, Any] | None,
+                       method_to_match: Callable[..., Any]) -> dict[str, Any]:
         """
         Returns a **copy** of the source options with all keys that are not in
         the ``method_to_match`` parameter list removed.
@@ -261,20 +271,17 @@ class OpenStackCloudProvider(BaseCloudProvider):
             then this will be an empty dictionary
         :rtype: ``dict``
         """
-        result = {}
+        result: dict[str, Any] = {}
         if options:
-            try:
-                method_signature = inspect.signature(method_to_match)
-                parameters = set(method_signature.parameters.keys())
-            except AttributeError:
-                parameters = set(inspect.getargspec(method_to_match).args)
+            method_signature = inspect.signature(method_to_match)
+            parameters = set(method_signature.parameters.keys())
             result = {key: val for key, val in options.items() if
                       key in parameters}
             # Don't allow the options to override our authentication
             result.pop('os_options', None)
         return result
 
-    def _connect_swift(self, options=None):
+    def _connect_swift(self, options: dict[str, Any] | None = None) -> Any:
         """
         Get an OpenStack Swift (object store) client connection.
 
@@ -297,42 +304,57 @@ class OpenStackCloudProvider(BaseCloudProvider):
             clean_options['session'] = self._keystone_session
         return swift_client.Connection(**clean_options)
 
-    def _connect_neutron(self):
+    def _connect_neutron(self) -> Any:
         """Get an OpenStack Neutron (networking) client object cloud."""
         return neutron_client.Client(auth_url=self.auth_url,
                                      session=self._keystone_session,
                                      region_name=self.region_name)
 
-    def service_zone_name(self, service):
+    def service_zone_name(self, service: BaseCloudService) -> str | None:
+        # ``service_zone_name`` is an OpenStack-specific attribute set in each
+        # service's __init__; it is not declared on the typed service
+        # interfaces, so reach it through ``Any``.
+        networking: Any = self.networking
+        security: Any = self.security
+        compute: Any = self.compute
+        storage: Any = self.storage
+        # ``zone_name`` is typed ``str | None`` on the interface, but the base
+        # implementation may return a dict at runtime (via ast.literal_eval);
+        # bind it to ``Any`` so the dict branches type-check.
+        zone_name: Any = self.zone_name
         service_name = service._service_event_pattern
         if "networking" in service_name:
-            if self.networking.service_zone_name:
-                return self.networking.service_zone_name
-            elif (isinstance(self.zone_name, dict) and
-                  self.zone_name.get("networking_zone")):
-                return self.zone_name.get("networking_zone")
+            if networking.service_zone_name:
+                return networking.service_zone_name
+            elif (isinstance(zone_name, dict) and
+                  zone_name.get("networking_zone")):
+                return zone_name.get("networking_zone")
         elif "security" in service_name:
-            if self.security.service_zone_name:
-                return self.security.service_zone_name
-            elif (isinstance(self.zone_name, dict) and
-                  self.zone_name.get("security_zone")):
-                return self.zone_name.get("security_zone")
+            if security.service_zone_name:
+                return security.service_zone_name
+            elif (isinstance(zone_name, dict) and
+                  zone_name.get("security_zone")):
+                return zone_name.get("security_zone")
         elif "compute" in service_name:
-            if self.compute.service_zone_name:
-                return self.compute.service_zone_name
-            elif (isinstance(self.zone_name, dict) and
-                  self.zone_name.get("compute_zone")):
-                return self.zone_name.get("compute_zone")
+            if compute.service_zone_name:
+                return compute.service_zone_name
+            elif (isinstance(zone_name, dict) and
+                  zone_name.get("compute_zone")):
+                return zone_name.get("compute_zone")
         elif "storage" in service_name:
-            if self.storage.service_zone_name:
-                return self.storage.service_zone_name
-            elif (isinstance(self.zone_name, dict) and
-                  self.zone_name.get("storage_zone")):
-                return self.zone_name.get("storage_zone")
-        elif (isinstance(self.zone_name, dict) and
-              self.zone_name.get("default_zone")):
-            return self.zone_name.get("default_zone")
-        elif isinstance(self.zone_name, str):
-            return self.zone_name
+            if storage.service_zone_name:
+                return storage.service_zone_name
+            elif (isinstance(zone_name, dict) and
+                  zone_name.get("storage_zone")):
+                return zone_name.get("storage_zone")
+        elif (isinstance(zone_name, dict) and
+              zone_name.get("default_zone")):
+            return zone_name.get("default_zone")
+        elif isinstance(zone_name, str):
+            return zone_name
         else:
             return None
+        # The branches above only return when an inner condition matched;
+        # fall through to ``None`` otherwise (preserving the original
+        # implicit return).
+        return None

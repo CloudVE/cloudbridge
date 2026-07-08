@@ -1,10 +1,34 @@
 """
 Specifications for data objects exposed through a ``provider`` or ``service``.
 """
+from __future__ import annotations
+
 from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
+from collections.abc import Iterable
+from datetime import datetime
 from enum import Enum
+from typing import Any
+from typing import Generic
+from typing import IO
+from typing import Iterator
+from typing import TYPE_CHECKING
+from typing import TypeVar
+
+if TYPE_CHECKING:
+    from cloudbridge.interfaces.provider import CloudProvider
+    from cloudbridge.interfaces.subservices import BucketObjectSubService
+    from cloudbridge.interfaces.subservices import DnsRecordSubService
+    from cloudbridge.interfaces.subservices import FloatingIPSubService
+    from cloudbridge.interfaces.subservices import GatewaySubService
+    from cloudbridge.interfaces.subservices import SubnetSubService
+    from cloudbridge.interfaces.subservices import VMFirewallRuleSubService
+
+# Element type for pageable collections (services and ResultList). Every such
+# element is a CloudResource, so the bound lets paging code read `.id` without
+# casting.
+T = TypeVar("T", bound="CloudResource")
 
 
 class CloudServiceType(object):
@@ -44,7 +68,7 @@ class CloudResource(object):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def _provider(self):
+    def _provider(self) -> CloudProvider:
         """
         Returns the provider instance associated with this resource.
 
@@ -56,7 +80,7 @@ class CloudResource(object):
         pass
 
     @abstractproperty
-    def id(self):
+    def id(self) -> str:
         """
         Get the resource identifier.
 
@@ -70,7 +94,7 @@ class CloudResource(object):
         pass
 
     @abstractproperty
-    def name(self):
+    def name(self) -> str:
         """
         Get the name id for the resource.
 
@@ -105,7 +129,7 @@ class CloudResource(object):
         pass
 
     @abstractmethod
-    def to_json(self):
+    def to_json(self) -> dict[str, Any]:
         """
         Returns a JSON representation of the CloudResource object.
         """
@@ -115,7 +139,7 @@ class CloudResource(object):
 class LabeledCloudResource(CloudResource):
 
     @abstractproperty
-    def label(self):
+    def label(self) -> str | None:
         """
         Get the resource label.
 
@@ -143,13 +167,13 @@ class LabeledCloudResource(CloudResource):
         pass
 
 
-class Configuration(dict):
+class Configuration(dict[str, Any]):
     """
     Represents a CloudBridge configuration object
     """
 
     @abstractproperty
-    def default_result_limit(self):
+    def default_result_limit(self) -> int:
         """
         Get the default maximum number of results to return for a list method.
 
@@ -161,8 +185,8 @@ class Configuration(dict):
         """
         pass
 
-    @property
-    def default_wait_timeout(self):
+    @abstractproperty
+    def default_wait_timeout(self) -> int:
         """
         Get the default wait timeout for ``LifeCycleObjects``.
 
@@ -175,8 +199,8 @@ class Configuration(dict):
         """
         pass
 
-    @property
-    def default_wait_interval(self):
+    @abstractproperty
+    def default_wait_interval(self) -> int:
         """
         Get the default wait interval for ``LifeCycleObjects``.
 
@@ -189,7 +213,7 @@ class Configuration(dict):
         pass
 
     @abstractproperty
-    def debug_mode(self):
+    def debug_mode(self) -> bool:
         """
         A flag indicating whether CloudBridge is in debug mode.
 
@@ -221,7 +245,7 @@ class ObjectLifeCycleMixin(object):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def _provider(self):
+    def _provider(self) -> CloudProvider:
         """
         Obtain the provider associated with this object.
 
@@ -234,7 +258,7 @@ class ObjectLifeCycleMixin(object):
         pass
 
     @abstractproperty
-    def state(self):
+    def state(self) -> str:
         """
         Get the current state of this object.
 
@@ -244,15 +268,17 @@ class ObjectLifeCycleMixin(object):
         pass
 
     @abstractmethod
-    def refresh(self):
+    def refresh(self) -> None:
         """
         Refresh this object's state and synchronize it with the provider.
         """
         pass
 
     @abstractmethod
-    def wait_for(self, target_states, terminal_states=None, timeout=None,
-                 interval=None):
+    def wait_for(self, target_states: list[str],
+                 terminal_states: list[str] | None = None,
+                 timeout: int | None = None,
+                 interval: int | None = None) -> bool:
         """
         Wait for for an object to reach a one of desired target states.
 
@@ -301,7 +327,8 @@ class ObjectLifeCycleMixin(object):
         pass
 
     @abstractmethod
-    def wait_till_ready(self, timeout, interval):
+    def wait_till_ready(self, timeout: int | None = None,
+                        interval: int | None = None) -> None:
         """
         Wait till the current object reaches its ready state.
 
@@ -327,7 +354,7 @@ class ObjectLifeCycleMixin(object):
         pass
 
 
-class PageableObjectMixin(object):
+class PageableObjectMixin(Generic[T]):
     """
     A marker interface for objects which support paged iteration.
 
@@ -336,7 +363,7 @@ class PageableObjectMixin(object):
     """
 
     @abstractmethod
-    def __iter__(self):
+    def __iter__(self) -> Iterator[T]:
         """
         Enables iteration through this object.
 
@@ -347,7 +374,8 @@ class PageableObjectMixin(object):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[T]:
         """
         Returns a list of objects up to a maximum limit.
 
@@ -397,7 +425,7 @@ class PageableObjectMixin(object):
         pass
 
 
-class ResultList(list):
+class ResultList(list[T]):
     """
     Provide extra properties to aid with paging through a many results.
 
@@ -425,7 +453,7 @@ class ResultList(list):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def marker(self):
+    def marker(self) -> str | None:
         """
         An opaque identifier used in paging through very long lists of objects.
 
@@ -435,14 +463,14 @@ class ResultList(list):
         pass
 
     @abstractproperty
-    def is_truncated(self):
+    def is_truncated(self) -> bool:
         """
         Indicate whether this result list has more results that can be paged.
         """
         pass
 
     @abstractproperty
-    def supports_total(self):
+    def supports_total(self) -> bool:
         """
         Indicate whether can obtain the total number of available results.
 
@@ -452,7 +480,7 @@ class ResultList(list):
         pass
 
     @abstractproperty
-    def total_results(self):
+    def total_results(self) -> int:
         """
         Indicate the total number of results for a particular query.
 
@@ -463,7 +491,7 @@ class ResultList(list):
         pass
 
     @abstractproperty
-    def supports_server_paging(self):
+    def supports_server_paging(self) -> bool:
         """
         Indicate whether this ``ResultList`` supports server side paging.
 
@@ -474,7 +502,7 @@ class ResultList(list):
         pass
 
     @abstractproperty
-    def data(self):
+    def data(self) -> list[T]:
         pass
 
 
@@ -507,9 +535,9 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
 
     __metaclass__ = ABCMeta
 
-    @LabeledCloudResource.label.setter
+    @LabeledCloudResource.label.setter  # type: ignore[attr-defined]
     @abstractmethod
-    def label(self, value):
+    def label(self, value: str) -> None:
         """
         Set the instance label.
 
@@ -519,7 +547,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def public_ips(self):
+    def public_ips(self) -> list[str]:
         """
         Get all the public IP addresses for this instance.
 
@@ -529,7 +557,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def private_ips(self):
+    def private_ips(self) -> list[str]:
         """
         Get all the private IP addresses for this instance.
 
@@ -539,7 +567,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def vm_type_id(self):
+    def vm_type_id(self) -> str:
         """
         Get the VM type id for this instance.
 
@@ -553,7 +581,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def vm_type(self):
+    def vm_type(self) -> VMType:
         """
         Retrieve full VM type information for this instance.
 
@@ -563,7 +591,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def create_time(self):
+    def create_time(self) -> str | datetime:
         """
         Get the creation data and time for this instance.
 
@@ -574,7 +602,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def reboot(self):
+    def reboot(self) -> None:
         """
         Reboot this instance (using the cloud middleware API).
 
@@ -584,34 +612,28 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def start(self):
+    def start(self) -> None:
         """
         Start this instance (using the cloud middleware API)
-
-        :rtype: ``bool``
-        :return: ``True`` if the starting was successful; ``False`` otherwise.
         """
         pass
 
     @abstractmethod
-    def stop(self):
+    def stop(self) -> None:
         """
         Stop this instance (using the cloud middleware API)
-
-        :rtype: ``bool``
-        :return: ``True`` if the stopping was successful; ``False`` otherwise.
         """
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Permanently delete this instance.
         """
         pass
 
     @abstractproperty
-    def image_id(self):
+    def image_id(self) -> str:
         """
         Get the image ID for this instance.
 
@@ -621,7 +643,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def zone_id(self):
+    def zone_id(self) -> str:
         """
         Get the placement zone ID where this instance is running.
 
@@ -631,7 +653,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def subnet_id(self):
+    def subnet_id(self) -> str:
         """
         Get the subnet ID where this instance is placed.
 
@@ -651,7 +673,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
 #         pass
 
     @abstractproperty
-    def vm_firewalls(self):
+    def vm_firewalls(self) -> list[VMFirewall]:
         """
         Get the firewalls (security groups) associated with this instance.
 
@@ -661,7 +683,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def vm_firewall_ids(self):
+    def vm_firewall_ids(self) -> list[str]:
         """
         Get the IDs of the VM firewalls associated with this instance.
 
@@ -671,7 +693,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def key_pair_id(self):
+    def key_pair_id(self) -> str | None:
         """
         Get the id of the key pair associated with this instance.
 
@@ -681,7 +703,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def create_image(self, label):
+    def create_image(self, label: str) -> MachineImage:
         """
         Create a new image based on this instance.
 
@@ -691,7 +713,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def add_floating_ip(self, floating_ip):
+    def add_floating_ip(self, floating_ip: FloatingIP | str) -> None:
         """
         Add a public IP address to this instance.
 
@@ -705,7 +727,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def remove_floating_ip(self, floating_ip):
+    def remove_floating_ip(self, floating_ip: FloatingIP | str) -> None:
         """
         Remove a public IP address from this instance.
 
@@ -719,7 +741,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def add_vm_firewall(self, firewall):
+    def add_vm_firewall(self, firewall: VMFirewall) -> None:
         """
         Add a VM firewall to this instance
 
@@ -729,7 +751,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def remove_vm_firewall(self, firewall):
+    def remove_vm_firewall(self, firewall: VMFirewall) -> None:
         """
         Remove a VM firewall from this instance
 
@@ -776,7 +798,7 @@ class LaunchConfig(object):
     """
 
     @abstractmethod
-    def add_ephemeral_device(self):
+    def add_ephemeral_device(self) -> None:
         """
         Add a new ephemeral block device mapping to the boot configuration.
 
@@ -807,8 +829,9 @@ class LaunchConfig(object):
         pass
 
     @abstractmethod
-    def add_volume_device(self, source=None, is_root=None, size=None,
-                          delete_on_terminate=None):
+    def add_volume_device(self, source: Volume | Snapshot | MachineImage | None = None,
+                          is_root: bool | None = None, size: int | None = None,
+                          delete_on_terminate: bool | None = None) -> None:
         """
         Add a new volume based block device mapping to the boot configuration.
 
@@ -872,7 +895,7 @@ class MachineImage(ObjectLifeCycleMixin, LabeledCloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def description(self):
+    def description(self) -> str | None:
         """
         Get the image description.
 
@@ -883,7 +906,7 @@ class MachineImage(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def min_disk(self):
+    def min_disk(self) -> int | None:
         """
         Return the minimum size of the disk that's required to boot this image.
 
@@ -895,7 +918,7 @@ class MachineImage(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this image.
 
@@ -929,9 +952,9 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
     """
     __metaclass__ = ABCMeta
 
-    @LabeledCloudResource.label.setter
+    @LabeledCloudResource.label.setter  # type: ignore[attr-defined]
     @abstractmethod
-    def label(self, value):
+    def label(self, value: str) -> None:
         """
         Set the resource label.
 
@@ -941,7 +964,7 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def external(self):
+    def external(self) -> bool:
         """
         A flag to indicate if this network is capable of Internet-connectivity.
 
@@ -951,7 +974,7 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def state(self):
+    def state(self) -> str:
         """
         The state of the network.
 
@@ -962,7 +985,7 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def cidr_block(self):
+    def cidr_block(self) -> str:
         """
         A CIDR block for this network.
 
@@ -974,7 +997,7 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this network.
 
@@ -984,7 +1007,7 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def subnets(self):
+    def subnets(self) -> SubnetSubService:
         """
         The associated subnets.
 
@@ -994,7 +1017,7 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def gateways(self):
+    def gateways(self) -> GatewaySubService:
         """
         Provides access to the internet gateways attached to this network.
 
@@ -1027,9 +1050,9 @@ class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
     """
     __metaclass__ = ABCMeta
 
-    @LabeledCloudResource.label.setter
+    @LabeledCloudResource.label.setter  # type: ignore[attr-defined]
     @abstractmethod
-    def label(self, value):
+    def label(self, value: str) -> None:
         """
         Set the resource label.
 
@@ -1039,7 +1062,7 @@ class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def cidr_block(self):
+    def cidr_block(self) -> str:
         """
         A CIDR block for this subnet.
 
@@ -1049,7 +1072,7 @@ class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def network_id(self):
+    def network_id(self) -> str:
         """
         ID of the network associated with this this subnet.
 
@@ -1059,7 +1082,7 @@ class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def network(self):
+    def network(self) -> Network:
         """
         The parent network object associated with this this subnet.
 
@@ -1069,7 +1092,7 @@ class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def zone(self):
+    def zone(self) -> PlacementZone | None:
         """
         Placement zone of the subnet.
 
@@ -1081,7 +1104,7 @@ class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this subnet.
 
@@ -1114,7 +1137,7 @@ class FloatingIP(ObjectLifeCycleMixin, CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def public_ip(self):
+    def public_ip(self) -> str:
         """
         Public IP address.
 
@@ -1124,7 +1147,7 @@ class FloatingIP(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractproperty
-    def private_ip(self):
+    def private_ip(self) -> str | None:
         """
         Private IP address this address is attached to.
 
@@ -1134,7 +1157,7 @@ class FloatingIP(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractproperty
-    def in_use(self):
+    def in_use(self) -> bool:
         """
         Whether the address is in use or not.
 
@@ -1144,7 +1167,7 @@ class FloatingIP(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this address.
 
@@ -1179,9 +1202,9 @@ class Router(LabeledCloudResource):
     """
     __metaclass__ = ABCMeta
 
-    @LabeledCloudResource.label.setter
+    @LabeledCloudResource.label.setter  # type: ignore[attr-defined]
     @abstractmethod
-    def label(self, value):
+    def label(self, value: str) -> None:
         """
         Set the resource label.
 
@@ -1191,7 +1214,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractproperty
-    def state(self):
+    def state(self) -> str:
         """
         Router state: attached or detached to a network.
 
@@ -1201,7 +1224,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractproperty
-    def network_id(self):
+    def network_id(self) -> str | None:
         """
         ID of the network to which the router is attached.
 
@@ -1211,7 +1234,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this router.
 
@@ -1221,7 +1244,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractmethod
-    def attach_subnet(self, subnet):
+    def attach_subnet(self, subnet: Subnet | str) -> None:
         """
         Attach this router to a subnet.
 
@@ -1234,7 +1257,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractmethod
-    def detach_subnet(self, subnet):
+    def detach_subnet(self, subnet: Subnet | str) -> None:
         """
         Detach this subnet from a network.
 
@@ -1247,7 +1270,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractproperty
-    def subnets(self):
+    def subnets(self) -> Iterable[Subnet]:
         """
         List of subnets attached to this router.
 
@@ -1257,7 +1280,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractmethod
-    def attach_gateway(self, gateway):
+    def attach_gateway(self, gateway: Gateway) -> None:
         """
         Attach a gateway to this router.
 
@@ -1270,7 +1293,7 @@ class Router(LabeledCloudResource):
         pass
 
     @abstractmethod
-    def detach_gateway(self, gateway):
+    def detach_gateway(self, gateway: Gateway) -> None:
         """
         Detach this router from a gateway.
 
@@ -1303,7 +1326,7 @@ class Gateway(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def network_id(self):
+    def network_id(self) -> str | None:
         """
         ID of the network to which the gateway is attached.
 
@@ -1313,7 +1336,7 @@ class Gateway(CloudResource):
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this gateway. On some providers, if the gateway
         is public/a singleton, this operation will do nothing.
@@ -1321,7 +1344,7 @@ class Gateway(CloudResource):
         pass
 
     @abstractproperty
-    def floating_ips(self):
+    def floating_ips(self) -> FloatingIPSubService:
         """
         Provides access to floating IPs connected to this internet gateway.
 
@@ -1347,8 +1370,8 @@ class DnsZone(CloudResource):
     """
     __metaclass__ = ABCMeta
 
-    @property
-    def admin_email(self):
+    @abstractproperty
+    def admin_email(self) -> str | None:
         """
         Email address of this zone's administrator. Some cloud providers do not
         support this field, and therefore, it may be stored in an extra field
@@ -1360,14 +1383,14 @@ class DnsZone(CloudResource):
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this zone.
         """
         pass
 
     @abstractproperty
-    def records(self):
+    def records(self) -> DnsRecordSubService:
         """
         List of DNS records in this zone.
 
@@ -1403,7 +1426,7 @@ class DnsRecord(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def zone_id(self):
+    def zone_id(self) -> str:
         """
         The containing zone for this dns record
 
@@ -1413,7 +1436,7 @@ class DnsRecord(CloudResource):
         pass
 
     @abstractproperty
-    def type(self):
+    def type(self) -> str:
         """
         Dns Record type which could be A, CNAME, MX, AAAA, PTR
 
@@ -1423,7 +1446,7 @@ class DnsRecord(CloudResource):
         pass
 
     @abstractproperty
-    def data(self):
+    def data(self) -> list[str]:
         """
         Dns Record data
 
@@ -1433,7 +1456,7 @@ class DnsRecord(CloudResource):
         pass
 
     @abstractproperty
-    def ttl(self):
+    def ttl(self) -> int:
         """
         ttl for this record
 
@@ -1449,7 +1472,7 @@ class AttachmentInfo(object):
     """
 
     @abstractproperty
-    def volume(self):
+    def volume(self) -> Volume:
         """
         Get the volume instance related to this attachment.
 
@@ -1459,7 +1482,7 @@ class AttachmentInfo(object):
         pass
 
     @abstractproperty
-    def instance_id(self):
+    def instance_id(self) -> str:
         """
         Get the instance_id related to this attachment.
 
@@ -1469,7 +1492,7 @@ class AttachmentInfo(object):
         pass
 
     @abstractproperty
-    def device(self):
+    def device(self) -> str | None:
         """
         Get the device the volume is mapped as.
 
@@ -1508,16 +1531,16 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
 
     __metaclass__ = ABCMeta
 
-    @LabeledCloudResource.label.setter
+    @LabeledCloudResource.label.setter  # type: ignore[attr-defined]
     @abstractmethod
-    def label(self, value):
+    def label(self, value: str) -> None:
         """
         Set the volume label.
         """
         pass
 
     @abstractproperty
-    def description(self):
+    def description(self) -> str:
         """
         Get the volume description.
 
@@ -1532,7 +1555,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
 
     @description.setter
     @abstractmethod
-    def description(self, value):
+    def description(self, value: str) -> None:
         """
         Set the volume description.
 
@@ -1543,7 +1566,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def size(self):
+    def size(self) -> int:
         """
         Get the volume size (in GB).
 
@@ -1553,7 +1576,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def create_time(self):
+    def create_time(self) -> str | datetime:
         """
         Get the creation data and time for this volume.
 
@@ -1564,7 +1587,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def zone_id(self):
+    def zone_id(self) -> str:
         """
         Get the placement zone id that this volume belongs to.
 
@@ -1575,7 +1598,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def source(self):
+    def source(self) -> Snapshot | MachineImage | None:
         """
         If available, get the source that this volume is based on.
 
@@ -1588,7 +1611,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def attachments(self):
+    def attachments(self) -> AttachmentInfo | None:
         """
         Get attachment information for this volume.
 
@@ -1598,7 +1621,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def attach(self, instance, device):
+    def attach(self, instance: str | Instance, device: str) -> None:
         """
         Attach this volume to an instance.
 
@@ -1616,7 +1639,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def detach(self, force=False):
+    def detach(self, force: bool = False) -> None:
         """
         Detach this volume from an instance.
 
@@ -1637,7 +1660,8 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def create_snapshot(self, label, description=None):
+    def create_snapshot(self, label: str,
+                        description: str | None = None) -> Snapshot:
         """
         Create a snapshot of this Volume.
 
@@ -1654,7 +1678,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this volume.
 
@@ -1689,16 +1713,16 @@ class Snapshot(ObjectLifeCycleMixin, LabeledCloudResource):
 
     __metaclass__ = ABCMeta
 
-    @LabeledCloudResource.label.setter
+    @LabeledCloudResource.label.setter  # type: ignore[attr-defined]
     @abstractmethod
-    def label(self, value):
+    def label(self, value: str) -> None:
         """
         Set the snapshot label.
         """
         pass
 
     @abstractproperty
-    def description(self):
+    def description(self) -> str:
         """
         Get the snapshot description.
 
@@ -1713,7 +1737,7 @@ class Snapshot(ObjectLifeCycleMixin, LabeledCloudResource):
 
     @description.setter
     @abstractmethod
-    def description(self, value):
+    def description(self, value: str) -> None:
         """
         Set the snapshot description.
 
@@ -1727,7 +1751,7 @@ class Snapshot(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def size(self):
+    def size(self) -> int:
         """
         Get the snapshot size (in GB).
 
@@ -1737,7 +1761,7 @@ class Snapshot(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def volume_id(self):
+    def volume_id(self) -> str | None:
         """
         Get the id of the volume that this snapshot is based on.
 
@@ -1749,7 +1773,7 @@ class Snapshot(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def create_time(self):
+    def create_time(self) -> str | datetime:
         """
         Get the creation data and time for this snapshot.
 
@@ -1760,7 +1784,9 @@ class Snapshot(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def create_volume(self, size=None, volume_type=None, iops=None):
+    def create_volume(self, size: int | None = None,
+                      volume_type: str | None = None,
+                      iops: int | None = None) -> Volume:
         """
         Create a new Volume from this Snapshot.
 
@@ -1811,7 +1837,7 @@ class Snapshot(ObjectLifeCycleMixin, LabeledCloudResource):
 #         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this snapshot.
 
@@ -1829,7 +1855,7 @@ class KeyPair(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def material(self):
+    def material(self) -> str | None:
         """
         Unencrypted private key.
 
@@ -1839,7 +1865,7 @@ class KeyPair(CloudResource):
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this key pair.
 
@@ -1859,12 +1885,22 @@ class Region(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def zones(self):
+    def zones(self) -> Iterable[PlacementZone]:
         """
         Access information about placement zones within this region.
 
         :rtype: Iterable
         :return: Iterable of available placement zones in this region.
+        """
+        pass
+
+    @abstractproperty
+    def default_zone(self) -> PlacementZone:
+        """
+        Access the default placement zone for this region.
+
+        :rtype: :class:`.PlacementZone`
+        :return: The default placement zone for this region.
         """
         pass
 
@@ -1878,7 +1914,7 @@ class PlacementZone(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def region_name(self):
+    def region_name(self) -> str:
         """
         A region this placement zone is associated with.
 
@@ -1895,7 +1931,7 @@ class VMType(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def family(self):
+    def family(self) -> str | None:
         """
         The family/group that this VM type belongs to.
 
@@ -1908,7 +1944,7 @@ class VMType(CloudResource):
         pass
 
     @abstractproperty
-    def vcpus(self):
+    def vcpus(self) -> int:
         """
         The number of VCPUs supported by this VM type.
 
@@ -1918,7 +1954,7 @@ class VMType(CloudResource):
         pass
 
     @abstractproperty
-    def ram(self):
+    def ram(self) -> float:
         """
         The amount of RAM (in GB) supported by this VM type.
 
@@ -1928,7 +1964,7 @@ class VMType(CloudResource):
         pass
 
     @abstractproperty
-    def size_root_disk(self):
+    def size_root_disk(self) -> int:
         """
         The size of this VM types's root disk (in GB).
 
@@ -1938,7 +1974,7 @@ class VMType(CloudResource):
         pass
 
     @abstractproperty
-    def size_ephemeral_disks(self):
+    def size_ephemeral_disks(self) -> int:
         """
         The size of this VM types's total ephemeral storage (in GB).
 
@@ -1948,7 +1984,7 @@ class VMType(CloudResource):
         pass
 
     @abstractproperty
-    def num_ephemeral_disks(self):
+    def num_ephemeral_disks(self) -> int:
         """
         The total number of ephemeral disks on this VM type.
 
@@ -1958,7 +1994,7 @@ class VMType(CloudResource):
         pass
 
     @abstractproperty
-    def size_total_disk(self):
+    def size_total_disk(self) -> int:
         """
         The total disk space available on this VM type
         (root_disk + ephemeral).
@@ -1969,7 +2005,7 @@ class VMType(CloudResource):
         pass
 
     @abstractproperty
-    def extra_data(self):
+    def extra_data(self) -> dict[str, Any]:
         """
         A dictionary of extra data about this instance. May contain
         nested dictionaries, but all key value pairs are strings or integers.
@@ -1989,26 +2025,26 @@ class VMFirewall(LabeledCloudResource):
 
     __metaclass__ = ABCMeta
 
-    @LabeledCloudResource.label.setter
+    @LabeledCloudResource.label.setter  # type: ignore[attr-defined]
     @abstractmethod
-    def label(self, value):
+    def label(self, value: str) -> None:
         """
         Set the resource label.
         """
         pass
 
     @abstractproperty
-    def description(self):
+    def description(self) -> str | None:
         """
         Return the description of this VM firewall.
 
         :rtype: ``str``
-        :return: A description of this VM firewall.
+        :return: A description of this VM firewall, or ``None``.
         """
         pass
 
     @abstractproperty
-    def network_id(self):
+    def network_id(self) -> str | None:
         """
         Network ID with which this VM firewall is associated.
 
@@ -2018,7 +2054,7 @@ class VMFirewall(LabeledCloudResource):
         pass
 
     @abstractproperty
-    def rules(self):
+    def rules(self) -> VMFirewallRuleSubService:
         """
         Get access to the rules belonging to this VM firewall.
 
@@ -2046,19 +2082,19 @@ class VMFirewallRule(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def direction(self):
+    def direction(self) -> TrafficDirection:
         """
         Direction of traffic to which this rule applies.
 
         Either ``TrafficDirection.INBOUND`` or ``TrafficDirection.OUTBOUND``.
 
-        :rtype: ``str``
+        :rtype: :class:`.TrafficDirection`
         :return: Direction of traffic to which this rule applies.
         """
         pass
 
     @abstractproperty
-    def protocol(self):
+    def protocol(self) -> str | None:
         """
         IP protocol used. Either ``tcp`` | ``udp`` | ``icmp``.
 
@@ -2068,7 +2104,7 @@ class VMFirewallRule(CloudResource):
         pass
 
     @abstractproperty
-    def from_port(self):
+    def from_port(self) -> int:
         """
         Lowest port number opened as part of this rule.
 
@@ -2078,7 +2114,7 @@ class VMFirewallRule(CloudResource):
         pass
 
     @abstractproperty
-    def to_port(self):
+    def to_port(self) -> int:
         """
         Highest port number opened as part of this rule.
 
@@ -2088,7 +2124,7 @@ class VMFirewallRule(CloudResource):
         pass
 
     @abstractproperty
-    def cidr(self):
+    def cidr(self) -> str | None:
         """
         CIDR block this VM firewall is providing access to.
 
@@ -2098,7 +2134,7 @@ class VMFirewallRule(CloudResource):
         pass
 
     @abstractproperty
-    def src_dest_fw_id(self):
+    def src_dest_fw_id(self) -> str | None:
         """
         VM firewall id given access permissions by this rule.
 
@@ -2108,7 +2144,7 @@ class VMFirewallRule(CloudResource):
         pass
 
     @abstractproperty
-    def src_dest_fw(self):
+    def src_dest_fw(self) -> VMFirewall | None:
         """
         VM firewall given access permissions by this rule.
 
@@ -2118,7 +2154,7 @@ class VMFirewallRule(CloudResource):
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this rule.
         """
@@ -2135,7 +2171,9 @@ class UploadConfig(object):
     Each provider maps these fields onto its native transfer mechanism.
     """
 
-    def __init__(self, threshold=None, part_size=None, max_concurrency=None):
+    def __init__(self, threshold: int | None = None,
+                 part_size: int | None = None,
+                 max_concurrency: int | None = None) -> None:
         """
         :type threshold: ``int``
         :param threshold: Size in bytes above which the upload is split into
@@ -2152,7 +2190,7 @@ class UploadConfig(object):
         self.part_size = part_size
         self.max_concurrency = max_concurrency
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return ("<CB-UploadConfig: threshold={0}, part_size={1}, "
                 "max_concurrency={2}>".format(
                     self.threshold, self.part_size, self.max_concurrency))
@@ -2170,7 +2208,7 @@ class UploadPart(object):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def part_number(self):
+    def part_number(self) -> int:
         """
         The 1-based index of this part within the upload.
 
@@ -2180,7 +2218,7 @@ class UploadPart(object):
         pass
 
     @abstractproperty
-    def etag(self):
+    def etag(self) -> object:
         """
         Opaque provider handle identifying the stored part.
 
@@ -2206,7 +2244,7 @@ class MultipartUpload(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def bucket(self):
+    def bucket(self) -> Bucket:
         """
         The bucket this upload targets.
 
@@ -2216,7 +2254,7 @@ class MultipartUpload(CloudResource):
         pass
 
     @abstractproperty
-    def object_name(self):
+    def object_name(self) -> str:
         """
         The key of the object being uploaded.
 
@@ -2226,7 +2264,8 @@ class MultipartUpload(CloudResource):
         pass
 
     @abstractmethod
-    def upload_part(self, part_number, data):
+    def upload_part(self, part_number: int,
+                    data: bytes | IO[bytes]) -> UploadPart:
         """
         Upload a single part of this multipart upload.
 
@@ -2245,7 +2284,7 @@ class MultipartUpload(CloudResource):
         pass
 
     @abstractmethod
-    def complete(self, parts):
+    def complete(self, parts: list[UploadPart]) -> BucketObject:
         """
         Finalize the upload, assembling parts in ascending ``part_number``.
 
@@ -2259,7 +2298,7 @@ class MultipartUpload(CloudResource):
         pass
 
     @abstractmethod
-    def abort(self):
+    def abort(self) -> None:
         """
         Cancel the upload, releasing any staged parts or temporary objects.
 
@@ -2277,7 +2316,7 @@ class BucketObject(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def name(self):
+    def name(self) -> str:
         """
         Retrieve the name of the current object.
 
@@ -2292,7 +2331,7 @@ class BucketObject(CloudResource):
         pass
 
     @abstractproperty
-    def size(self):
+    def size(self) -> int:
         """
         Get this object's size.
 
@@ -2302,7 +2341,7 @@ class BucketObject(CloudResource):
         pass
 
     @abstractproperty
-    def last_modified(self):
+    def last_modified(self) -> str:
         """
         Get the date and time this object was last modified.
 
@@ -2312,7 +2351,7 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def iter_content(self):
+    def iter_content(self) -> Iterable[bytes]:
         """
         Returns this object's content as an iterable.
 
@@ -2323,14 +2362,15 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def save_content(self, target_stream):
+    def save_content(self, target_stream: IO[bytes]) -> None:
         """
         Save this object and write its contents to the ``target_stream``.
         """
         pass
 
     @abstractmethod
-    def upload(self, source_stream, config=None):
+    def upload(self, source_stream: IO[bytes],
+               config: UploadConfig | None = None) -> BucketObject | None:
         """
         Set the contents of the object to the data read from the source stream.
 
@@ -2345,7 +2385,8 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def upload_from_file(self, path, config=None):
+    def upload_from_file(self, path: str,
+                         config: UploadConfig | None = None) -> BucketObject | None:
         """
         Store the contents of the file pointed by the "path" variable.
 
@@ -2363,7 +2404,7 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def create_multipart_upload(self):
+    def create_multipart_upload(self) -> MultipartUpload:
         """
         Begin an explicit, multi-part upload to this object.
 
@@ -2384,7 +2425,7 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this object.
 
@@ -2394,7 +2435,7 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def generate_url(self, expires_in, writable=False):
+    def generate_url(self, expires_in: int, writable: bool = False) -> str:
         """
         Generate a signed URL to this object.
 
@@ -2415,7 +2456,7 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def refresh(self):
+    def refresh(self) -> None:
         """
         Refresh this object's state and synchronize it with the underlying
         service provider.
@@ -2431,7 +2472,7 @@ class Bucket(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def name(self):
+    def name(self) -> str:
         """
         Retrieve the name of the current bucket.
 
@@ -2441,7 +2482,7 @@ class Bucket(CloudResource):
         pass
 
     @abstractproperty
-    def objects(self):
+    def objects(self) -> BucketObjectSubService:
         """
         Get a container for the objects belonging to this Bucket.
 
@@ -2469,7 +2510,7 @@ class Bucket(CloudResource):
         pass
 
     @abstractmethod
-    def delete(self, delete_contents=False):
+    def delete(self, delete_contents: bool = False) -> None:
         """
         Delete this bucket.
 

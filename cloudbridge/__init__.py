@@ -1,11 +1,12 @@
 """Library setup."""
 import logging
+from typing import Any
 
 # Current version of the library
 __version__ = '4.1.0'
 
 
-def get_version():
+def get_version() -> str:
     """
     Return a string with the current version of the library.
 
@@ -15,7 +16,7 @@ def get_version():
     return __version__
 
 
-def init_logging():
+def init_logging() -> None:
     """
     Initialize logging for testing.
 
@@ -35,7 +36,7 @@ class CBLogger(logging.Logger):
     Add a ``trace`` log level, numeric value 5: ``log.trace("Log message")``
     """
 
-    def trace(self, msg, *args, **kwargs):
+    def trace(self, msg: object, *args: object, **kwargs: Any) -> None:
         """Add ``trace`` log level."""
         self.log(TRACE, msg, *args, **kwargs)
 
@@ -61,7 +62,8 @@ log.addHandler(logging.NullHandler())
 #   cloudbridge.set_file_logger(__name__, '/tmp/log')
 
 
-def set_stream_logger(name, level=TRACE, format_string=None):
+def set_stream_logger(name: str, level: int = TRACE,
+                      format_string: str | None = None) -> None:
     """A convenience method to set the global logger to stream."""
     global log
     if not format_string:
@@ -76,7 +78,8 @@ def set_stream_logger(name, level=TRACE, format_string=None):
     log = logger
 
 
-def set_file_logger(name, filepath, level=logging.INFO, format_string=None):
+def set_file_logger(name: str, filepath: str, level: int = logging.INFO,
+                    format_string: str | None = None) -> None:
     """A convenience method to set the global logger to a file."""
     global log
     if not format_string:
