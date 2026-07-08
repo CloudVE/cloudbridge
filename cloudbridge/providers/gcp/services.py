@@ -329,7 +329,8 @@ class GCPVMFirewallRuleService(BaseVMFirewallRuleService):
             protocol: str | None, priority: int, from_port: int | None = None,
             to_port: int | None = None,
             cidr: str | builtins.list[str] | None = None,
-            src_dest_fw: VMFirewall | None = None) -> GCPVMFirewallRule:
+            src_dest_fw: VMFirewall | None = None
+            ) -> GCPVMFirewallRule | None:
         gcp_fw = cast(GCPVMFirewall, firewall)
         port = GCPVMFirewallRuleService.to_port_range(from_port, to_port)
         src_dest_tag = None
@@ -347,11 +348,13 @@ class GCPVMFirewallRuleService(BaseVMFirewallRuleService):
                           from_port=from_port, to_port=to_port, cidr=cidr,
                           src_dest_fw_id=src_dest_fw_id)
         if len(rules) < 1:
-            raise ProviderInternalException(
-                "VM firewall rule not found after creation")
+            # The implicit default-egress rule that VMFirewall creation adds is
+            # hidden by list()/find() as a "dummy" rule, so it is not findable
+            # here. Callers that add it ignore the return value; the public
+            # create() below raises for a genuinely missing rule.
+            return None
         return cast(GCPVMFirewallRule, rules[0])
 
-    # declares a non-optional VMFirewallRule.
     @dispatch(event="provider.security.vm_firewall_rules.create",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def create(self, firewall: VMFirewall,
@@ -361,9 +364,13 @@ class GCPVMFirewallRuleService(BaseVMFirewallRuleService):
                cidr: str | builtins.list[str] | None = None,
                src_dest_fw: VMFirewall | None = None
                ) -> GCPVMFirewallRule:
-        return self.create_with_priority(firewall, direction, protocol,
+        rule = self.create_with_priority(firewall, direction, protocol,
                                          1000, from_port, to_port, cidr,
                                          src_dest_fw)
+        if rule is None:
+            raise ProviderInternalException(
+                "VM firewall rule not found after creation")
+        return rule
 
     # The interface declares delete(firewall, rule_id: str); this impl also
     # accepts a GCPVMFirewallRule instance.
