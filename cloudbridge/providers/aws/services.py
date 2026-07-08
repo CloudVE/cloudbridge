@@ -214,7 +214,6 @@ class AWSVMFirewallService(BaseVMFirewallService):
              marker: str | None = None) -> ResultList[VMFirewall]:
         return self.svc.list(limit=limit, marker=marker)
 
-    @cb_helpers.deprecated_alias(network_id='network')
     @dispatch(event="provider.security.vm_firewalls.create",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label: str, network: Network | str,

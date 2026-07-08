@@ -161,7 +161,6 @@ class AzureVMFirewallService(BaseVMFirewallService):
                for fw in provider.azure_client.list_vm_firewall()]
         return ClientPagedResultList(self.provider, fws, limit, marker)
 
-    @cb_helpers.deprecated_alias(network_id='network')
     @dispatch(event="provider.security.vm_firewalls.create",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label: str, network: Network | str,

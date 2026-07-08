@@ -278,7 +278,7 @@ https://docs.microsoft.com/en-us/azure/role-based-access-control/overview.
 +-------------------------------------+-----------+
 | AZURE_STORAGE_ACCOUNT               |           |
 +-------------------------------------+-----------+
-| AZURE_VM_DEFAULT_USER_NAME          |           |
+| AZURE_VM_DEFAULT_USERNAME           |           |
 +-------------------------------------+-----------+
 
 GCP

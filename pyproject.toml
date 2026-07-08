@@ -27,7 +27,6 @@ classifiers = [
 ]
 dependencies = [
     "tenacity>=6.0",
-    "deprecation>=2.0.7",
     "pyeventsystem<2",
 ]
 dynamic = ["version"]
@@ -131,8 +130,8 @@ strict = true
 # implicit re-export so `from cloudbridge.interfaces import CloudProvider`
 # keeps working for factory.py and downstream consumers.
 implicit_reexport = true
-# Cross-class property setters (@LabeledCloudResource.label.setter) and the
-# `deprecation` library's decorators are untyped; don't fail the build on them.
+# Cross-class property setters (@LabeledCloudResource.label.setter) are untyped;
+# don't fail the build on them.
 disallow_untyped_decorators = false
 
 # Providers (all typed) wrap untyped cloud SDKs, so they get a pragmatic tier:
