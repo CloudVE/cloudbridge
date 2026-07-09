@@ -858,23 +858,24 @@ class AzureInstanceService(BaseInstanceService):
 
         if isinstance(vm_firewalls, list) and len(vm_firewalls) > 0:
 
+            first_fw: Any
             if isinstance(vm_firewalls[0], VMFirewall):
+                first_fw = vm_firewalls[0]
                 vm_firewalls_ids = [cast(Any, fw).id for fw in vm_firewalls]
-                vm_firewall_id = cast(Any, vm_firewalls[0]).resource_id
             else:
                 vm_firewalls_ids = vm_firewalls
-                vm_firewall = self.provider.security.\
+                first_fw = self.provider.security.\
                     vm_firewalls.get(vm_firewalls[0])
-                vm_firewall_id = cast(Any, vm_firewall).resource_id
+            vm_firewall_id = first_fw.resource_id
 
             if len(vm_firewalls) > 1:
-                # FLAGGED FOR REVIEW: this create() omits the required
-                # ``network`` argument (pre-existing bug); cast to Any so the
-                # missing-arg is not masked by a fabricated value here.
-                new_fw = cast(Any, self.provider.security.vm_firewalls).\
-                    create(label='{0}-fw'.format(inst_name),
-                           description='Merge vm firewall {0}'.
-                           format(','.join(cast(Any, vm_firewalls_ids))))
+                # The merged firewall belongs to the same network as the
+                # firewalls being combined.
+                new_fw = self.provider.security.vm_firewalls.create(
+                    label='{0}-fw'.format(inst_name),
+                    network=first_fw.network_id,
+                    description='Merge vm firewall {0}'.format(
+                        ','.join(cast(Any, vm_firewalls_ids))))
 
                 for fw in vm_firewalls:
                     cast(Any, new_fw).add_rule(src_dest_fw=fw)

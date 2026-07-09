@@ -455,7 +455,13 @@ class AzureVolume(BaseVolume):
 
     @property
     def source(self) -> Snapshot | MachineImage | None:
-        return self._volume.creation_data.source_uri
+        # ``source_uri`` is the resource URI of the disk's source (e.g. the
+        # snapshot it was copied from); resolve it to the Snapshot object the
+        # interface promises, mirroring the AWS/OpenStack implementations.
+        source_uri = self._volume.creation_data.source_uri
+        if source_uri:
+            return self._provider.storage.snapshots.get(source_uri)
+        return None
 
     @property
     def attachments(self) -> AttachmentInfo | None:

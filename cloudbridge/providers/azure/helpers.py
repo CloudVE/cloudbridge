@@ -53,7 +53,7 @@ def parse_url(template_urls: list[str], original_url: str) -> dict[str, str]:
     https://docs.microsoft.com/en-us/azure/virtual-machines/linux/cli-ps-findimage
     """
     if not original_url:
-        raise InvalidValueException(str(template_urls), original_url)
+        raise InvalidValueException('original_url', original_url)
     original_url_parts = original_url.split('/')
     if len(original_url_parts) == 1:
         original_url_parts = original_url.split(':')
@@ -64,7 +64,7 @@ def parse_url(template_urls: list[str], original_url: str) -> dict[str, str]:
         if len(template_url_parts) == len(original_url_parts):
             break
     if len(template_url_parts) != len(original_url_parts):
-        raise InvalidValueException(str(template_urls), original_url)
+        raise InvalidValueException('original_url', original_url)
     resource_param: dict[str, str] = {}
     for key, value in zip(template_url_parts, original_url_parts):
         if key.startswith('{') and key.endswith('}'):

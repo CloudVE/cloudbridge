@@ -115,7 +115,6 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     "Volume.description must be None or a string. Got: %s"
                     % test_vol.description)
                 self.assertIsNone(test_vol.source)
-                self.assertIsNone(test_vol.source)
                 self.assertIsNotNone(test_vol.create_time)
                 self.assertIsNotNone(test_vol.zone_id)
                 self.assertIsNone(test_vol.attachments)
@@ -229,6 +228,17 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     sv_label, 1, snapshot=test_snap)
                 with cb_helpers.cleanup_action(lambda: snap_vol.delete()):
                     snap_vol.wait_till_ready()
+                    # A volume created from a snapshot should report that
+                    # snapshot as its source, resolved to a Snapshot object
+                    # (not a raw id/URI).
+                    self.assertIsNotNone(
+                        snap_vol.source,
+                        "A volume created from a snapshot must report a "
+                        "source")
+                    self.assertEqual(
+                        snap_vol.source.id, test_snap.id,
+                        "A volume's source should be the snapshot it was "
+                        "created from")
 
                 # Test volume creation from a snapshot (via Snapshot)
                 snap_vol2 = test_snap.create_volume()

@@ -1638,6 +1638,10 @@ class GCPRouter(BaseRouter):
 
     @property
     def subnets(self) -> Iterable[Subnet]:
+        # Unlike AWS route tables / OpenStack routers, a GCP Cloud Router has
+        # no per-subnet attachment: it automatically serves every subnet in
+        # its VPC network (see attach_subnet/detach_subnet). So the router's
+        # subnets are exactly the subnets of its network.
         network = cast(
             "GCPNetwork",
             self._provider.networking.networks.get(
