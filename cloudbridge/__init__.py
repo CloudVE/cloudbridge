@@ -3,7 +3,7 @@ import logging
 from typing import Any
 
 # Current version of the library
-__version__ = '4.1.0'
+__version__ = '4.2.0'
 
 
 def get_version() -> str:

@@ -1,3 +1,55 @@
+4.2.0 - July 9, 2026 (sha 60dbe305f0af46a7ce3eadd093756d31b8131b2e)
+-------------------------------------------------------------------
+
+## Release highlights
+This release makes CloudBridge's entire public API strongly typed (shipped with a
+PEP 561 ``py.typed`` marker), adds cross-provider multipart upload for large objects,
+and removes the long-deprecated ``deprecation`` dependency along with the deprecated
+APIs it supported.
+
+## What's new
+* **Comprehensive type hints.** The whole public interface is now annotated and ships a
+  PEP 561 ``py.typed`` marker, so downstream users get a fully-typed API even though the
+  underlying cloud SDKs are untyped. A ``mypy`` check runs in CI — the interface and base
+  layers under a strict bar, and the SDK-wrapping providers under a pragmatic tier.
+* **Cross-provider multipart upload.** Large object uploads now use multipart transfer
+  with per-call ``UploadConfig`` knobs (threshold, part size, concurrency), with parts
+  uploaded in parallel via cloned providers.
+
+## Breaking changes
+* Removed the ``deprecation`` dependency and the long-expired deprecated APIs it
+  supported (both marked ``removed_in=2.0``):
+
+  * the ``network_id=`` keyword alias on ``security.vm_firewalls.create`` — use
+    ``network=`` instead;
+  * the ``AZURE_VM_DEFAULT_USER_NAME`` environment/config variable — use
+    ``AZURE_VM_DEFAULT_USERNAME`` instead.
+
+## Fixes and maintenance
+* Typing surfaced and fixed several latent provider issues: Azure ``Volume.source`` now
+  resolves to a ``Snapshot`` object, the Azure multi-firewall merge on launch passes the
+  required network, and Azure ``parse_url`` reports a meaningful parameter on error.
+* GCP volume attach/detach now waits for the operation to complete, and the attachments
+  check was corrected.
+* Reconciled numerous cross-provider return-type and behaviour inconsistencies to match
+  the interface — e.g. ``start``/``stop``/``delete`` return ``None`` consistently,
+  firewall-rule ``direction`` returns the ``TrafficDirection`` enum, and fatal missing-id
+  paths raise ``ProviderInternalException`` instead of returning ``None``.
+
+## Build and CI
+* Added a ``mypy`` tox environment (``tox -e mypy``) and a CI step; the ``lint``
+  environment now also enforces import order via ``flake8-import-order``.
+
+## Pull Requests
+* Add cross-provider multipart upload support by @nuwang in https://github.com/CloudVE/cloudbridge/pull/333
+* Wait for GCP volume attach/detach operations; fix attachments check by @nuwang in https://github.com/CloudVE/cloudbridge/pull/334
+* Add comprehensive typing to cloudbridge + mypy tox check by @nuwang in https://github.com/CloudVE/cloudbridge/pull/335
+* Remove the deprecation dependency and long-expired deprecated APIs by @nuwang in https://github.com/CloudVE/cloudbridge/pull/336
+* Fix latent provider bugs surfaced during the typing work by @nuwang in https://github.com/CloudVE/cloudbridge/pull/337
+
+**Full Changelog**: https://github.com/CloudVE/cloudbridge/compare/v4.1.0...v4.2.0
+
+
 4.1.0 - June 15, 2026 (sha 4d7999ac8785bececaa62964d25f4f552df7c3a0)
 ---------------------------------------------------------------------
 
