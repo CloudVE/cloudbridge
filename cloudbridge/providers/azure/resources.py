@@ -455,12 +455,15 @@ class AzureVolume(BaseVolume):
 
     @property
     def source(self) -> Snapshot | MachineImage | None:
-        # ``source_uri`` is the resource URI of the disk's source (e.g. the
-        # snapshot it was copied from); resolve it to the Snapshot object the
-        # interface promises, mirroring the AWS/OpenStack implementations.
-        source_uri = self._volume.creation_data.source_uri
-        if source_uri:
-            return self._provider.storage.snapshots.get(source_uri)
+        # A disk copied from a snapshot records the snapshot's resource id in
+        # ``source_resource_id`` (``source_uri`` is only populated for blob
+        # imports). Resolve it to the Snapshot object the interface promises,
+        # mirroring the AWS/OpenStack implementations.
+        creation_data = self._volume.creation_data
+        source_id = (creation_data.source_resource_id or
+                     creation_data.source_uri)
+        if source_id:
+            return self._provider.storage.snapshots.get(source_id)
         return None
 
     @property
