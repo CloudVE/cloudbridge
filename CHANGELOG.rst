@@ -1,3 +1,14 @@
+4.2.1 - unreleased
+------------------
+
+## What's new
+* **Supported Python floor lowered to 3.10.** ``requires-python`` was ``>=3.13``
+  since the PEP 621 packaging migration, but nothing in the codebase or its
+  dependencies needs more than 3.10. CloudBridge now installs on Python
+  3.10–3.13, and CI runs the mock-provider suite on both the lowest and highest
+  supported versions. ``mypy`` type-checks against 3.10 so newer-stdlib usage
+  is caught at lint time.
+
 4.2.0 - July 9, 2026 (sha 60dbe305f0af46a7ce3eadd093756d31b8131b2e)
 -------------------------------------------------------------------
 
