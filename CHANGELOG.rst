@@ -1,5 +1,10 @@
-4.3.0 - unreleased
-------------------
+4.3.0 - July 11, 2026 (sha 863d0c8297e74e62a72b98643952f9a923807b7b)
+--------------------------------------------------------------------
+
+## Release highlights
+This release adds cross-provider ranged, parallel downloads, completing the
+transfer story started with 4.2.0's multipart uploads. Fully backward
+compatible — no code changes are required.
 
 ## What's new
 * **Cross-provider ranged, parallel downloads.** The new
@@ -14,6 +19,11 @@
   for partial reads. The per-call ``TransferConfig`` knobs (threshold, part
   size, concurrency) now tune transfers in both directions — pass a different
   instance per call to tune uploads and downloads differently.
+
+## Pull Requests
+* Add cross-provider ranged, parallel downloads by @nuwang in https://github.com/CloudVE/cloudbridge/pull/340
+
+**Full Changelog**: https://github.com/CloudVE/cloudbridge/compare/v4.2.1...v4.3.0
 
 4.2.1 - July 10, 2026 (sha f06765d1100ec461908396475a4510460843a65c)
 --------------------------------------------------------------------
