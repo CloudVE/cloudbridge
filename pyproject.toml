@@ -8,7 +8,7 @@ description = "A simple layer of abstraction over multiple cloud providers."
 readme = "README.rst"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 authors = [
     { name = "Galaxy and GVL Projects", email = "help@genome.edu.au" },
 ]
@@ -21,6 +21,9 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -118,7 +121,9 @@ parallel = true
 # factory) is held to a strict baseline so downstream users get a fully-typed
 # API; the base implementations and providers (which wrap untyped cloud SDKs)
 # are temporarily exempted below and ratcheted to strict module-by-module.
-python_version = "3.13"
+# Type-check against the LOWEST supported version so use of newer-stdlib
+# APIs is caught at lint time.
+python_version = "3.10"
 files = ["cloudbridge"]
 ignore_missing_imports = true   # untyped cloud SDKs (boto3, azure-*, ...) -> Any
 namespace_packages = true
