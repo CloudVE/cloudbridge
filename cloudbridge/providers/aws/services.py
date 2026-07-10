@@ -733,6 +733,16 @@ class AWSBucketObjectService(BaseBucketObjectService):
             Bucket=cast(Any, bucket).name, Key=upload.object_name,
             UploadId=upload.id)
 
+    @dispatch(event="provider.storage._bucket_objects.download_range",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def download_range(self, bucket: Bucket | str, object_name: str,
+                       offset: int, length: int) -> bytes:
+        client = cast("AWSCloudProvider", self.provider).s3_conn.meta.client
+        response = client.get_object(
+            Bucket=cast(Any, bucket).name, Key=object_name,
+            Range='bytes=%d-%d' % (offset, offset + length - 1))
+        return cast(bytes, response['Body'].read())
+
 
 class AWSComputeService(BaseComputeService):
 

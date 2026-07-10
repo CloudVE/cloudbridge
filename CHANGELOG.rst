@@ -1,3 +1,20 @@
+4.3.0 - unreleased
+------------------
+
+## What's new
+* **Cross-provider ranged, parallel downloads.** The new
+  ``BucketObject.download_to_file`` fetches objects larger than the configured
+  threshold as ranged reads of ``part_size`` bytes, up to ``max_concurrency``
+  parts in parallel, so large downloads are no longer bound to a single
+  connection (and the whole object is never held in memory). AWS delegates to
+  boto3's TransferManager and Azure to azure-storage-blob's concurrent
+  downloader; GCP and OpenStack Swift use CloudBridge's generic driver, which
+  fetches ranges in parallel via cloned providers. A new
+  ``BucketObjectService.download_range`` primitive is also available directly
+  for partial reads. The per-call ``TransferConfig`` knobs (threshold, part
+  size, concurrency) now tune transfers in both directions — pass a different
+  instance per call to tune uploads and downloads differently.
+
 4.2.1 - July 10, 2026 (sha f06765d1100ec461908396475a4510460843a65c)
 --------------------------------------------------------------------
 
@@ -42,7 +59,7 @@ APIs it supported.
   underlying cloud SDKs are untyped. A ``mypy`` check runs in CI — the interface and base
   layers under a strict bar, and the SDK-wrapping providers under a pragmatic tier.
 * **Cross-provider multipart upload.** Large object uploads now use multipart transfer
-  with per-call ``UploadConfig`` knobs (threshold, part size, concurrency), with parts
+  with per-call ``TransferConfig`` knobs (threshold, part size, concurrency), with parts
   uploaded in parallel via cloned providers.
 
 ## Breaking changes

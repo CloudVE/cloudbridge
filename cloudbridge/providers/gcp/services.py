@@ -1769,6 +1769,17 @@ class GCPBucketObjectService(BaseBucketObjectService):
         self._delete_objects(bucket, self._list_temp_objects(bucket, upload),
                              ignore_missing=True)
 
+    @dispatch(event="provider.storage._bucket_objects.download_range",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def download_range(self, bucket: Bucket | str, object_name: str,
+                       offset: int, length: int) -> bytes:
+        provider = cast("GCPCloudProvider", self.provider)
+        request = provider.gcp_storage.objects().get_media(
+            bucket=cast(Any, bucket).name, object=object_name)
+        request.headers['range'] = 'bytes=%d-%d' % (
+            offset, offset + length - 1)
+        return cast(bytes, request.execute())
+
     def _compose(self, bucket: Bucket | str, upload: MultipartUpload,
                  destination: str, sources: builtins.list[str]) -> builtins.list[str]:
         """

@@ -62,7 +62,7 @@ from cloudbridge.interfaces.resources import SnapshotState
 from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import SubnetState
 from cloudbridge.interfaces.resources import TrafficDirection
-from cloudbridge.interfaces.resources import UploadConfig
+from cloudbridge.interfaces.resources import TransferConfig
 from cloudbridge.interfaces.resources import VMFirewall
 from cloudbridge.interfaces.resources import VMType
 from cloudbridge.interfaces.resources import Volume
@@ -293,7 +293,7 @@ class AzureBucketObject(BaseBucketObject):
         return self
 
     def _upload_multipart(self, stream: IO[bytes],
-                          config: UploadConfig | None = None) -> BucketObject:
+                          config: TransferConfig | None = None) -> BucketObject:
         # The Azure SDK's upload_blob stages blocks concurrently (max_concurrency
         # workers) over a thread-safe client, so the transparent multipart path
         # delegates to it rather than CloudBridge's generic clone-pool driver.
@@ -301,6 +301,16 @@ class AzureBucketObject(BaseBucketObject):
             self._container.id, self.id, stream,
             max_concurrency=self._multipart_max_concurrency(config))
         return self
+
+    def download_to_file(self, path: str,
+                         config: TransferConfig | None = None) -> None:
+        # azure-storage-blob's downloader fetches block ranges concurrently
+        # with a thread-safe client, so delegate to it rather than
+        # CloudBridge's generic clone-pool driver.
+        with open(path, 'wb') as f:
+            self._blob_client.download_blob(
+                max_concurrency=self._multipart_max_concurrency(config)
+            ).readinto(f)
 
     def delete(self) -> None:
         """

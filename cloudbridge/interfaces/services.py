@@ -1383,6 +1383,33 @@ class BucketObjectService(CloudService):
         """
         pass
 
+    @abstractmethod
+    def download_range(self, bucket: Bucket | str, object_name: str,
+                       offset: int, length: int) -> bytes:
+        """
+        Read a byte range of an object.
+
+        This is the primitive behind
+        :meth:`.BucketObject.download_to_file`'s parallel ranged downloads;
+        it is also usable directly for partial reads.
+
+        :type bucket: :class:`.Bucket`
+        :param bucket: The bucket containing the object.
+
+        :type object_name: ``str``
+        :param object_name: The key of the object to read.
+
+        :type offset: ``int``
+        :param offset: Zero-based byte offset to start reading at.
+
+        :type length: ``int``
+        :param length: Number of bytes to read.
+
+        :rtype: ``bytes``
+        :return: The requested byte range of the object's content.
+        """
+        pass
+
 
 class SecurityService(CloudService):
 

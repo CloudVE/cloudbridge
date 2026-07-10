@@ -64,7 +64,7 @@ from cloudbridge.interfaces.resources import SnapshotState
 from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import SubnetState
 from cloudbridge.interfaces.resources import TrafficDirection
-from cloudbridge.interfaces.resources import UploadConfig
+from cloudbridge.interfaces.resources import TransferConfig
 from cloudbridge.interfaces.resources import VMFirewall
 from cloudbridge.interfaces.resources import VMType
 from cloudbridge.interfaces.resources import Volume
@@ -1413,7 +1413,7 @@ class OpenStackBucketObject(BaseBucketObject):
         return self
 
     def upload_from_file(self, path: str,
-                         config: UploadConfig | None = None) -> BucketObject:
+                         config: TransferConfig | None = None) -> BucketObject:
         """
         Stores the contents of the file pointed by the ``path`` variable.
         If the file is bigger than 5 Gig, it will be broken into segments.
