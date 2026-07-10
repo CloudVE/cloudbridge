@@ -2435,7 +2435,9 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def generate_url(self, expires_in: int, writable: bool = False) -> str:
+    def generate_url(self, expires_in: int, writable: bool = False,
+                     content_disposition: str | None = None,
+                     content_type: str | None = None) -> str:
         """
         Generate a signed URL to this object.
 
@@ -2449,6 +2451,20 @@ class BucketObject(CloudResource):
         :param writable: Write permission for this signed URL. Users with the URL
             will be able to upload to this object, but they will NOT be able to
             read from it.
+        :type content_disposition: ``str``
+        :param content_disposition: When set, ask the backing store to serve
+            the object with this ``Content-Disposition`` response header on
+            GET (e.g. ``attachment; filename="data.txt"``). This is a
+            response-serving hint: every provider accepts it and honors it
+            where the backing store supports response-header overrides (AWS,
+            Azure and GCP fully; OpenStack Swift honors the filename portion
+            via its tempurl ``filename`` parameter). Ignored when
+            ``writable`` is ``True``.
+        :type content_type: ``str``
+        :param content_type: When set, ask the backing store to serve the
+            object with this ``Content-Type`` response header on GET. Honored
+            by AWS, Azure and GCP; OpenStack Swift cannot override the
+            content type. Ignored when ``writable`` is ``True``.
 
         :rtype: ``str``
         :return: A URL to access the object.

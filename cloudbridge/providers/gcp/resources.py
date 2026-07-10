@@ -2198,7 +2198,9 @@ class GCPBucketObject(BaseBucketObject):
          .delete(bucket=self._obj['bucket'], object=self.name)
          .execute())
 
-    def generate_url(self, expires_in: int, writable: bool = False) -> str:
+    def generate_url(self, expires_in: int, writable: bool = False,
+                     content_disposition: str | None = None,
+                     content_type: str | None = None) -> str:
         """
         Generates a signed URL accessible to everyone.
 
@@ -2210,10 +2212,19 @@ class GCPBucketObject(BaseBucketObject):
         provider = cast("GCPCloudProvider", self._provider)
         http_method = "PUT" if writable else "GET"
 
+        query_parameters: dict[str, Any] = {}
+        if not writable:
+            if content_disposition:
+                query_parameters[
+                    'response-content-disposition'] = content_disposition
+            if content_type:
+                query_parameters['response-content-type'] = content_type
+
         # pylint:disable=protected-access
         return helpers.generate_signed_url(
             provider._credentials, self._obj['bucket'], self.name,
-            expiration=expires_in, http_method=http_method)
+            expiration=expires_in, http_method=http_method,
+            query_parameters=query_parameters or None)
 
     def refresh(self) -> None:
         # pylint:disable=protected-access
