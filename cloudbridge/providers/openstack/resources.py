@@ -14,6 +14,7 @@ from typing import IO
 from typing import Iterable
 from typing import TYPE_CHECKING
 from typing import cast
+from urllib.parse import quote
 from urllib.parse import urljoin
 from urllib.parse import urlparse
 
@@ -1474,7 +1475,9 @@ class OpenStackBucketObject(BaseBucketObject):
             for del_res in swift.delete(self.cbcontainer.name, [self.name, ]):
                 del_res['success']
 
-    def generate_url(self, expires_in: int, writable: bool = False) -> str:
+    def generate_url(self, expires_in: int, writable: bool = False,
+                     content_disposition: str | None = None,
+                     content_type: str | None = None) -> str:
         http_method = "PUT" if writable else "GET"
         # Set a temp url key on the object (http://bit.ly/2NBiXGD)
         temp_url_key = "cloudbridge-tmp-url-key"
@@ -1484,8 +1487,23 @@ class OpenStackBucketObject(BaseBucketObject):
         base_url = urlparse(swift.get_service_auth()[0])
         access_point = "{0}://{1}".format(base_url.scheme, base_url.netloc)
         url_path = "/".join([base_url.path, self.cbcontainer.name, self.name])
-        return urljoin(access_point, generate_temp_url(url_path, expires_in,
-                                                       temp_url_key, http_method))
+        url = urljoin(access_point, generate_temp_url(url_path, expires_in,
+                                                      temp_url_key,
+                                                      http_method))
+        if not writable and content_disposition:
+            # Swift's tempurl middleware serves Content-Disposition via the
+            # unsigned `filename`/`inline` query parameters (the signature
+            # covers only method, path and expiry); Content-Type cannot be
+            # overridden.
+            match = re.search(r'filename\*?=(?:"([^"]+)"|([^;]+))',
+                              content_disposition)
+            filename = (match.group(1) or match.group(2)).strip() \
+                if match else None
+            if content_disposition.strip().lower().startswith('inline'):
+                url += '&inline'
+            if filename:
+                url += '&filename=' + quote(filename)
+        return url
 
     def refresh(self) -> None:
         self._obj = self.cbcontainer.objects.get(self.id)._obj

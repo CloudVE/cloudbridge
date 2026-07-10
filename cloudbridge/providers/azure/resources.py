@@ -311,13 +311,17 @@ class AzureBucketObject(BaseBucketObject):
         """
         self._blob_client.delete_blob()
 
-    def generate_url(self, expires_in: int, writable: bool = False) -> str:
+    def generate_url(self, expires_in: int, writable: bool = False,
+                     content_disposition: str | None = None,
+                     content_type: str | None = None) -> str:
         """
         Generate a URL to this object.
         """
         return cast(
             "AzureCloudProvider", self._provider).azure_client.get_blob_url(
-            self._container, self.name, expires_in, writable)
+            self._container, self.name, expires_in, writable,
+            content_disposition=None if writable else content_disposition,
+            content_type=None if writable else content_type)
 
     def refresh(self) -> None:
         pass

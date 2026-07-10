@@ -8,6 +8,12 @@
   3.10–3.13, and CI runs the mock-provider suite on both the lowest and highest
   supported versions. ``mypy`` type-checks against 3.10 so newer-stdlib usage
   is caught at lint time.
+* **Response-header overrides on signed URLs.** ``BucketObject.generate_url`` now
+  accepts optional ``content_disposition`` and ``content_type`` parameters that ask
+  the backing store to serve the object with those response headers on GET. Honored
+  fully by AWS, Azure and GCP; OpenStack Swift honors the filename portion of the
+  disposition via its tempurl ``filename`` parameter (the content type cannot be
+  overridden). Both are ignored for writable URLs.
 
 4.2.0 - July 9, 2026 (sha 60dbe305f0af46a7ce3eadd093756d31b8131b2e)
 -------------------------------------------------------------------

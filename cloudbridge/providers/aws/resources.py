@@ -947,11 +947,19 @@ class AWSBucketObject(BaseBucketObject):
     def delete(self) -> None:
         self._obj.delete()
 
-    def generate_url(self, expires_in: int, writable: bool = False) -> str:
+    def generate_url(self, expires_in: int, writable: bool = False,
+                     content_disposition: str | None = None,
+                     content_type: str | None = None) -> str:
+        params = {'Bucket': self._obj.bucket_name, 'Key': self.id}
+        if not writable:
+            if content_disposition:
+                params['ResponseContentDisposition'] = content_disposition
+            if content_type:
+                params['ResponseContentType'] = content_type
         return cast("AWSCloudProvider", self._provider).s3_conn.meta.client \
             .generate_presigned_url(
                 'put_object' if writable else 'get_object',
-                Params={'Bucket': self._obj.bucket_name, 'Key': self.id},
+                Params=params,
                 ExpiresIn=expires_in)
 
     def refresh(self) -> None:
