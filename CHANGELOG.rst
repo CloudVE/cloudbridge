@@ -1,5 +1,10 @@
-4.2.1 - unreleased
-------------------
+4.2.1 - July 10, 2026 (sha f06765d1100ec461908396475a4510460843a65c)
+--------------------------------------------------------------------
+
+## Release highlights
+This point release lowers the supported Python floor to 3.10 and adds
+response-header overrides to signed object URLs. Fully backward compatible
+with 4.2.0 — no code changes are required.
 
 ## What's new
 * **Supported Python floor lowered to 3.10.** ``requires-python`` was ``>=3.13``
@@ -14,6 +19,13 @@
   fully by AWS, Azure and GCP; OpenStack Swift honors the filename portion of the
   disposition via its tempurl ``filename`` parameter (the content type cannot be
   overridden). Both are ignored for writable URLs.
+
+## Pull Requests
+* Lower supported Python floor to 3.10 by @nuwang in https://github.com/CloudVE/cloudbridge/pull/338
+* Add response-header overrides to BucketObject.generate_url by @nuwang in https://github.com/CloudVE/cloudbridge/pull/339
+
+**Full Changelog**: https://github.com/CloudVE/cloudbridge/compare/v4.2.0...v4.2.1
+
 
 4.2.0 - July 9, 2026 (sha 60dbe305f0af46a7ce3eadd093756d31b8131b2e)
 -------------------------------------------------------------------
