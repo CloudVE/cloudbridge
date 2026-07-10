@@ -81,7 +81,7 @@ if TYPE_CHECKING:
     from cloudbridge.interfaces.resources import Snapshot
     from cloudbridge.interfaces.resources import Subnet
     from cloudbridge.interfaces.resources import SubnetSubService
-    from cloudbridge.interfaces.resources import UploadConfig
+    from cloudbridge.interfaces.resources import TransferConfig
     from cloudbridge.interfaces.resources import VMFirewall
     from cloudbridge.interfaces.resources import VMFirewallRuleSubService
     from cloudbridge.interfaces.resources import VMType
@@ -2169,7 +2169,7 @@ class GCPBucketObject(BaseBucketObject):
         return self
 
     def upload_from_file(self, path: str,
-                         config: UploadConfig | None = None) -> BucketObject:
+                         config: TransferConfig | None = None) -> BucketObject:
         """
         Upload a binary file.
 

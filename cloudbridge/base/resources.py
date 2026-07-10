@@ -59,7 +59,7 @@ from cloudbridge.interfaces.resources import Snapshot
 from cloudbridge.interfaces.resources import SnapshotState
 from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import SubnetState
-from cloudbridge.interfaces.resources import UploadConfig
+from cloudbridge.interfaces.resources import TransferConfig
 from cloudbridge.interfaces.resources import UploadPart
 from cloudbridge.interfaces.resources import VMFirewall
 from cloudbridge.interfaces.resources import VMFirewallRule
@@ -884,23 +884,107 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
         shutil.copyfileobj(
             cast("SupportsRead[bytes]", self.iter_content()), target_stream)
 
+    def download_to_file(self, path: str,
+                         config: TransferConfig | None = None) -> None:
+        size = self.size
+        if size <= self._multipart_threshold(config):
+            with open(path, 'wb') as f:
+                self.save_content(f)
+            return
+        self._download_ranged(path, size, config)
+
+    def _download_ranged(self, path: str, size: int,
+                         config: TransferConfig | None = None) -> None:
+        """
+        Fetch the object as ranged reads across a bounded thread pool,
+        writing each range at its offset into a preallocated file.
+
+        To stay safe even on providers whose SDK client/connection is not
+        thread-safe, each worker reads through its own cloned provider (see
+        :meth:`.CloudProvider.clone`), so no provider state is shared between
+        threads. Memory is bounded to ~concurrency * part_size. On any
+        failure the partial file is removed and the error re-raised.
+
+        Providers with an efficient, thread-safe native downloader (e.g. AWS
+        via boto3's ``download_file``, Azure via ``download_blob``) override
+        ``download_to_file`` to use it directly.
+        """
+        part_size = self._multipart_part_size(config)
+        if part_size < 1:
+            raise InvalidValueException('part_size', part_size)
+        concurrency = max(1, self._multipart_max_concurrency(config))
+        ranges = [(offset, min(part_size, size - offset))
+                  for offset in range(0, size, part_size)]
+        try:
+            with open(path, 'wb') as f:
+                f.truncate(size)
+            if concurrency == 1:
+                bucket_objects = self._bucket_objects
+                with open(path, 'r+b') as f:
+                    for offset, length in ranges:
+                        f.seek(offset)
+                        f.write(bucket_objects.download_range(
+                            self.bucket, self.name, offset, length))
+            else:
+                self._download_ranges_concurrently(path, ranges, concurrency)
+        except Exception:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            raise
+
+    def _download_ranges_concurrently(
+            self, path: str, ranges: list[tuple[int, int]],
+            concurrency: int) -> None:
+        # A pool of cloned bucket-object services, one per worker, so each
+        # thread touches an isolated provider/connection.
+        clones: "queue.Queue[BucketObjectService]" = queue.Queue()
+        for _ in range(concurrency):
+            storage = cast("BaseStorageService",
+                           self._provider.clone().storage)
+            clones.put(storage._bucket_objects)
+
+        bucket = self.bucket
+        name = self.name
+
+        def fetch_one(offset: int, length: int) -> None:
+            service = clones.get()
+            try:
+                data = service.download_range(bucket, name, offset, length)
+            finally:
+                clones.put(service)
+            # Each worker writes through its own handle at its own offset;
+            # ranges never overlap, so no locking is needed. Data is released
+            # as soon as it is written, bounding memory to
+            # ~concurrency * part_size.
+            with open(path, 'r+b') as f:
+                f.seek(offset)
+                f.write(data)
+
+        with ThreadPoolExecutor(max_workers=concurrency) as executor:
+            futures = [executor.submit(fetch_one, offset, length)
+                       for offset, length in ranges]
+            for future in futures:
+                future.result()
+
     # The three resolvers below pick, in order of precedence: an explicit
-    # per-call UploadConfig field, the provider/global config, then the class
+    # per-call TransferConfig field, the provider/global config, then the class
     # default constant.
-    def _multipart_threshold(self, config: UploadConfig | None = None) -> int:
+    def _multipart_threshold(self, config: TransferConfig | None = None) -> int:
         if config is not None and config.threshold is not None:
             return int(config.threshold)
         return int(self._provider._get_config_value(
             'multipart_threshold', self.CB_MULTIPART_THRESHOLD))
 
-    def _multipart_part_size(self, config: UploadConfig | None = None) -> int:
+    def _multipart_part_size(self, config: TransferConfig | None = None) -> int:
         if config is not None and config.part_size is not None:
             return int(config.part_size)
         return int(self._provider._get_config_value(
             'multipart_part_size', self.CB_MULTIPART_PART_SIZE))
 
     def _multipart_max_concurrency(
-            self, config: UploadConfig | None = None) -> int:
+            self, config: TransferConfig | None = None) -> int:
         if config is not None and config.max_concurrency is not None:
             return int(config.max_concurrency)
         return int(self._provider._get_config_value(
@@ -936,7 +1020,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
         return data
 
     def upload(self, data: str | bytes | IO[bytes],
-               config: UploadConfig | None = None) -> BucketObject:
+               config: TransferConfig | None = None) -> BucketObject:
         size = self._data_size(data)
         if size is not None and size > self._multipart_threshold(config):
             return self._upload_multipart(self._as_stream(data), config)
@@ -944,14 +1028,14 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
 
     def upload_from_file(
             self, path: str,
-            config: UploadConfig | None = None) -> BucketObject:
+            config: TransferConfig | None = None) -> BucketObject:
         if os.path.getsize(path) > self._multipart_threshold(config):
             with open(path, 'rb') as f:
                 return self._upload_multipart(f, config)
         return self._upload_from_file_single_shot(path)
 
     def _upload_multipart(self, stream: IO[bytes],
-                          config: UploadConfig | None = None) -> BucketObject:
+                          config: TransferConfig | None = None) -> BucketObject:
         """
         Drive the explicit multipart lifecycle over a stream, reading it one
         part at a time so the whole payload is never held in memory.

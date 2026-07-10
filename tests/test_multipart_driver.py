@@ -16,7 +16,7 @@ from cloudbridge.base.resources import BaseBucketObject
 from cloudbridge.base.resources import BaseMultipartUpload
 from cloudbridge.base.resources import BaseUploadPart
 from cloudbridge.interfaces.exceptions import InvalidValueException
-from cloudbridge.interfaces.resources import UploadConfig
+from cloudbridge.interfaces.resources import TransferConfig
 
 
 class _Recorder:
@@ -193,7 +193,7 @@ class MultipartDriverTestCase(unittest.TestCase):
         # bumps it to 3, engaging the clone-per-worker pool.
         driver = self._driver(recorder, part_size=1, concurrency=1)
         driver._upload_multipart(BytesIO(b"0123456789ab"),
-                                 UploadConfig(max_concurrency=3))
+                                 TransferConfig(max_concurrency=3))
         self.assertEqual(recorder.clone_count, 3)
         self.assertGreater(recorder.max_active, 1)
         self.assertLessEqual(recorder.max_active, 3)

@@ -766,6 +766,14 @@ class AzureBucketObjectService(BaseBucketObjectService):
                   "%s/%s will expire automatically.",
                   cast("Bucket", bucket).name, upload.object_name)
 
+    @dispatch(event="provider.storage._bucket_objects.download_range",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def download_range(self, bucket: Bucket | str, object_name: str,
+                       offset: int, length: int) -> bytes:
+        azure_client = cast("AzureCloudProvider", self.provider).azure_client
+        return cast(bytes, azure_client.get_blob_range(
+            cast("Bucket", bucket).name, object_name, offset, length))
+
 
 class AzureComputeService(BaseComputeService):
     def __init__(self, provider: CloudProvider) -> None:

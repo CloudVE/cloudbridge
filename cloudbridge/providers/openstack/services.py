@@ -808,6 +808,16 @@ class OpenStackBucketObjectService(BaseBucketObjectService):
             except SwiftClientException:
                 pass  # idempotent: ignore already-deleted segments
 
+    @dispatch(event="provider.storage._bucket_objects.download_range",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def download_range(self, bucket: Bucket | str, object_name: str,
+                       offset: int, length: int) -> bytes:
+        provider = cast("OpenStackCloudProvider", self.provider)
+        _, data = provider.swift.get_object(
+            cast(Any, bucket).name, object_name,
+            headers={'Range': 'bytes=%d-%d' % (offset, offset + length - 1)})
+        return cast(bytes, data)
+
 
 class OpenStackComputeService(BaseComputeService):
 
