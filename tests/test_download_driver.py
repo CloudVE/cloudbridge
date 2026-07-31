@@ -9,6 +9,7 @@ driver is exercised here directly against in-memory fakes so it has coverage
 in CI without cloud credentials.
 """
 import os
+import shutil
 import tempfile
 import threading
 import unittest
@@ -32,12 +33,15 @@ class _Recorder:
         self.active = 0
         self.max_active = 0
         self.fail_on_offset = None  # offset that should raise
+        self.on_serve = None        # hook called as each range is served
 
     def serve_range(self, service, offset, length):
         with self._lock:
             self.active += 1
             self.max_active = max(self.max_active, self.active)
         try:
+            if self.on_serve:
+                self.on_serve()
             if self.fail_on_offset == offset:
                 raise RuntimeError("boom at offset %d" % offset)
             # Hold briefly so concurrent fetches genuinely overlap.
@@ -221,6 +225,72 @@ class DownloadDriverTestCase(unittest.TestCase):
         finally:
             if os.path.exists(path):
                 os.remove(path)
+
+    def test_destination_only_appears_once_complete(self):
+        content = bytes(range(256))
+        recorder = _Recorder(content)
+        driver = self._driver(
+            recorder, threshold=1, part_size=16, concurrency=3)
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        os.remove(path)
+        seen_early = []
+        recorder.on_serve = lambda: seen_early.append(os.path.exists(path))
+        try:
+            driver.download_to_file(path)
+            with open(path, 'rb') as f:
+                self.assertEqual(f.read(), content)
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+        # A partially written object is never visible at the destination.
+        self.assertTrue(seen_early)
+        self.assertNotIn(True, seen_early)
+
+    def test_survives_concurrent_downloader_taking_the_destination(self):
+        # Galaxy gives every download of a dataset the same cache .tmp path,
+        # so a second download of the same dataset can rename the destination
+        # away while this one is still fetching ranges.
+        content = bytes(range(256))
+        recorder = _Recorder(content)
+        driver = self._driver(
+            recorder, threshold=1, part_size=16, concurrency=3)
+        directory = tempfile.mkdtemp()
+        path = os.path.join(directory, 'dataset.dat')
+        taken = os.path.join(directory, 'taken.dat')
+
+        def steal_destination():
+            if os.path.exists(path):
+                os.replace(path, taken)
+
+        recorder.on_serve = steal_destination
+        try:
+            driver.download_to_file(path)
+            with open(path, 'rb') as f:
+                self.assertEqual(f.read(), content)
+        finally:
+            shutil.rmtree(directory)
+
+    def test_failed_download_leaves_an_existing_destination_intact(self):
+        content = bytes(range(64))
+        recorder = _Recorder(content)
+        recorder.fail_on_offset = 16
+        driver = self._driver(
+            recorder, threshold=1, part_size=16, concurrency=2)
+        directory = tempfile.mkdtemp()
+        path = os.path.join(directory, 'dataset.dat')
+        with open(path, 'wb') as f:
+            f.write(b'previously cached')
+        try:
+            with self.assertRaises(Exception):
+                driver.download_to_file(path)
+            # The cached copy survives a failed refetch, and no scratch file
+            # is left behind next to it.
+            with open(path, 'rb') as f:
+                self.assertEqual(f.read(), b'previously cached')
+            self.assertEqual(os.listdir(directory), ['dataset.dat'])
+        finally:
+            shutil.rmtree(directory)
 
     def test_part_size_must_be_positive(self):
         content = bytes(range(16))

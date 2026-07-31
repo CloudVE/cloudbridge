@@ -19,6 +19,18 @@
   a full 30. Measured against Route53, INSYNC was reached inside the first
   poll interval every time, making the granularity the entire cost. The
   waiter now polls every 5 seconds while keeping the same ~30 minute ceiling.
+* **Downloads no longer assemble the object at the destination path.**
+  ``BucketObject.download_to_file`` builds the file out of the way and moves it
+  into place once complete, so the destination only ever holds a whole object.
+  Previously the generic ranged driver (used by GCP and OpenStack Swift)
+  created the destination up front and reopened it for every range, so anything
+  that replaced that path mid-transfer - notably a second download of the same
+  object to the same path, as a download cache does - could truncate the
+  in-progress file or make the next range fail with ``FileNotFoundError``. A
+  failed transfer no longer deletes an existing file at the destination either,
+  and the Azure downloader (which wrote in place) gains the same guarantee.
+  Ranges are now also written through a single file handle rather than
+  reopening the path per range.
 
 ## Build and CI
 * The AWS cloud integration job now requests a 3 hour OIDC session instead of
