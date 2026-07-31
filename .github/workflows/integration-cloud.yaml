@@ -94,6 +94,12 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
           aws-region: us-east-1
+          # The action exports static session credentials that tox inherits as
+          # env vars — botocore cannot refresh them mid-run. The default 1h
+          # session expired partway through the ~59min AWS suite, failing the
+          # last tests with `RequestExpired`. 3h leaves headroom as the suite
+          # grows. Requires the IAM role's MaxSessionDuration to be >= this.
+          role-duration-seconds: 10800
 
       - name: Run tox
         id: tox
