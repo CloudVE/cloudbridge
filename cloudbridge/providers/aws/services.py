@@ -1023,6 +1023,9 @@ class AWSVMTypeService(BaseVMTypeService):
 
     def __init__(self, provider: CloudProvider) -> None:
         super(AWSVMTypeService, self).__init__(provider)
+        # Raw instance type dicts, keyed by availability zone. See
+        # _get_catalogue for why this is memoised.
+        self._catalogue: dict[str | None, list[dict[str, Any]]] = {}
 
     @dispatch(event="provider.compute.vm_types.get",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
@@ -1039,15 +1042,12 @@ class AWSVMTypeService(BaseVMTypeService):
             else:
                 raise e
 
-    @dispatch(event="provider.compute.vm_types.list",
-              priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit: int | None = None,
-             marker: str | None = None) -> ResultList[VMType]:
+    def _fetch_catalogue(self, zone: str | None) -> list[dict[str, Any]]:
         client = cast("AWSCloudProvider", self.provider).ec2_conn.meta.client
         vmt_list_resp = client.describe_instance_type_offerings(
             LocationType='availability-zone',
             Filters=[{'Name': 'location',
-                      'Values': [self.provider.zone_name]}],
+                      'Values': [zone]}],
             # MaxResults is set to max value (1000)
             # and client-side pagination is used
             **trim_empty_params({'MaxResults': 1000, 'NextToken': None}))
@@ -1056,7 +1056,7 @@ class AWSVMTypeService(BaseVMTypeService):
             vmt_list_resp = client.describe_instance_type_offerings(
                 LocationType='availability-zone',
                 Filters=[{'Name': 'location',
-                          'Values': [self.provider.zone_name]}],
+                          'Values': [zone]}],
                 **trim_empty_params(
                     {'MaxResults': 1000,
                      'NextToken': vmt_list_resp.get("NextToken")}))
@@ -1067,12 +1067,41 @@ class AWSVMTypeService(BaseVMTypeService):
         # describe_instance_types call can get at most 100 types at once
         chunks = [vmt_list_names[x:x + 100]
                   for x in range(0, len(vmt_list_names), 100)]
-        raw_types = []
+        raw_types: list[dict[str, Any]] = []
         for chunk in chunks:
             raw_chunk = client.describe_instance_types(
                 InstanceTypes=chunk).get('InstanceTypes')
             raw_types.extend(raw_chunk)
-        cb_types = [AWSVMType(cast("AWSCloudProvider", self.provider), t) for t in raw_types]
+        return raw_types
+
+    def _get_catalogue(self) -> list[dict[str, Any]]:
+        """
+        Return the raw instance type catalogue for the provider's zone,
+        fetching it at most once per zone.
+
+        EC2 has no server-side paging for instance types, so ``list()`` must
+        materialise the whole catalogue and page it client-side. Fetching it
+        costs one ``DescribeInstanceTypeOfferings`` walk plus one
+        ``DescribeInstanceTypes`` call per 100 types — around 14 calls for a
+        real region. Without memoisation every page of a ``list(marker=...)``
+        walk repeats all of that, making a full walk quadratic in API calls:
+        1343 types at a result limit of 5 costs ~4300 calls instead of ~14.
+
+        The catalogue is static for the lifetime of a provider, so it is held
+        per zone (a provider may be cloned to another zone, which genuinely
+        offers a different set of types).
+        """
+        zone = self.provider.zone_name
+        if zone not in self._catalogue:
+            self._catalogue[zone] = self._fetch_catalogue(zone)
+        return self._catalogue[zone]
+
+    @dispatch(event="provider.compute.vm_types.list",
+              priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit: int | None = None,
+             marker: str | None = None) -> ResultList[VMType]:
+        cb_types = [AWSVMType(cast("AWSCloudProvider", self.provider), t)
+                    for t in self._get_catalogue()]
         return ClientPagedResultList(self.provider, cb_types,
                                      limit=limit, marker=marker)
 
@@ -1674,6 +1703,14 @@ class AWSDnsZoneService(BaseDnsZoneService):
             client.delete_hosted_zone(Id=dns_zone.aws_id)
 
 
+# Route53 reports record changes INSYNC within seconds, but boto3's
+# resource_record_sets_changed waiter polls every 30s by default, so every
+# record change costs a full 30s of sleep no matter how fast it propagated.
+# Poll often enough that the granularity stops dominating, while keeping the
+# same ~30 minute ceiling for changes that genuinely are slow.
+DNS_CHANGE_WAITER_CONFIG = {'Delay': 5, 'MaxAttempts': 360}
+
+
 class AWSDnsRecordService(BaseDnsRecordService):
 
     def __init__(self, provider: CloudProvider) -> None:
@@ -1765,7 +1802,8 @@ class AWSDnsRecordService(BaseDnsRecordService):
         # waiting, this is skipped for mock tests.
         if not cast("AWSCloudProvider", self.provider).PROVIDER_ID == 'mock':
             waiter = client.get_waiter('resource_record_sets_changed')
-            waiter.wait(Id=response.get('ChangeInfo').get('Id'))
+            waiter.wait(Id=response.get('ChangeInfo').get('Id'),
+                        WaiterConfig=DNS_CHANGE_WAITER_CONFIG)
         return cast(DnsRecord, self.get(dns_zone, name + ":" + type))
 
     def delete(self, dns_zone: DnsZone | str,
@@ -1793,4 +1831,5 @@ class AWSDnsRecordService(BaseDnsRecordService):
         # waiting, this is skipped for mock tests.
         if not cast("AWSCloudProvider", self.provider).PROVIDER_ID == 'mock':
             waiter = client.get_waiter('resource_record_sets_changed')
-            waiter.wait(Id=response.get('ChangeInfo').get('Id'))
+            waiter.wait(Id=response.get('ChangeInfo').get('Id'),
+                        WaiterConfig=DNS_CHANGE_WAITER_CONFIG)

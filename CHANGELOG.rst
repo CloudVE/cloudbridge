@@ -1,3 +1,34 @@
+4.3.1 - unreleased
+------------------
+
+## Fixes
+* **AWS VM type listings no longer refetch the whole catalogue for every
+  page.** EC2 offers no server-side paging for instance types, so
+  ``AWSVMTypeService.list`` materialises the full catalogue and pages it
+  client-side. It previously refetched that catalogue on every call - one
+  ``DescribeInstanceTypeOfferings`` walk plus a ``DescribeInstanceTypes`` call
+  per 100 types, about 14 API calls - which made walking the pages of a full
+  listing quadratic in API calls. Walking all 1343 types offered in
+  ``us-east-1a`` at a result limit of 5 cost roughly 4300 API calls; it now
+  costs 14. The catalogue is memoised per availability zone for the lifetime
+  of the provider.
+* **AWS DNS record changes no longer wait a full 30 seconds each.** Creating
+  or deleting a record blocks until Route53 reports the change INSYNC, using
+  boto3's ``resource_record_sets_changed`` waiter. That waiter polls every 30
+  seconds by default, so a change that propagated in a few seconds still cost
+  a full 30. Measured against Route53, INSYNC was reached inside the first
+  poll interval every time, making the granularity the entire cost. The
+  waiter now polls every 5 seconds while keeping the same ~30 minute ceiling.
+
+## Build and CI
+* The AWS cloud integration job now requests a 3 hour OIDC session instead of
+  relying on the 1 hour default. The credentials are exported to tox as static
+  environment variables and cannot be refreshed mid-run, so a suite that ran
+  past the hour failed its remaining tests with ``RequestExpired`` - and,
+  because cleanup handlers need working credentials too, leaked the instances
+  and images those tests had created. Requires the IAM role's
+  ``MaxSessionDuration`` to permit the longer session.
+
 4.3.0 - July 11, 2026 (sha 863d0c8297e74e62a72b98643952f9a923807b7b)
 --------------------------------------------------------------------
 
