@@ -9,6 +9,7 @@ import os
 import queue
 import re
 import shutil
+import threading
 import time
 import uuid
 from concurrent.futures import FIRST_COMPLETED
@@ -886,14 +887,43 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
 
     def download_to_file(self, path: str,
                          config: TransferConfig | None = None) -> None:
+        # Assemble the object in a private file alongside the destination and
+        # rename it into place once complete, so ``path`` only ever holds a
+        # whole object. Callers commonly download every copy of an object to
+        # one well-known path (a cache entry, say), so writing in place would
+        # let concurrent downloads truncate each other's file - or rename it
+        # away mid-transfer - and would destroy a previously downloaded copy
+        # when a transfer fails.
+        part_path = f"{path}.{uuid.uuid4().hex}.cbpart"
+        try:
+            self._download_to_path(part_path, config)
+            os.replace(part_path, path)
+        except BaseException:
+            try:
+                os.remove(part_path)
+            except OSError:
+                pass
+            raise
+
+    def _download_to_path(self, path: str,
+                          config: TransferConfig | None = None) -> None:
+        """
+        Write this object's content to ``path``, which the caller owns.
+
+        Providers with an efficient, thread-safe native downloader (e.g. AWS
+        via boto3's ``download_file``, Azure via ``download_blob``) override
+        this to use it; the default implementation streams small objects and
+        fetches larger ones as parallel ranged reads.
+        """
         size = self.size
         if size <= self._multipart_threshold(config):
             with open(path, 'wb') as f:
                 self.save_content(f)
             return
-        self._download_ranged(path, size, config)
+        with open(path, 'w+b') as f:
+            self._download_ranged(f, size, config)
 
-    def _download_ranged(self, path: str, size: int,
+    def _download_ranged(self, target: IO[bytes], size: int,
                          config: TransferConfig | None = None) -> None:
         """
         Fetch the object as ranged reads across a bounded thread pool,
@@ -902,40 +932,26 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
         To stay safe even on providers whose SDK client/connection is not
         thread-safe, each worker reads through its own cloned provider (see
         :meth:`.CloudProvider.clone`), so no provider state is shared between
-        threads. Memory is bounded to ~concurrency * part_size. On any
-        failure the partial file is removed and the error re-raised.
-
-        Providers with an efficient, thread-safe native downloader (e.g. AWS
-        via boto3's ``download_file``, Azure via ``download_blob``) override
-        ``download_to_file`` to use it directly.
+        threads. Memory is bounded to ~concurrency * part_size.
         """
         part_size = self._multipart_part_size(config)
         if part_size < 1:
             raise InvalidValueException('part_size', part_size)
         concurrency = max(1, self._multipart_max_concurrency(config))
+        target.truncate(size)
         ranges = [(offset, min(part_size, size - offset))
                   for offset in range(0, size, part_size)]
-        try:
-            with open(path, 'wb') as f:
-                f.truncate(size)
-            if concurrency == 1:
-                bucket_objects = self._bucket_objects
-                with open(path, 'r+b') as f:
-                    for offset, length in ranges:
-                        f.seek(offset)
-                        f.write(bucket_objects.download_range(
-                            self.bucket, self.name, offset, length))
-            else:
-                self._download_ranges_concurrently(path, ranges, concurrency)
-        except Exception:
-            try:
-                os.remove(path)
-            except OSError:
-                pass
-            raise
+        if concurrency == 1:
+            bucket_objects = self._bucket_objects
+            for offset, length in ranges:
+                target.seek(offset)
+                target.write(bucket_objects.download_range(
+                    self.bucket, self.name, offset, length))
+        else:
+            self._download_ranges_concurrently(target, ranges, concurrency)
 
     def _download_ranges_concurrently(
-            self, path: str, ranges: list[tuple[int, int]],
+            self, target: IO[bytes], ranges: list[tuple[int, int]],
             concurrency: int) -> None:
         # A pool of cloned bucket-object services, one per worker, so each
         # thread touches an isolated provider/connection.
@@ -947,6 +963,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
 
         bucket = self.bucket
         name = self.name
+        write_lock = threading.Lock()
 
         def fetch_one(offset: int, length: int) -> None:
             service = clones.get()
@@ -954,13 +971,14 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
                 data = service.download_range(bucket, name, offset, length)
             finally:
                 clones.put(service)
-            # Each worker writes through its own handle at its own offset;
-            # ranges never overlap, so no locking is needed. Data is released
-            # as soon as it is written, bounding memory to
-            # ~concurrency * part_size.
-            with open(path, 'r+b') as f:
-                f.seek(offset)
-                f.write(data)
+            # Ranges are fetched in parallel but written through the one
+            # handle the caller opened, so a range can never be written to a
+            # file that has since been replaced. Serializing the writes costs
+            # little next to the fetches, and the data is released as soon as
+            # it is written, bounding memory to ~concurrency * part_size.
+            with write_lock:
+                target.seek(offset)
+                target.write(data)
 
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
             futures = [executor.submit(fetch_one, offset, length)

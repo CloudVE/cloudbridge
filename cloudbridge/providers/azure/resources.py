@@ -302,8 +302,8 @@ class AzureBucketObject(BaseBucketObject):
             max_concurrency=self._multipart_max_concurrency(config))
         return self
 
-    def download_to_file(self, path: str,
-                         config: TransferConfig | None = None) -> None:
+    def _download_to_path(self, path: str,
+                          config: TransferConfig | None = None) -> None:
         # azure-storage-blob's downloader fetches block ranges concurrently
         # with a thread-safe client, so delegate to it rather than
         # CloudBridge's generic clone-pool driver.

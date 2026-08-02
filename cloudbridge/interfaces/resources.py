@@ -2388,8 +2388,12 @@ class BucketObject(CloudResource):
         remain single-stream alternatives for arbitrary target streams.
 
         :type path: ``str``
-        :param path: Local path to write the object's content to. An existing
-            file is overwritten; on failure no partial file is left behind.
+        :param path: Local path to write the object's content to. The object
+            is assembled out of the way and moved into place once complete,
+            so ``path`` never holds a partial object: an existing file is
+            replaced atomically, and a failed transfer leaves it untouched.
+            Concurrent downloads to one path are therefore safe, with the
+            last to complete winning.
 
         :type config: :class:`.TransferConfig`
         :param config: Optional per-call transfer tuning (threshold, part

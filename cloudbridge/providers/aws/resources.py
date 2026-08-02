@@ -944,8 +944,8 @@ class AWSBucketObject(BaseBucketObject):
         self._obj.upload_file(path, Config=transfer_config)
         return self
 
-    def download_to_file(self, path: str,
-                         config: TransferConfig | None = None) -> None:
+    def _download_to_path(self, path: str,
+                          config: TransferConfig | None = None) -> None:
         # boto3's TransferManager downloads large objects as parallel ranged
         # GETs with a thread-safe client, so the transparent ranged path
         # delegates to it rather than CloudBridge's generic clone-pool driver.
