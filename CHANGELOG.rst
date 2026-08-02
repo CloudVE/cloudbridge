@@ -1,5 +1,12 @@
-4.3.1 - unreleased
-------------------
+4.3.1 - August 2, 2026 (sha 8fabc1e2d3916e2c100bdb18075f2caa3bd38b38)
+---------------------------------------------------------------------
+
+## Release highlights
+This point release makes downloads safe when the destination path is written
+concurrently, and removes two pathological API-call patterns in the AWS
+provider that dominated integration test runtimes - listing VM types and
+waiting on Route53 record changes. Fully backward compatible with 4.3.0 - no
+code changes are required.
 
 ## Fixes
 * **AWS VM type listings no longer refetch the whole catalogue for every
@@ -40,6 +47,12 @@
   because cleanup handlers need working credentials too, leaked the instances
   and images those tests had created. Requires the IAM role's
   ``MaxSessionDuration`` to permit the longer session.
+
+## Pull Requests
+* Never assemble a download at its destination path by @nuwang in https://github.com/CloudVE/cloudbridge/pull/341
+* Cut AWS integration suite runtime and stop credentials expiring mid-run by @nuwang in https://github.com/CloudVE/cloudbridge/pull/342
+
+**Full Changelog**: https://github.com/CloudVE/cloudbridge/compare/v4.3.0...v4.3.1
 
 4.3.0 - July 11, 2026 (sha 863d0c8297e74e62a72b98643952f9a923807b7b)
 --------------------------------------------------------------------
