@@ -22,6 +22,12 @@ content, and no longer materialises a whole object in memory anywhere.
   which reads in 64 KiB blocks regardless.
 
 ## Fixes
+* **The default network is created with the configured default CIDR.**
+  ``BaseNetworkService.get_or_create_default`` passed a hardcoded
+  ``10.0.0.0/16`` instead of ``BaseNetwork.CB_DEFAULT_IPV4RANGE``, so setting
+  ``CB_DEFAULT_IPV4RANGE`` was silently ignored on Azure and OpenStack, which
+  inherit the base implementation. AWS and GCP override it and were already
+  correct.
 * **Azure no longer splits object content on newlines.** ``iter_content``
   returned an ``io.RawIOBase`` wrapper, and iterating a raw stream calls
   ``readline()`` - so chunks broke at ``b"\n"`` at whatever sizes the content
