@@ -81,13 +81,21 @@ def skipIfPython(op, major, minor):
 
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
-        # This default exists for the mock provider only - it matches an entry
-        # in custom_amis.json so moto can resolve it. It is Ubuntu 16.04 built
-        # in 2017, a Xen-era HVM image, and launching, imaging and stop/start
-        # cycling it against real EC2 is markedly slower than a current
-        # Nitro-compatible image. Runs against real AWS should set
-        # CB_IMAGE_AWS, as the other providers' suites set their CB_IMAGE_*.
-        "image": cb_helpers.get_env('CB_IMAGE_AWS', 'ami-aa2ea6d0'),
+        # Ubuntu 24.04 LTS, us-east-1, amd64, gp3 (Canonical, 20260714). AMI
+        # ids are per-region, so a run anywhere but us-east-1 has to set
+        # CB_IMAGE_AWS - as does anyone wanting a different distribution.
+        #
+        # Being Nitro-era matters: the AWS suite's wall time is dominated by
+        # launching an instance, snapshotting it into an AMI, launching a
+        # second instance from that AMI and stop/start cycling, and all of
+        # those are markedly slower on the Xen-era image this replaced
+        # (Ubuntu 16.04, built 2017). Pair it with a Nitro instance type -
+        # t3.micro or larger - via CB_VM_TYPE_AWS; on a t2.* the gain is
+        # mostly lost, and 24.04 is a tight fit in t2.nano's 512 MB.
+        #
+        # moto does not validate instance-launch AMI ids, so the mock
+        # provider is indifferent to this value.
+        "image": cb_helpers.get_env('CB_IMAGE_AWS', 'ami-052355af2a014bd2c'),
         "vm_type": cb_helpers.get_env('CB_VM_TYPE_AWS', 't2.nano'),
         "placement": cb_helpers.get_env('CB_PLACEMENT_AWS', 'us-east-1a'),
         "placement_cfg_key": "aws_zone_name"
