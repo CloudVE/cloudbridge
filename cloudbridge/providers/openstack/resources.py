@@ -1389,10 +1389,14 @@ class OpenStackBucketObject(BaseBucketObject):
     def last_modified(self) -> str:
         return self._obj.get("last_modified")
 
-    def iter_content(self) -> Iterable[bytes]:
-        """Returns this object's content as an iterable."""
+    def iter_content(self, chunk_size: int | None = None) -> Iterable[bytes]:
+        """Returns this object's content as an iterable of byte chunks."""
+        # resp_chunk_size makes swiftclient hand back a streaming _ObjectBody
+        # (iterable, and file-like) instead of the whole object as bytes.
+        chunk_size = self._iter_chunk_size(chunk_size)
         _, content = cast("OpenStackCloudProvider", self._provider).swift \
-            .get_object(self.cbcontainer.name, self.name, resp_chunk_size=65536)
+            .get_object(self.cbcontainer.name, self.name,
+                        resp_chunk_size=chunk_size)
         return content
 
     @property

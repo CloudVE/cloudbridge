@@ -107,7 +107,7 @@ class _DriverObject(BaseBucketObject):
     def bucket(self):
         return "BUCKET"
 
-    def save_content(self, target_stream):
+    def save_content(self, target_stream, chunk_size=None):
         self._provider._recorder.single_shot = True
         target_stream.write(self._provider._recorder.content)
 

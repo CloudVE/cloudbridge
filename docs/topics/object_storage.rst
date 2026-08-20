@@ -39,7 +39,40 @@ To locate and download this uploaded file again, you can do the following:
     print("Size: {0}, Modified: {1}".format(obj.size, obj.last_modified))
     with open('/tmp/myfile.txt', 'wb') as f:
         obj.save_content(f)
- 
+
+To download to a local path, prefer download_to_file(), which fetches large
+objects as parallel ranged reads. save_content() and iter_content() are the
+single-stream alternatives, for writing to an arbitrary stream or for handing
+the content on somewhere else - proxying it to an HTTP response, say.
+
+.. code-block:: python
+
+    for chunk in obj.iter_content():
+        process(chunk)
+
+Content is streamed, never held in memory whole, and chunks are sized by
+chunk_size rather than by the content - binary data is never split on
+newlines. Only the last chunk may be short.
+
+.. code-block:: python
+
+    for chunk in obj.iter_content(chunk_size=4 * 1024 * 1024):
+        process(chunk)
+
+chunk_size defaults to 1 MiB, which suits most callers. It trades per-chunk
+overhead against memory and latency: each chunk costs a read from the provider
+plus whatever your loop does per chunk, so small values get expensive over a
+large object, while a large value is buffered in full before it is yielded and
+so costs memory per concurrent stream. To change the default globally, set the
+iter_chunk_size provider config value or the CB_ITER_CHUNK_SIZE environment
+variable. save_content() takes the same argument.
+
+.. note::
+    On GCP the content is fetched as successive ranged requests, because the
+    underlying client library has no single-connection streaming read, so
+    chunk_size is also the request size there. Prefer a large chunk_size when
+    streaming a large object from GCP.
+
 
 Using tokens for authentication
 -------------------------------

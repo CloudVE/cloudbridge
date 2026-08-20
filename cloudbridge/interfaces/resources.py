@@ -2357,20 +2357,52 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def iter_content(self) -> Iterable[bytes]:
+    def iter_content(self, chunk_size: int | None = None) -> Iterable[bytes]:
         """
-        Returns this object's content as an iterable.
+        Returns this object's content as an iterable of byte chunks.
+
+        The object is streamed rather than held in memory, so this is safe
+        for objects of any size. Chunks are sized by ``chunk_size``, never by
+        the content itself - binary data is never split on newlines - and
+        only the final chunk may be shorter.
+
+        ``chunk_size`` trades per-chunk overhead against memory and latency.
+        Each chunk costs a read from the provider plus whatever the caller
+        does per chunk, so small values are expensive over a large object;
+        conversely a chunk is buffered in full before it is yielded, so large
+        values cost memory per concurrent stream and delay the first chunk.
+        The default suits most callers.
+
+        :type chunk_size: ``int``
+        :param chunk_size: Maximum size in bytes of each chunk yielded. If
+            ``None``, falls back to the provider/global configuration
+            (``iter_chunk_size`` / the ``CB_ITER_CHUNK_SIZE`` setting,
+            1 MiB by default). Must be positive.
 
         :rtype: Iterable
         :return: An iterable of the file contents
 
+        :raise: ``InvalidValueException`` if ``chunk_size`` is not positive.
         """
         pass
 
     @abstractmethod
-    def save_content(self, target_stream: IO[bytes]) -> None:
+    def save_content(self, target_stream: IO[bytes],
+                     chunk_size: int | None = None) -> None:
         """
         Save this object and write its contents to the ``target_stream``.
+
+        The object is streamed through ``iter_content``, so ``chunk_size``
+        means what it does there.
+
+        :type target_stream: ``IO[bytes]``
+        :param target_stream: A writable binary stream to write to.
+
+        :type chunk_size: ``int``
+        :param chunk_size: Maximum size in bytes of each chunk read from the
+            provider. See :meth:`.iter_content`.
+
+        :raise: ``InvalidValueException`` if ``chunk_size`` is not positive.
         """
         pass
 
