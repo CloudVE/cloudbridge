@@ -320,7 +320,8 @@ class BaseNetworkService(
             log.info("Creating a CloudBridge-default network labeled %s",
                      BaseNetwork.CB_DEFAULT_NETWORK_LABEL)
             return self.provider.networking.networks.create(
-                BaseNetwork.CB_DEFAULT_NETWORK_LABEL, '10.0.0.0/16')
+                BaseNetwork.CB_DEFAULT_NETWORK_LABEL,
+                BaseNetwork.CB_DEFAULT_IPV4RANGE)
 
     @dispatch(event="provider.networking.networks.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
