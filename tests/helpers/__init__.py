@@ -79,6 +79,20 @@ def skipIfPython(op, major, minor):
     return wrap
 
 
+def env_or(varname, default_value):
+    """
+    Environment variable ``varname``, treating unset and empty alike.
+
+    The cloud workflow sets every CB_* variable in every matrix cell, as
+    ``${{ matrix.cloud-provider == '<x>' && secrets.<VAR> || '' }}``, so a
+    variable belonging to another cell - or one whose secret is simply not
+    configured - arrives as an empty string rather than absent. A plain
+    ``os.environ.get`` hands that empty string straight back, silently
+    blanking the test data instead of falling back to the default.
+    """
+    return cb_helpers.get_env(varname) or default_value
+
+
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
         # Ubuntu 24.04 LTS, us-east-1, amd64, gp3 (Canonical, 20260714). AMI
@@ -95,33 +109,33 @@ TEST_DATA_CONFIG = {
         #
         # moto does not validate instance-launch AMI ids, so the mock
         # provider is indifferent to this value.
-        "image": cb_helpers.get_env('CB_IMAGE_AWS', 'ami-052355af2a014bd2c'),
-        "vm_type": cb_helpers.get_env('CB_VM_TYPE_AWS', 't2.nano'),
-        "placement": cb_helpers.get_env('CB_PLACEMENT_AWS', 'us-east-1a'),
+        "image": env_or('CB_IMAGE_AWS', 'ami-052355af2a014bd2c'),
+        "vm_type": env_or('CB_VM_TYPE_AWS', 't2.nano'),
+        "placement": env_or('CB_PLACEMENT_AWS', 'us-east-1a'),
         "placement_cfg_key": "aws_zone_name"
     },
     'OpenStackCloudProvider': {
-        'image': cb_helpers.get_env('CB_IMAGE_OS',
-                                    'c66bdfa1-62b1-43be-8964-e9ce208ac6a5'),
-        "vm_type": cb_helpers.get_env('CB_VM_TYPE_OS', 'm1.tiny'),
-        "placement": cb_helpers.get_env('CB_PLACEMENT_OS', 'nova'),
+        'image': env_or('CB_IMAGE_OS',
+                        'c66bdfa1-62b1-43be-8964-e9ce208ac6a5'),
+        "vm_type": env_or('CB_VM_TYPE_OS', 'm1.tiny'),
+        "placement": env_or('CB_PLACEMENT_OS', 'nova'),
         "placement_cfg_key": "os_zone_name"
     },
     'GCPCloudProvider': {
-        'image': cb_helpers.get_env(
+        'image': env_or(
             'CB_IMAGE_GCP',
             'https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/'
             'global/images/ubuntu-1804-bionic-v20200908'),
-        'vm_type': cb_helpers.get_env('CB_VM_TYPE_GCP', 'f1-micro'),
-        'placement': cb_helpers.get_env('GCP_ZONE_NAME', 'us-central1-a'),
+        'vm_type': env_or('CB_VM_TYPE_GCP', 'f1-micro'),
+        'placement': env_or('GCP_ZONE_NAME', 'us-central1-a'),
         "placement_cfg_key": "gcp_zone_name"
     },
     "AzureCloudProvider": {
         "image":
-            cb_helpers.get_env('CB_IMAGE_AZURE',
-                               'Canonical:0001-com-ubuntu-minimal-jammy:minimal-22_04-lts-gen2:latest'),
-        "vm_type": cb_helpers.get_env('CB_VM_TYPE_AZURE', 'Standard_DC1ds_v3'),
-        "placement": cb_helpers.get_env('CB_PLACEMENT_AZURE', 'eastus'),
+            env_or('CB_IMAGE_AZURE',
+                   'Canonical:0001-com-ubuntu-minimal-jammy:minimal-22_04-lts-gen2:latest'),
+        "vm_type": env_or('CB_VM_TYPE_AZURE', 'Standard_DC1ds_v3'),
+        "placement": env_or('CB_PLACEMENT_AZURE', 'eastus'),
         "placement_cfg_key": "azure_zone_name"
     }
 }
