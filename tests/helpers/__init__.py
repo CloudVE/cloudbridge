@@ -81,7 +81,12 @@ def skipIfPython(op, major, minor):
 
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
-        # Match the ami value with entry in custom_amis.json for use with moto
+        # This default exists for the mock provider only - it matches an entry
+        # in custom_amis.json so moto can resolve it. It is Ubuntu 16.04 built
+        # in 2017, a Xen-era HVM image, and launching, imaging and stop/start
+        # cycling it against real EC2 is markedly slower than a current
+        # Nitro-compatible image. Runs against real AWS should set
+        # CB_IMAGE_AWS, as the other providers' suites set their CB_IMAGE_*.
         "image": cb_helpers.get_env('CB_IMAGE_AWS', 'ami-aa2ea6d0'),
         "vm_type": cb_helpers.get_env('CB_VM_TYPE_AWS', 't2.nano'),
         "placement": cb_helpers.get_env('CB_PLACEMENT_AWS', 'us-east-1a'),
