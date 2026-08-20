@@ -179,6 +179,114 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 self.assertEqual(target_stream2.getvalue(), content)
 
     @helpers.skipIfNoService(['storage.buckets'])
+    def test_iter_content_honours_chunk_size(self):
+        name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj = test_bucket.objects.create("chunked_binary.bin")
+
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                # Binary content with no newline in it at all: a reader that
+                # chunks by line rather than by size hands this back as one
+                # buffer, however large the object is.
+                content = bytes(
+                    b for b in range(256) if b != 0x0A) * 256   # ~64 KiB
+                obj.upload(content)
+
+                chunk_size = 4096
+                chunks = list(obj.iter_content(chunk_size=chunk_size))
+
+                self.assertEqual(
+                    b"".join(chunks), content,
+                    "Chunked read must reassemble to the original content.")
+                self.assertTrue(
+                    all(len(c) <= chunk_size for c in chunks),
+                    "No chunk may exceed the requested chunk_size of {0}, but "
+                    "sizes were {1}.".format(
+                        chunk_size, sorted({len(c) for c in chunks})))
+                self.assertGreaterEqual(
+                    len(chunks), len(content) // chunk_size,
+                    "A {0} byte object read at chunk_size={1} should yield at "
+                    "least {2} chunks, but yielded {3}.".format(
+                        len(content), chunk_size,
+                        len(content) // chunk_size, len(chunks)))
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_iter_content_chunks_by_size_not_by_line(self):
+        name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj = test_bucket.objects.create("chunked_lines.txt")
+
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                # Newline every 10 bytes. Line-oriented chunking yields 10
+                # byte chunks regardless of chunk_size; size-oriented
+                # chunking fills each chunk.
+                content = b"123456789\n" * 1000
+                obj.upload(content)
+
+                chunk_size = 1024
+                chunks = list(obj.iter_content(chunk_size=chunk_size))
+
+                self.assertEqual(b"".join(chunks), content)
+                self.assertTrue(all(len(c) <= chunk_size for c in chunks))
+                # Sizing by chunk_size needs ~10 chunks here; splitting on
+                # newlines needs 1000. Allow slack for short reads, but not
+                # two orders of magnitude of it.
+                self.assertLessEqual(
+                    len(chunks), 2 * -(-len(content) // chunk_size),
+                    "A {0} byte object read at chunk_size={1} yielded {2} "
+                    "chunks, far more than size-based chunking needs - "
+                    "content is being split on newlines.".format(
+                        len(content), chunk_size, len(chunks)))
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_iter_content_default_chunk_size(self):
+        name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj = test_bucket.objects.create("default_chunked.bin")
+
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                # Spans two default chunks, so the default actually reaches
+                # the wire rather than being hidden by a one-chunk object.
+                default = BaseBucketObject.CB_ITER_CHUNK_SIZE
+                content = b"\x00\xff" * default   # 2 x the default chunk
+                obj.upload(content)
+
+                chunks = list(obj.iter_content())
+
+                self.assertEqual(b"".join(chunks), content)
+                self.assertTrue(
+                    all(len(c) <= default for c in chunks),
+                    "Chunks must not exceed the default chunk size.")
+                self.assertLessEqual(
+                    len(chunks), 2 * (len(content) // default),
+                    "A {0} byte object should come back in about {1} chunks "
+                    "at the {2} byte default, but came back in {3}.".format(
+                        len(content), len(content) // default, default,
+                        len(chunks)))
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_save_content_honours_chunk_size(self):
+        name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj = test_bucket.objects.create("saved_chunked.bin")
+
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                content = bytes(range(256)) * 100   # 25 KiB
+                obj.upload(content)
+
+                target_stream = BytesIO()
+                obj.save_content(target_stream, chunk_size=1024)
+                self.assertEqual(target_stream.getvalue(), content)
+
+    @helpers.skipIfNoService(['storage.buckets'])
     def test_generate_url(self):
         name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
         test_bucket = self.provider.storage.buckets.create(name)

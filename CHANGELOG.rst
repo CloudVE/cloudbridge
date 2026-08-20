@@ -1,3 +1,52 @@
+4.4.0 - unreleased
+------------------
+
+## Release highlights
+``BucketObject.iter_content`` becomes a real chunked stream on every provider:
+it takes a ``chunk_size``, yields chunks sized by that rather than by the
+content, and no longer materialises a whole object in memory anywhere.
+
+## Enhancements
+* **``iter_content`` and ``save_content`` accept a ``chunk_size``.** It
+  defaults to 1 MiB and is settable globally through the ``iter_chunk_size``
+  provider config value or the ``CB_ITER_CHUNK_SIZE`` environment variable,
+  alongside the existing ``CB_MULTIPART_*`` knobs. Previously the read size
+  was hardcoded and inconsistent - 4 KiB on AWS, 64 KiB on OpenStack Swift,
+  the service's own chunking on Azure - and callers had no way to change it.
+  The AWS value dated from the 2017 boto2-to-boto3 migration, where a
+  ``BucketObjIterator`` shim replaced boto2's ``Key`` (which read in 8 KiB
+  ``BufferSize`` chunks); it was never a tuning decision. Reading an HTTP body
+  at 1 MiB measures ~12x cheaper per byte than at 4 KiB, and the curve is flat
+  from 1 MiB up, so larger defaults would only cost memory. Note that
+  ``save_content`` was never affected: it copied via ``shutil.copyfileobj``,
+  which reads in 64 KiB blocks regardless.
+
+## Fixes
+* **Azure no longer splits object content on newlines.** ``iter_content``
+  returned an ``io.RawIOBase`` wrapper, and iterating a raw stream calls
+  ``readline()`` - so chunks broke at ``b"\n"`` at whatever sizes the content
+  happened to dictate, and a blob with no newline in it was buffered whole
+  however large it was. It now yields ``chunk_size`` chunks read over a single
+  connection.
+* **GCP no longer loads the entire object into memory.** ``iter_content``
+  returned ``io.BytesIO`` wrapped around a full ``get_media().execute()``, so
+  streaming a large object cost its full size in RAM (and, being a
+  ``BytesIO``, also iterated by line). Content is now fetched as successive
+  ranged reads of ``chunk_size`` bytes, keeping memory flat at one chunk.
+  ``download_to_file`` remains the faster path for downloading to disk, as it
+  fetches ranges in parallel.
+* **``save_content`` no longer requires ``iter_content`` to return a
+  file-like object.** It copied with ``shutil.copyfileobj``, which needs a
+  ``.read()`` that the interface never promised - only ``Iterable[bytes]``. It
+  now writes the iterated chunks directly, so a provider returning a plain
+  generator works.
+
+## Backward compatibility
+``chunk_size`` is optional everywhere, so existing calls keep working. The
+AWS return value still exposes ``read``/``close`` as before. The Azure and GCP
+return values are now plain generators: code that called ``.read()`` on them
+must iterate instead, or use ``save_content``/``download_to_file``.
+
 4.3.1 - August 2, 2026 (sha 8fabc1e2d3916e2c100bdb18075f2caa3bd38b38)
 ---------------------------------------------------------------------
 
