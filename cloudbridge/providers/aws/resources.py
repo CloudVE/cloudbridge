@@ -861,14 +861,21 @@ class AWSVMFirewallRule(BaseVMFirewallRule):
 
 class AWSBucketObject(BaseBucketObject):
     class BucketObjIterator():
-        CHUNK_SIZE = 4096
+        """
+        Chunked reader over a boto3 ``StreamingBody``.
 
-        def __init__(self, body: Any) -> None:
+        Also exposes ``read``/``close`` so the value handed back by
+        ``iter_content`` stays usable as a file-like object, as it has been
+        since this replaced boto2's ``Key``.
+        """
+
+        def __init__(self, body: Any, chunk_size: int) -> None:
             self.body = body
+            self.chunk_size = chunk_size
 
         def __iter__(self) -> Iterator[bytes]:
             while True:
-                data = self.read(self.CHUNK_SIZE)
+                data = self.read(self.chunk_size)
                 if data:
                     yield data
                 else:
@@ -910,8 +917,12 @@ class AWSBucketObject(BaseBucketObject):
             cast("AWSCloudProvider", self._provider).s3_conn
             .Bucket(self._obj.bucket_name))
 
-    def iter_content(self) -> Iterable[bytes]:
-        return self.BucketObjIterator(self._obj.get().get('Body'))
+    def iter_content(self, chunk_size: int | None = None) -> Iterable[bytes]:
+        # Resolve (and validate) the chunk size before the GET, so a bad
+        # value does not leave an unread response body behind.
+        chunk_size = self._iter_chunk_size(chunk_size)
+        return self.BucketObjIterator(
+            self._obj.get().get('Body'), chunk_size)
 
     def _upload_single_shot(self,
                             data: str | bytes | IO[bytes]) -> BucketObject:

@@ -8,7 +8,6 @@ import logging
 import os
 import queue
 import re
-import shutil
 import threading
 import time
 import uuid
@@ -71,8 +70,6 @@ from cloudbridge.interfaces.resources import VolumeState
 from . import helpers as cb_helpers
 
 if TYPE_CHECKING:
-    from _typeshed import SupportsRead
-
     from cloudbridge.base.provider import BaseCloudProvider
     from cloudbridge.base.services import BaseStorageService
     from cloudbridge.interfaces.services import BucketObjectService
@@ -840,6 +837,15 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     # Number of parts uploaded in parallel by the transparent multipart path.
     CB_MULTIPART_MAX_CONCURRENCY = int(os.environ.get(
         'CB_MULTIPART_MAX_CONCURRENCY', 5))
+    # Size of each chunk yielded by the single-stream read path
+    # (``iter_content``/``save_content``). Sits at the knee of the
+    # throughput curve: reading an HTTP body at 1 MiB is ~12x cheaper per
+    # byte than at 4 KiB, while 4 MiB and above measure the same as 1 MiB
+    # and cost proportionally more memory per concurrent stream. Unrelated
+    # to CB_MULTIPART_PART_SIZE, which sizes the parts of a *parallel*
+    # transfer rather than the chunks of a sequential read.
+    CB_ITER_CHUNK_SIZE = int(os.environ.get(
+        'CB_ITER_CHUNK_SIZE', 1024 * 1024))              # 1 MiB
 
     def __init__(self, provider: CloudProvider) -> None:
         super(BaseBucketObject, self).__init__(provider)
@@ -878,12 +884,14 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
                 "in: http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMeta"
                 "data.html#object-key-guidelines" % name)
 
-    def save_content(self, target_stream: IO[bytes]) -> None:
-        # iter_content() is declared Iterable[bytes] on the interface, but the
-        # concrete objects returned by providers also support .read(); cast so
-        # copyfileobj accepts it without changing behavior.
-        shutil.copyfileobj(
-            cast("SupportsRead[bytes]", self.iter_content()), target_stream)
+    def save_content(self, target_stream: IO[bytes],
+                     chunk_size: int | None = None) -> None:
+        # Written in terms of iter_content so that the interface's promise -
+        # an Iterable[bytes] - is all a provider has to deliver. Copying via
+        # shutil.copyfileobj would additionally require a .read(), which not
+        # every provider's return value has.
+        for chunk in self.iter_content(chunk_size=chunk_size):
+            target_stream.write(chunk)
 
     def download_to_file(self, path: str,
                          config: TransferConfig | None = None) -> None:
@@ -1007,6 +1015,22 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
             return int(config.max_concurrency)
         return int(self._provider._get_config_value(
             'multipart_max_concurrency', self.CB_MULTIPART_MAX_CONCURRENCY))
+
+    def _iter_chunk_size(self, chunk_size: int | None = None) -> int:
+        """
+        Resolve the chunk size for a single-stream read: an explicit
+        ``chunk_size``, else the provider/global config, else the class
+        default. Providers call this at the top of ``iter_content`` so the
+        value is validated before any request is issued.
+        """
+        if chunk_size is None:
+            chunk_size = int(self._provider._get_config_value(
+                'iter_chunk_size', self.CB_ITER_CHUNK_SIZE))
+        else:
+            chunk_size = int(chunk_size)
+        if chunk_size <= 0:
+            raise InvalidValueException('iter_chunk_size', chunk_size)
+        return chunk_size
 
     @staticmethod
     def _data_size(data: str | bytes | IO[bytes]) -> int | None:

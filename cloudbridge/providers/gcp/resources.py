@@ -2132,14 +2132,31 @@ class GCPBucketObject(BaseBucketObject):
     def last_modified(self) -> str:
         return self._obj['updated']
 
-    def iter_content(self) -> io.BytesIO:
-        provider = cast("GCPCloudProvider", self._provider)
-        return io.BytesIO(provider
-                          .gcp_storage
-                          .objects()
-                          .get_media(bucket=self._obj['bucket'],
-                                     object=self.name)
-                          .execute())
+    def iter_content(self, chunk_size: int | None = None) -> Iterable[bytes]:
+        """
+        Returns this object's content as an iterable of byte chunks.
+
+        google-api-python-client buffers whole responses, so there is no
+        single-connection streaming read to be had here; content is fetched
+        as successive ranged GETs of ``chunk_size`` bytes instead. That keeps
+        memory flat at one chunk - this previously materialised the entire
+        object in a ``BytesIO`` - at the cost of one request per chunk, so
+        prefer a large ``chunk_size`` when streaming a large object, or
+        :meth:`.download_to_file`, which fetches ranges in parallel.
+        """
+        chunk_size = self._iter_chunk_size(chunk_size)
+        bucket_objects = self._bucket_objects
+        size = self.size
+
+        def range_iterator() -> Iterator[bytes]:
+            offset = 0
+            while offset < size:
+                length = min(chunk_size, size - offset)
+                yield bucket_objects.download_range(
+                    self.bucket, self.name, offset, length)
+                offset += length
+
+        return range_iterator()
 
     @property
     def bucket(self) -> Bucket:

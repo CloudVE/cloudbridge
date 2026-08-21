@@ -4,7 +4,6 @@ DataTypes used by this provider
 from __future__ import annotations
 
 import collections
-import io
 import logging
 from datetime import datetime
 from typing import Any
@@ -245,37 +244,27 @@ class AzureBucketObject(BaseBucketObject):
         """
         return self._blob_properties.last_modified.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
-    def iter_content(self) -> Iterable[bytes]:
+    def iter_content(self, chunk_size: int | None = None) -> Iterable[bytes]:
         """
-        Returns this object's content as an
-        iterable stream.
+        Returns this object's content as an iterable of byte chunks.
         """
-
-        def iterable_to_stream(iterable: Iterator[bytes]) -> io.RawIOBase:
-            class IterStream(io.RawIOBase):
-                def __init__(self) -> None:
-                    self.leftover: bytes | None = None
-
-                def readable(self) -> bool:
-                    return True
-
-                def readinto(self, b: Any) -> int:
-                    try:
-                        buffer_length = len(b)  # We're supposed to return at most this much
-                        chunk = self.leftover or next(iterable)
-                        output, self.leftover = chunk[:buffer_length], chunk[buffer_length:]
-                        b[:len(output)] = output
-                        return len(output)
-                    except StopIteration:
-                        return 0  # indicate EOF
-
-            return IterStream()
+        chunk_size = self._iter_chunk_size(chunk_size)
+        # The downloader buffers the service's own chunks (max_chunk_get_size,
+        # 4 MiB by default) and read() serves chunk_size slices out of them
+        # over a single connection, so the caller's chunk size is independent
+        # of the service's. Previously this returned a RawIOBase wrapper,
+        # which iterates by *line* rather than by size - splitting binary
+        # content on b"\n", and buffering a newline-free blob whole.
+        downloader = self._blob_client.download_blob()
 
         def blob_iterator() -> Iterator[bytes]:
-            for chunk in self._blob_client.download_blob().chunks():
-                yield chunk
+            while True:
+                data = downloader.read(chunk_size)
+                if not data:
+                    break
+                yield data
 
-        return iterable_to_stream(blob_iterator())
+        return blob_iterator()
 
     @property
     def bucket(self) -> AzureBucket:
