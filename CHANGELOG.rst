@@ -1,5 +1,5 @@
-4.4.0 - unreleased
-------------------
+4.4.0 - August 21, 2026 (sha 55d925d56eaad247b960ad00e636253637192549)
+----------------------------------------------------------------------
 
 ## Release highlights
 ``BucketObject.iter_content`` becomes a real chunked stream on every provider:
@@ -89,6 +89,14 @@ call that used the caller's result limit as its transport page size.
 AWS return value still exposes ``read``/``close`` as before. The Azure and GCP
 return values are now plain generators: code that called ``.read()`` on them
 must iterate instead, or use ``save_content``/``download_to_file``.
+
+## Pull Requests
+* Make iter_content a chunked stream with a configurable chunk size by @nuwang in https://github.com/CloudVE/cloudbridge/pull/343
+* Create the default network with the configured default CIDR by @nuwang in https://github.com/CloudVE/cloudbridge/pull/344
+* Instrument the cloud suites to find where the AWS time goes by @nuwang in https://github.com/CloudVE/cloudbridge/pull/345
+* Fix the two effects behind the AWS suite's runtime: unscoped tag search and transport page size by @nuwang in https://github.com/CloudVE/cloudbridge/pull/346
+
+**Full Changelog**: https://github.com/CloudVE/cloudbridge/compare/v4.3.1...v4.4.0
 
 4.3.1 - August 2, 2026 (sha 8fabc1e2d3916e2c100bdb18075f2caa3bd38b38)
 ---------------------------------------------------------------------
