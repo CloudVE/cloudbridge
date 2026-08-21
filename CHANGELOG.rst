@@ -1,5 +1,5 @@
-4.4.1 - unreleased
-------------------
+4.4.1 - August 21, 2026 (sha 093ef669598d9f324be28d400a851396739cf1d8)
+----------------------------------------------------------------------
 
 ## Fixes
 * **``cryptography`` is now declared as a dependency.**
@@ -21,6 +21,11 @@
   whose declared dependencies were incomplete. The job runs from outside the
   repository, so the source tree cannot satisfy the import in place of the
   installed wheel.
+
+## Pull Requests
+* Declare cryptography as a dependency, and guard bare installs by @nuwang in https://github.com/CloudVE/cloudbridge/pull/347
+
+**Full Changelog**: https://github.com/CloudVE/cloudbridge/compare/v4.4.0...v4.4.1
 
 4.4.0 - August 21, 2026 (sha 55d925d56eaad247b960ad00e636253637192549)
 ----------------------------------------------------------------------
