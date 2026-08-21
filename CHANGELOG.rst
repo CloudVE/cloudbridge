@@ -1,3 +1,20 @@
+4.4.0 - unreleased
+------------------
+
+## Fixes
+* **``AWSImageService.find`` no longer scans every public image to run its
+  tag search.** ``find(label=...)`` issues two ``describe_images`` calls, one
+  filtered on ``name`` and one on ``tag:Name``, and neither was scoped by
+  ``Owners``. The ``tag:Name`` half can only ever match images in the calling
+  account - AMI tags are not visible across accounts, so an image owned by
+  anyone else cannot satisfy the filter however it is tagged - so omitting
+  ``Owners`` never widened what it could find. It only made EC2 evaluate the
+  filter against the whole regional catalogue: measured in ap-southeast-1,
+  10.0s unscoped against 0.1s scoped, for identical single-image results.
+  The ``name`` half is unchanged and still searches public images, which is
+  what most callers want; an explicit ``owners`` argument still overrides
+  both.
+
 4.3.1 - August 2, 2026 (sha 8fabc1e2d3916e2c100bdb18075f2caa3bd38b38)
 ---------------------------------------------------------------------
 

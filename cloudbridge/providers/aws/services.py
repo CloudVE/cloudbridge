@@ -806,8 +806,22 @@ class AWSImageService(BaseImageService):
             log.debug("Searching for AWS Image Service %s", label)
             obj_list.extend(
                 self.svc.find(filters={'name': label}, **extra_args))
+            # A tag filter can only ever match images in the calling account.
+            # AMI tags are not visible across accounts, so an image owned by
+            # anyone else can never satisfy tag:Name however it is tagged -
+            # asking for every image carrying any visible tag, unscoped across
+            # a whole region, returns only this account's. Leaving Owners off
+            # therefore does not widen what the search can find; it only makes
+            # EC2 evaluate the filter against every public image in the
+            # region. Measured in ap-southeast-1, identical single-image
+            # results in 10.0s unscoped against 0.1s scoped.
+            #
+            # An explicit owners argument still wins, so a caller can ask for
+            # someone else's images and get the same (empty) answer as before.
+            tag_args = dict(extra_args)
+            tag_args.setdefault('Owners', ['self'])
             obj_list.extend(
-                self.svc.find(filters={'tag:Name': label}, **extra_args))
+                self.svc.find(filters={'tag:Name': label}, **tag_args))
         return ClientPagedResultList(self.provider, obj_list)
 
     # Intentionally extends the base list() with a leading filter_by_owner
