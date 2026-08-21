@@ -1,3 +1,27 @@
+4.4.1 - unreleased
+------------------
+
+## Fixes
+* **``cryptography`` is now declared as a dependency.**
+  ``cloudbridge.base.helpers`` imports it at module scope, and almost
+  everything imports that module, so it was required for the library to
+  import at all - but it appeared nowhere in ``pyproject.toml``. A plain
+  ``pip install cloudbridge`` therefore produced an installation that raised
+  ``ModuleNotFoundError: No module named 'cryptography'`` on
+  ``import cloudbridge.base.resources``, as did ``cloudbridge[aws]``, since
+  boto3 does not depend on it either. Installations that worked did so
+  because something else in the environment happened to provide it. This
+  affected 4.4.0 and earlier; the import has been there since 2019.
+
+## Build and CI
+* **A new ``Bare install imports`` job builds the wheel, installs it with no
+  extras, and imports the modules a user reaches for first.** Every test
+  environment installs the ``[dev]`` extra, which pulls in the provider SDKs
+  and their transitive dependencies, so the suite passed against a package
+  whose declared dependencies were incomplete. The job runs from outside the
+  repository, so the source tree cannot satisfy the import in place of the
+  installed wheel.
+
 4.4.0 - August 21, 2026 (sha 55d925d56eaad247b960ad00e636253637192549)
 ----------------------------------------------------------------------
 

@@ -63,6 +63,54 @@ jobs:
       - name: Run mypy
         run: tox -e mypy
 
+  bare-install:
+    name: Bare install imports
+    runs-on: ubuntu-latest
+    # Every test environment installs the [dev] extra, which drags in the
+    # provider SDKs and their transitive dependencies, so the suite passes
+    # happily against a package whose declared dependencies are incomplete.
+    # cloudbridge 4.3.1 and 4.4.0 both shipped unable to import
+    # cloudbridge.base.resources from a plain `pip install cloudbridge`,
+    # because base.helpers imports cryptography at module scope and nothing
+    # declared it. Install the built wheel on its own and import the modules
+    # a user reaches for first.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          # The floor, since a missing dependency is likelier to be satisfied
+          # by chance on a newer interpreter's richer wheel set.
+          python-version: '3.10'
+
+      - name: Build the distributions
+        run: |
+          pip install build
+          python -m build
+
+      - name: Install the wheel with no extras
+        run: pip install dist/*.whl
+
+      - name: Import without the repo on sys.path
+        # Run from elsewhere: the working directory is the repo root, and
+        # Python would import the source tree in preference to the wheel,
+        # which hides exactly the failure this job exists to catch.
+        working-directory: /tmp
+        run: |
+          python -c "
+          import cloudbridge
+          from cloudbridge.base.resources import BaseBucketObject
+          from cloudbridge.base.helpers import generate_key_pair
+          from cloudbridge.factory import CloudProviderFactory
+          public, _ = generate_key_pair()
+          assert public.startswith('ssh-rsa'), public[:32]
+          print('cloudbridge', cloudbridge.get_version(), 'imports from a bare install')
+          "
+
   mock:
     name: Mock-provider tests
     runs-on: ubuntu-latest
