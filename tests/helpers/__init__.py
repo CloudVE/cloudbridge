@@ -79,36 +79,71 @@ def skipIfPython(op, major, minor):
     return wrap
 
 
+def env_or(varname, default_value):
+    """
+    Environment variable ``varname``, treating unset and empty alike.
+
+    The cloud workflow sets every CB_* variable in every matrix cell, as
+    ``${{ matrix.cloud-provider == '<x>' && secrets.<VAR> || '' }}``, so a
+    variable belonging to another cell - or one whose secret is simply not
+    configured - arrives as an empty string rather than absent. A plain
+    ``os.environ.get`` hands that empty string straight back, silently
+    blanking the test data instead of falling back to the default.
+    """
+    return cb_helpers.get_env(varname) or default_value
+
+
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
-        # Match the ami value with entry in custom_amis.json for use with moto
-        "image": cb_helpers.get_env('CB_IMAGE_AWS', 'ami-aa2ea6d0'),
-        "vm_type": cb_helpers.get_env('CB_VM_TYPE_AWS', 't2.nano'),
-        "placement": cb_helpers.get_env('CB_PLACEMENT_AWS', 'us-east-1a'),
+        # Canonical's Ubuntu 16.04, built 2017 - a Xen-era HVM image, and an
+        # AMI id is per-region, so anything but us-east-1 must set
+        # CB_IMAGE_AWS. Kept deliberately, not by inertia:
+        #
+        # The comment that used to sit here said moto needed this value to
+        # match an entry in tests/fixtures/custom_amis.json. That has not been
+        # true since 3fbcba2 removed MOTO_AMIS_PATH from tox.ini - nothing
+        # loads that fixture, and moto does not validate instance-launch AMI
+        # ids, so the mock provider is indifferent to this value.
+        #
+        # With that constraint gone the obvious move was a current image, on
+        # the theory that the suite's wall time - dominated by launching an
+        # instance, snapshotting it into an AMI, launching a second instance
+        # from it, and stop/start cycling - is paying a Xen-era penalty.
+        # Measured against Ubuntu 24.04 (ami-052355af2a014bd2c), it got
+        # worse: test_create_and_list_image went 26.2 -> 33.8 min and
+        # test_instance_start_stop_methods 20.3 -> 29.1 min. Plausibly the
+        # larger image costs more to snapshot while CB_VM_TYPE_AWS stays on a
+        # pre-Nitro type, so there is no launch saving to offset it. Worth
+        # revisiting only alongside a Nitro instance type, and note the same
+        # test has measured 26.2, 60.6 and 33.8 min across three runs, so a
+        # single run cannot resolve a difference this size either way.
+        "image": env_or('CB_IMAGE_AWS', 'ami-aa2ea6d0'),
+        "vm_type": env_or('CB_VM_TYPE_AWS', 't2.nano'),
+        "placement": env_or('CB_PLACEMENT_AWS', 'us-east-1a'),
         "placement_cfg_key": "aws_zone_name"
     },
     'OpenStackCloudProvider': {
-        'image': cb_helpers.get_env('CB_IMAGE_OS',
-                                    'c66bdfa1-62b1-43be-8964-e9ce208ac6a5'),
-        "vm_type": cb_helpers.get_env('CB_VM_TYPE_OS', 'm1.tiny'),
-        "placement": cb_helpers.get_env('CB_PLACEMENT_OS', 'nova'),
+        'image': env_or('CB_IMAGE_OS',
+                        'c66bdfa1-62b1-43be-8964-e9ce208ac6a5'),
+        "vm_type": env_or('CB_VM_TYPE_OS', 'm1.tiny'),
+        "placement": env_or('CB_PLACEMENT_OS', 'nova'),
         "placement_cfg_key": "os_zone_name"
     },
     'GCPCloudProvider': {
-        'image': cb_helpers.get_env(
+        'image': env_or(
             'CB_IMAGE_GCP',
             'https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/'
             'global/images/ubuntu-1804-bionic-v20200908'),
-        'vm_type': cb_helpers.get_env('CB_VM_TYPE_GCP', 'f1-micro'),
-        'placement': cb_helpers.get_env('GCP_ZONE_NAME', 'us-central1-a'),
+        'vm_type': env_or('CB_VM_TYPE_GCP', 'f1-micro'),
+        'placement': env_or('GCP_ZONE_NAME', 'us-central1-a'),
         "placement_cfg_key": "gcp_zone_name"
     },
     "AzureCloudProvider": {
         "image":
-            cb_helpers.get_env('CB_IMAGE_AZURE',
-                               'Canonical:0001-com-ubuntu-minimal-jammy:minimal-22_04-lts-gen2:latest'),
-        "vm_type": cb_helpers.get_env('CB_VM_TYPE_AZURE', 'Standard_DC1ds_v3'),
-        "placement": cb_helpers.get_env('CB_PLACEMENT_AZURE', 'eastus'),
+            env_or('CB_IMAGE_AZURE',
+                   'Canonical:0001-com-ubuntu-minimal-jammy:minimal-22_04-lts-gen2:latest'),
+        "vm_type": env_or('CB_VM_TYPE_AZURE', 'Standard_DC1ds_v3'),
+        "placement": env_or('CB_PLACEMENT_AZURE', 'eastus'),
         "placement_cfg_key": "azure_zone_name"
     }
 }

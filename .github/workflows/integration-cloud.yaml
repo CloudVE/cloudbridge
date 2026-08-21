@@ -110,6 +110,7 @@ jobs:
           # cell that needs it. Limits blast radius if a single cell is
           # compromised.
           # aws — credentials supplied via the OIDC step above
+          CB_IMAGE_AWS: ${{ matrix.cloud-provider == 'aws' && secrets.CB_IMAGE_AWS || '' }}
           CB_VM_TYPE_AWS: ${{ matrix.cloud-provider == 'aws' && secrets.CB_VM_TYPE_AWS || '' }}
           # azure
           AZURE_CLIENT_ID: ${{ matrix.cloud-provider == 'azure' && secrets.AZURE_CLIENT_ID || '' }}
