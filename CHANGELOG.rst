@@ -1,3 +1,44 @@
+4.4.0 - unreleased
+------------------
+
+## Fixes
+* **Paginated AWS calls no longer use the caller's result limit as the
+  transport page size.** ``BotoEC2Service._get_paginated_results`` set
+  ``PaginationConfig={'MaxItems': limit, 'PageSize': limit}``, conflating how
+  many results the caller wants with how many the service returns per
+  request. Against a scan that matches sparsely that walks the collection in
+  tiny increments: the same filtered ``describe_images`` took 977.6s at a
+  page size of 5 and 10.0s at 1000, for one result either way. ``MaxItems``
+  still bounds what the caller receives; ``PageSize`` is now a full page,
+  clamped to whatever bounds the service model declares for the operation
+  (``DescribeRouteTables`` permits 100 where most permit more, several require
+  at least 5, and falling outside them is a hard ``InvalidParameterValue``).
+  Since ``DEFAULT_RESULT_LIMIT`` is 50, every paginated AWS call was affected,
+  not just filtered searches.
+
+## Enhancements
+* **New ``aws_page_size`` configuration value.** How many records to request
+  from AWS per call while satisfying a list method, defaulting to 500. It is
+  a transport setting, distinct from ``default_result_limit``, which bounds
+  how many results the caller receives; the two used to be the same number.
+  It is clamped to what the service permits for the call in hand, so a value
+  outside those bounds is adjusted rather than rejected. AWS-specific
+  because it only means anything where the provider walks pages itself:
+  GCP, Azure and OpenStack each return a single page plus a continuation
+  token and let the caller drive.
+* **``AWSImageService.find`` no longer scans every public image to run its
+  tag search.** ``find(label=...)`` issues two ``describe_images`` calls, one
+  filtered on ``name`` and one on ``tag:Name``, and neither was scoped by
+  ``Owners``. The ``tag:Name`` half can only ever match images in the calling
+  account - AMI tags are not visible across accounts, so an image owned by
+  anyone else cannot satisfy the filter however it is tagged - so omitting
+  ``Owners`` never widened what it could find. It only made EC2 evaluate the
+  filter against the whole regional catalogue: measured in ap-southeast-1,
+  10.0s unscoped against 0.1s scoped, for identical single-image results.
+  The ``name`` half is unchanged and still searches public images, which is
+  what most callers want; an explicit ``owners`` argument still overrides
+  both.
+
 4.3.1 - August 2, 2026 (sha 8fabc1e2d3916e2c100bdb18075f2caa3bd38b38)
 ---------------------------------------------------------------------
 

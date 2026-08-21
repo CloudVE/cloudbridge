@@ -25,6 +25,18 @@ log = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
+# How many records to request per call while satisfying a list method,
+# overridable per provider with the ``aws_page_size`` config value. This is a
+# transport setting and is deliberately not ``default_result_limit``, which
+# bounds how many results the caller receives - see
+# BotoGenericService._page_size for why conflating them is expensive.
+#
+# AWS-specific because it only means anything where the provider walks pages
+# itself. GCP, Azure and OpenStack each return a single page plus a
+# continuation token and let the caller drive, so there is nothing for a page
+# size to amplify; boto3's paginator is the odd one out.
+DEFAULT_PAGE_SIZE = 500
+
 
 def trim_empty_params(params_dict: dict[str, Any]) -> dict[str, Any]:
     """
@@ -153,6 +165,46 @@ class BotoGenericService(object):
         else:
             return None
 
+    def _page_size(self, client: Any, list_op: str) -> int:
+        """
+        Transport page size for a paginated call.
+
+        ``PageSize`` is how many items the service returns per request;
+        ``MaxItems`` is how many the caller asked for. Using the caller's
+        limit for both makes a small limit walk a large scan in tiny
+        increments: a filtered ``describe_images`` that takes 10.0s at a page
+        size of 1000 takes 977.6s at 5, for the same single result. Ask for a
+        full page regardless of the limit and let ``MaxItems`` do the
+        bounding - at worst one page more data is fetched than was wanted,
+        and a limit larger than a page is served over several requests.
+
+        The size comes from the ``aws_page_size`` config value so it can be
+        tuned per provider, then is clamped to whatever the service model
+        declares for this operation. EC2's bounds differ per call -
+        ``DescribeRouteTables`` permits 100 where most permit 1000, and
+        several require at least 5 - and falling outside them is a hard
+        ``InvalidParameterValue`` rather than a clamp, so neither the default
+        nor a configured value is passed through unchecked.
+        """
+        page_size = int(self.provider._get_config_value(
+            'aws_page_size', DEFAULT_PAGE_SIZE))
+        api_name = client.meta.method_to_api_mapping.get(list_op)
+        if not api_name:
+            return page_size
+        input_shape = client.meta.service_model.operation_model(
+            api_name).input_shape
+        max_results = input_shape.members.get('MaxResults') if input_shape \
+            else None
+        # Not every operation declares bounds, even where the documentation
+        # gives them; the default is within all of the undeclared ones.
+        bounds = max_results.metadata if max_results else {}
+        ceiling, floor = bounds.get('max'), bounds.get('min')
+        if ceiling:
+            page_size = min(page_size, ceiling)
+        if floor:
+            page_size = max(page_size, floor)
+        return page_size
+
     def _get_list_operation(self) -> str:
         """
         This function discovers the list operation for a particular resource
@@ -195,7 +247,9 @@ class BotoGenericService(object):
         paginator = client.get_paginator(list_op)
         PaginationConfig: dict[str, Any] = {}
         if limit:
-            PaginationConfig = {'MaxItems': limit, 'PageSize': limit}
+            PaginationConfig = {
+                'MaxItems': limit,
+                'PageSize': self._page_size(client, list_op)}
 
         if marker:
             PaginationConfig.update({'StartingToken': marker})
