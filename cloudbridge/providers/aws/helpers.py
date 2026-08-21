@@ -25,12 +25,16 @@ log = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
-# How many items to ask the service for per request, independent of how many
-# the caller wants back. Small enough to sit inside every EC2 describe's
-# documented ceiling that the service model does not declare (DescribeVolumes
-# is the tightest of those, at 500), large enough that a sparse filtered scan
-# does not turn into thousands of round trips. Operations that do declare a
-# ceiling are clamped to it - see BotoEC2Service._page_size.
+# How many records to request per call while satisfying a list method,
+# overridable per provider with the ``aws_page_size`` config value. This is a
+# transport setting and is deliberately not ``default_result_limit``, which
+# bounds how many results the caller receives - see
+# BotoGenericService._page_size for why conflating them is expensive.
+#
+# AWS-specific because it only means anything where the provider walks pages
+# itself. GCP, Azure and OpenStack each return a single page plus a
+# continuation token and let the caller drive, so there is nothing for a page
+# size to amplify; boto3's paginator is the odd one out.
 DEFAULT_PAGE_SIZE = 500
 
 
@@ -161,7 +165,7 @@ class BotoGenericService(object):
         else:
             return None
 
-    def _page_size(self, client: Any, list_op: str, limit: int) -> int:
+    def _page_size(self, client: Any, list_op: str) -> int:
         """
         Transport page size for a paginated call.
 
@@ -174,15 +178,16 @@ class BotoGenericService(object):
         bounding - at worst one page more data is fetched than was wanted,
         and a limit larger than a page is served over several requests.
 
-        EC2's per-operation ceilings differ - ``DescribeRouteTables`` allows
-        100 where most allow 1000 - and exceeding one is a hard
-        ``InvalidParameterValue`` rather than a clamp, so defer to whatever
-        the service model declares for this operation.
+        The size comes from the ``aws_page_size`` config value so it can be
+        tuned per provider, then is clamped to whatever the service model
+        declares for this operation. EC2's bounds differ per call -
+        ``DescribeRouteTables`` permits 100 where most permit 1000, and
+        several require at least 5 - and falling outside them is a hard
+        ``InvalidParameterValue`` rather than a clamp, so neither the default
+        nor a configured value is passed through unchecked.
         """
-        # Deliberately not max(limit, ...): a caller asking for more than a
-        # page still gets it, over several requests, rather than having an
-        # oversized limit pushed at a service that would reject it.
-        page_size = DEFAULT_PAGE_SIZE
+        page_size = int(self.provider._get_config_value(
+            'aws_page_size', DEFAULT_PAGE_SIZE))
         api_name = client.meta.method_to_api_mapping.get(list_op)
         if not api_name:
             return page_size
@@ -191,9 +196,14 @@ class BotoGenericService(object):
         max_results = input_shape.members.get('MaxResults') if input_shape \
             else None
         # Not every operation declares bounds, even where the documentation
-        # gives them; fall back to a size known to be within all of them.
-        ceiling = max_results.metadata.get('max') if max_results else None
-        return min(page_size, ceiling) if ceiling else page_size
+        # gives them; the default is within all of the undeclared ones.
+        bounds = max_results.metadata if max_results else {}
+        ceiling, floor = bounds.get('max'), bounds.get('min')
+        if ceiling:
+            page_size = min(page_size, ceiling)
+        if floor:
+            page_size = max(page_size, floor)
+        return page_size
 
     def _get_list_operation(self) -> str:
         """
@@ -239,7 +249,7 @@ class BotoGenericService(object):
         if limit:
             PaginationConfig = {
                 'MaxItems': limit,
-                'PageSize': self._page_size(client, list_op, limit)}
+                'PageSize': self._page_size(client, list_op)}
 
         if marker:
             PaginationConfig.update({'StartingToken': marker})

@@ -10,10 +10,22 @@
   tiny increments: the same filtered ``describe_images`` took 977.6s at a
   page size of 5 and 10.0s at 1000, for one result either way. ``MaxItems``
   still bounds what the caller receives; ``PageSize`` is now a full page,
-  clamped to whatever ceiling the service model declares for the operation
-  (``DescribeRouteTables`` allows 100 where most allow more, and exceeding a
-  ceiling is a hard ``InvalidParameterValue``). Since ``DEFAULT_RESULT_LIMIT``
-  is 50, every paginated AWS call was affected, not just filtered searches.
+  clamped to whatever bounds the service model declares for the operation
+  (``DescribeRouteTables`` permits 100 where most permit more, several require
+  at least 5, and falling outside them is a hard ``InvalidParameterValue``).
+  Since ``DEFAULT_RESULT_LIMIT`` is 50, every paginated AWS call was affected,
+  not just filtered searches.
+
+## Enhancements
+* **New ``aws_page_size`` configuration value.** How many records to request
+  from AWS per call while satisfying a list method, defaulting to 500. It is
+  a transport setting, distinct from ``default_result_limit``, which bounds
+  how many results the caller receives; the two used to be the same number.
+  It is clamped to what the service permits for the call in hand, so a value
+  outside those bounds is adjusted rather than rejected. AWS-specific
+  because it only means anything where the provider walks pages itself:
+  GCP, Azure and OpenStack each return a single page plus a continuation
+  token and let the caller drive.
 * **``AWSImageService.find`` no longer scans every public image to run its
   tag search.** ``find(label=...)`` issues two ``describe_images`` calls, one
   filtered on ``name`` and one on ``tag:Name``, and neither was scoped by

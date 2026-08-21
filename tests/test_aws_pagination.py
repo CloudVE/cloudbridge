@@ -77,33 +77,42 @@ class AWSPaginationTestCase(unittest.TestCase):
         page = self.provider.storage.volumes.list()
         self.assertLessEqual(len(page), RESULT_LIMIT)
 
+    def _page_size(self, list_op):
+        # pylint:disable=protected-access
+        return self.provider.storage.volumes.svc._page_size(
+            self.provider.ec2_conn.meta.client, list_op)
+
     def test_transport_page_size_is_independent_of_the_result_limit(self):
         # The regression this guards: PageSize tracking the result limit is
         # what made a sparse scan pathological.
-        # pylint:disable=protected-access
-        svc = self.provider.storage.volumes.svc
-        client = self.provider.ec2_conn.meta.client
-        page_size = svc._page_size(client, 'describe_volumes', RESULT_LIMIT)
+        page_size = self._page_size('describe_volumes')
         self.assertEqual(page_size, DEFAULT_PAGE_SIZE)
         self.assertNotEqual(page_size, RESULT_LIMIT)
 
     def test_page_size_is_clamped_to_the_operations_ceiling(self):
         # DescribeRouteTables allows 100 where most EC2 describes allow more,
         # and exceeding a ceiling is a hard InvalidParameterValue.
-        # pylint:disable=protected-access
-        svc = self.provider.storage.volumes.svc
-        client = self.provider.ec2_conn.meta.client
-        self.assertEqual(
-            svc._page_size(client, 'describe_route_tables', RESULT_LIMIT),
-            100)
+        self.assertEqual(self._page_size('describe_route_tables'), 100)
 
     def test_page_size_survives_an_unknown_operation(self):
-        # pylint:disable=protected-access
-        svc = self.provider.storage.volumes.svc
-        client = self.provider.ec2_conn.meta.client
-        self.assertEqual(
-            svc._page_size(client, 'not_an_operation', RESULT_LIMIT),
-            DEFAULT_PAGE_SIZE)
+        self.assertEqual(self._page_size('not_an_operation'),
+                         DEFAULT_PAGE_SIZE)
+
+    def test_configured_page_size_is_used(self):
+        self.provider.config['aws_page_size'] = 250
+        self.assertEqual(self._page_size('describe_volumes'), 250)
+
+    def test_configured_page_size_is_clamped_to_the_ceiling(self):
+        # A configured value is no safer than the default: DescribeRouteTables
+        # would reject anything above 100 outright.
+        self.provider.config['aws_page_size'] = 900
+        self.assertEqual(self._page_size('describe_route_tables'), 100)
+
+    def test_configured_page_size_is_raised_to_the_floor(self):
+        # Several EC2 describes require at least 5, so a smaller configured
+        # value would be rejected rather than honoured.
+        self.provider.config['aws_page_size'] = 1
+        self.assertEqual(self._page_size('describe_vpcs'), 5)
 
 
 if __name__ == "__main__":
