@@ -31,6 +31,11 @@ classifiers = [
 dependencies = [
     "tenacity>=6.0",
     "pyeventsystem<2",
+    # Imported at module scope by cloudbridge.base.helpers, which almost
+    # everything else imports, so it is required for the library to import at
+    # all - not just for generate_key_pair, which is what actually uses it.
+    # Kept unpinned above the floor, per the general-purpose library policy.
+    "cryptography>=3.4",
 ]
 dynamic = ["version"]
 
