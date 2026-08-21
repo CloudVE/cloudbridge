@@ -2,6 +2,18 @@
 ------------------
 
 ## Fixes
+* **Paginated AWS calls no longer use the caller's result limit as the
+  transport page size.** ``BotoEC2Service._get_paginated_results`` set
+  ``PaginationConfig={'MaxItems': limit, 'PageSize': limit}``, conflating how
+  many results the caller wants with how many the service returns per
+  request. Against a scan that matches sparsely that walks the collection in
+  tiny increments: the same filtered ``describe_images`` took 977.6s at a
+  page size of 5 and 10.0s at 1000, for one result either way. ``MaxItems``
+  still bounds what the caller receives; ``PageSize`` is now a full page,
+  clamped to whatever ceiling the service model declares for the operation
+  (``DescribeRouteTables`` allows 100 where most allow more, and exceeding a
+  ceiling is a hard ``InvalidParameterValue``). Since ``DEFAULT_RESULT_LIMIT``
+  is 50, every paginated AWS call was affected, not just filtered searches.
 * **``AWSImageService.find`` no longer scans every public image to run its
   tag search.** ``find(label=...)`` issues two ``describe_images`` calls, one
   filtered on ``name`` and one on ``tag:Name``, and neither was scoped by

@@ -25,6 +25,14 @@ log = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
+# How many items to ask the service for per request, independent of how many
+# the caller wants back. Small enough to sit inside every EC2 describe's
+# documented ceiling that the service model does not declare (DescribeVolumes
+# is the tightest of those, at 500), large enough that a sparse filtered scan
+# does not turn into thousands of round trips. Operations that do declare a
+# ceiling are clamped to it - see BotoEC2Service._page_size.
+DEFAULT_PAGE_SIZE = 500
+
 
 def trim_empty_params(params_dict: dict[str, Any]) -> dict[str, Any]:
     """
@@ -153,6 +161,40 @@ class BotoGenericService(object):
         else:
             return None
 
+    def _page_size(self, client: Any, list_op: str, limit: int) -> int:
+        """
+        Transport page size for a paginated call.
+
+        ``PageSize`` is how many items the service returns per request;
+        ``MaxItems`` is how many the caller asked for. Using the caller's
+        limit for both makes a small limit walk a large scan in tiny
+        increments: a filtered ``describe_images`` that takes 10.0s at a page
+        size of 1000 takes 977.6s at 5, for the same single result. Ask for a
+        full page regardless of the limit and let ``MaxItems`` do the
+        bounding - at worst one page more data is fetched than was wanted,
+        and a limit larger than a page is served over several requests.
+
+        EC2's per-operation ceilings differ - ``DescribeRouteTables`` allows
+        100 where most allow 1000 - and exceeding one is a hard
+        ``InvalidParameterValue`` rather than a clamp, so defer to whatever
+        the service model declares for this operation.
+        """
+        # Deliberately not max(limit, ...): a caller asking for more than a
+        # page still gets it, over several requests, rather than having an
+        # oversized limit pushed at a service that would reject it.
+        page_size = DEFAULT_PAGE_SIZE
+        api_name = client.meta.method_to_api_mapping.get(list_op)
+        if not api_name:
+            return page_size
+        input_shape = client.meta.service_model.operation_model(
+            api_name).input_shape
+        max_results = input_shape.members.get('MaxResults') if input_shape \
+            else None
+        # Not every operation declares bounds, even where the documentation
+        # gives them; fall back to a size known to be within all of them.
+        ceiling = max_results.metadata.get('max') if max_results else None
+        return min(page_size, ceiling) if ceiling else page_size
+
     def _get_list_operation(self) -> str:
         """
         This function discovers the list operation for a particular resource
@@ -195,7 +237,9 @@ class BotoGenericService(object):
         paginator = client.get_paginator(list_op)
         PaginationConfig: dict[str, Any] = {}
         if limit:
-            PaginationConfig = {'MaxItems': limit, 'PageSize': limit}
+            PaginationConfig = {
+                'MaxItems': limit,
+                'PageSize': self._page_size(client, list_op, limit)}
 
         if marker:
             PaginationConfig.update({'StartingToken': marker})
