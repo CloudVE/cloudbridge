@@ -30,6 +30,7 @@ from cloudbridge.interfaces.services import NetworkingService
 from cloudbridge.interfaces.services import SecurityService
 from cloudbridge.interfaces.services import StorageService
 
+from .helpers import GCPOperationError
 from .services import GCPComputeService
 from .services import GCPDnsService
 from .services import GCPNetworkingService
@@ -401,7 +402,7 @@ class GCPCloudProvider(BaseCloudProvider):
             result = operations.get(**args).execute()
             if result['status'] == 'DONE':
                 if 'error' in result:
-                    raise Exception(result['error'])
+                    raise GCPOperationError(result['error'])
                 return result
 
             time.sleep(0.5)

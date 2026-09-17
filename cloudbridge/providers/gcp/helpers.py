@@ -19,6 +19,22 @@ if TYPE_CHECKING:
     from .provider import GCPCloudProvider
 
 
+class GCPOperationError(ProviderInternalException):
+    """A GCP operation completed with an error.
+
+    Raised by ``wait_for_operation`` with the operation's ``error`` payload,
+    so callers can act on the error codes rather than parse the message.
+    """
+
+    def __init__(self, error: Any) -> None:
+        super().__init__(error)
+        self.error = error
+
+    @property
+    def codes(self) -> list[str]:
+        return [e.get('code', '') for e in self.error.get('errors', [])]
+
+
 def gcp_projects(provider: "GCPCloudProvider") -> Any:
     return provider.gcp_compute.projects()
 
@@ -44,7 +60,14 @@ def get_common_metadata(provider: "GCPCloudProvider") -> Any:
 
 
 def __if_fingerprint_differs(e: BaseException) -> bool:
-    # return True if the CloudError exception is due to subnet being in use
+    """Whether ``e`` is GCP rejecting a metadata write on a stale fingerprint.
+
+    The conflict surfaces in two shapes: an HTTP error on the request itself,
+    or a successfully submitted operation that then completes with
+    ``CONDITION_NOT_MET`` - which is what a concurrent writer produces.
+    """
+    if isinstance(e, GCPOperationError):
+        return 'CONDITION_NOT_MET' in e.codes
     if isinstance(e, HttpError):
         expected_message = 'Supplied fingerprint does not match current ' \
                            'metadata fingerprint.'

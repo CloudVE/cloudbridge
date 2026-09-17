@@ -1,3 +1,21 @@
+4.4.2 - unreleased
+------------------
+
+## Fixes
+* **GCP metadata writes now retry when a concurrent writer invalidates the
+  fingerprint.** Labels for networks, routers, firewalls and key pairs live in
+  the project-wide common instance metadata, which every write re-uploads
+  under an optimistic fingerprint. The retry for a stale fingerprint only
+  recognised the conflict as an HTTP error, but a concurrent writer produces
+  it differently: the upload is accepted and the resulting *operation*
+  completes with ``CONDITION_NOT_MET``, which ``wait_for_operation`` raised
+  as a plain ``Exception`` the retry ignored. So under parallel use every
+  collision failed on the first attempt - the cause of the recurring
+  ``test_crud_*`` failures in the GCP live suite. ``wait_for_operation`` now
+  raises ``GCPOperationError`` (a ``ProviderInternalException`` carrying the
+  operation's error payload and ``codes``), and the metadata save retries on
+  it with freshly fetched metadata, as it always did for the HTTP form.
+
 4.4.1 - August 21, 2026 (sha 093ef669598d9f324be28d400a851396739cf1d8)
 ----------------------------------------------------------------------
 
