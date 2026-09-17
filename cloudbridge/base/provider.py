@@ -193,6 +193,13 @@ class BaseCloudProvider(CloudProvider):
         """
         A convenience method to extract a configuration value.
 
+        The config dict is consulted first, then an attribute of the same
+        name on the config object, then the ``[<provider id>]`` section of
+        the cloudbridge ini file. A value is taken from the first source
+        that has it set; only ``None`` and the empty string count as unset,
+        so ``False`` and ``0`` are returned as configured rather than
+        replaced by the default.
+
         :type key: str
         :param key: a field to look for in the ``self.config`` field
 
@@ -204,12 +211,15 @@ class BaseCloudProvider(CloudProvider):
         """
         log.debug("Getting config key %s, with supplied default value: %s",
                   key, default_value)
-        value = default_value
-        if isinstance(self.config, dict) and self.config.get(key):
-            value = self.config.get(key, default_value)
-        elif hasattr(self.config, key) and getattr(self.config, key):
-            value = getattr(self.config, key)
-        elif (self._config_parser.has_option(self.PROVIDER_ID, key) and
-              self._config_parser.get(self.PROVIDER_ID, key)):
+        value = self.config.get(key) if isinstance(self.config, dict) else None
+        if not self._is_set(value):
+            value = getattr(self.config, key, None)
+        if (not self._is_set(value) and
+                self._config_parser.has_option(self.PROVIDER_ID, key)):
             value = self._config_parser.get(self.PROVIDER_ID, key)
-        return value
+        return value if self._is_set(value) else default_value
+
+    @staticmethod
+    def _is_set(value: Any) -> bool:
+        """Whether a config value was supplied, as opposed to left blank."""
+        return value is not None and value != ''

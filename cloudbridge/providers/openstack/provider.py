@@ -44,14 +44,29 @@ class OpenStackCloudProvider(BaseCloudProvider):
         super(OpenStackCloudProvider, self).__init__(config)
 
         # Initialize cloud connection fields
-        self.app_cred_id = self._get_config_value(
-            'os_application_credential_id', get_env('OS_APPLICATION_CREDENTIAL_ID'))
-        self.app_cred_secret = self._get_config_value(
-            'os_application_credential_secret', get_env('OS_APPLICATION_CREDENTIAL_SECRET'))
-        self.username = self._get_config_value(
-            'os_username', get_env('OS_USERNAME'))
-        self.password = self._get_config_value(
-            'os_password', get_env('OS_PASSWORD'))
+        # Credentials come from the config first and the OS_* environment
+        # second. The two credential sets are resolved separately: the
+        # environment only completes the set the config names, so a provider
+        # configured with an application credential never picks up the
+        # process's own OS_USERNAME/OS_PASSWORD and signs in as that identity
+        # instead (and vice versa). With neither set configured, both are read
+        # from the environment as before.
+        app_cred_id = self._get_config_value('os_application_credential_id')
+        app_cred_secret = self._get_config_value(
+            'os_application_credential_secret')
+        username = self._get_config_value('os_username')
+        password = self._get_config_value('os_password')
+        env_app_cred = not (username or password)
+        env_password = not (app_cred_id or app_cred_secret)
+        self.app_cred_id = app_cred_id or (
+            get_env('OS_APPLICATION_CREDENTIAL_ID') if env_app_cred else None)
+        self.app_cred_secret = app_cred_secret or (
+            get_env('OS_APPLICATION_CREDENTIAL_SECRET') if env_app_cred
+            else None)
+        self.username = username or (
+            get_env('OS_USERNAME') if env_password else None)
+        self.password = password or (
+            get_env('OS_PASSWORD') if env_password else None)
         self.project_name = self._get_config_value(
             'os_project_name', get_env('OS_PROJECT_NAME')
             or get_env('OS_TENANT_NAME'))

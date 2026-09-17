@@ -98,3 +98,29 @@ class CloudHelpersTestCase(ProviderTestBase):
         int_value = self.provider._get_config_value(
             'default_result_limit', None)
         self.assertIsInstance(int_value, int)
+
+    def test_config_value_set_to_false_is_honored(self):
+        # A boolean option turned off must not be mistaken for an unset one:
+        # `s3_validate_certs: False` has to reach the SDK as False, not as
+        # the default of True.
+        self.provider.config['falsy_bool_check'] = False
+        # pylint:disable=protected-access
+        self.assertIs(
+            self.provider._get_config_value('falsy_bool_check', True), False)
+
+    def test_config_value_set_to_zero_is_honored(self):
+        self.provider.config['falsy_int_check'] = 0
+        # pylint:disable=protected-access
+        self.assertEqual(
+            self.provider._get_config_value('falsy_int_check', 4), 0)
+
+    def test_config_value_none_or_blank_falls_back_to_default(self):
+        # None and the empty string are what an absent value looks like
+        # coming from YAML, a blank environment variable or a blank ini
+        # option, so those alone mean "not configured".
+        for unset in (None, ''):
+            self.provider.config['unset_check'] = unset
+            # pylint:disable=protected-access
+            self.assertEqual(
+                self.provider._get_config_value('unset_check', 'default'),
+                'default', repr(unset))
