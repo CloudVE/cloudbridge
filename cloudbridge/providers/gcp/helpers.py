@@ -13,6 +13,7 @@ from googleapiclient.errors import HttpError
 
 import tenacity
 
+from cloudbridge.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.interfaces.exceptions import ProviderInternalException
 
 if TYPE_CHECKING:
@@ -33,6 +34,22 @@ class GCPOperationError(ProviderInternalException):
     @property
     def codes(self) -> list[str]:
         return [e.get('code', '') for e in self.error.get('errors', [])]
+
+
+class MetadataWriteNotApplied(ProviderInternalException):
+    """A common-metadata write completed as DONE but is absent when read back.
+
+    Observed under concurrent writers: GCP accepts several writes against
+    the same fingerprint while an earlier one is still pending, and a later
+    one can complete without its change surviving. The write is retried on
+    fresh metadata; this is raised only once the retries are exhausted.
+    """
+
+    def __init__(self, keys: list[str]) -> None:
+        super().__init__(
+            'Project metadata write reported done, but these keys do not '
+            'hold the written value: {}'.format(', '.join(keys)))
+        self.keys = keys
 
 
 def gcp_projects(provider: "GCPCloudProvider") -> Any:
@@ -59,15 +76,18 @@ def get_common_metadata(provider: "GCPCloudProvider") -> Any:
     return metadata["commonInstanceMetadata"]
 
 
-def __if_fingerprint_differs(e: BaseException) -> bool:
-    """Whether ``e`` is GCP rejecting a metadata write on a stale fingerprint.
+def __metadata_write_lost_to_a_concurrent_writer(e: BaseException) -> bool:
+    """Whether ``e`` means a metadata write must be redone on fresh metadata.
 
-    The conflict surfaces in two shapes: an HTTP error on the request itself,
-    or a successfully submitted operation that then completes with
-    ``CONDITION_NOT_MET`` - which is what a concurrent writer produces.
+    A concurrent writer shows up in three shapes: an HTTP 412 on the request
+    itself, a submitted operation that completes with ``CONDITION_NOT_MET``,
+    or - when GCP accepted both writes against the same fingerprint - an
+    operation that completes as DONE without the change surviving.
     """
     if isinstance(e, GCPOperationError):
         return 'CONDITION_NOT_MET' in e.codes
+    if isinstance(e, MetadataWriteNotApplied):
+        return True
     if isinstance(e, HttpError):
         expected_message = 'Supplied fingerprint does not match current ' \
                            'metadata fingerprint.'
@@ -76,8 +96,14 @@ def __if_fingerprint_differs(e: BaseException) -> bool:
     return False
 
 
+def _metadata_values(metadata: Any) -> dict[str, Any]:
+    return {item['key']: item.get('value')
+            for item in metadata.get('items', [])}
+
+
 @tenacity.retry(stop=tenacity.stop_after_attempt(10),
-                retry=tenacity.retry_if_exception(__if_fingerprint_differs),
+                retry=tenacity.retry_if_exception(
+                    __metadata_write_lost_to_a_concurrent_writer),
                 wait=tenacity.wait_exponential(max=10),
                 reraise=True)
 def gcp_metadata_save_op(provider: "GCPCloudProvider",
@@ -89,16 +115,36 @@ def gcp_metadata_save_op(provider: "GCPCloudProvider",
     retrieves the metadata, invokes the provided callback with that
     metadata, and saves the metadata using the original fingerprint
     immediately afterwards, ensuring that update conflicts can be detected.
+
+    The fingerprint alone is not enough: a write that GCP reports as done
+    can still be missing from the document when another write was accepted
+    against the same fingerprint. So the write is only finished once the
+    callback's changes can be read back, and is redone on fresh metadata
+    otherwise. A callback that changes nothing sends no write at all - every
+    write re-uploads the whole document and moves the fingerprint, which
+    would only add contention for other writers.
     """
     def _save_common_metadata(provider: "GCPCloudProvider") -> None:
         # get the latest metadata (so we get the latest fingerprint)
         metadata = get_common_metadata(provider)
+        before = _metadata_values(metadata)
         # allow callback to do processing on it
         callback(metadata)
+        wanted = _metadata_values(metadata)
+        changes = {key: wanted.get(key) for key in before.keys() | wanted.keys()
+                   if before.get(key) != wanted.get(key)}
+        if not changes:
+            return
         # save the metadata
         operation = gcp_projects(provider).setCommonInstanceMetadata(
             project=provider.project_name, body=metadata).execute()
         provider.wait_for_operation(operation)
+        # ...and make sure it stuck
+        current = _metadata_values(get_common_metadata(provider))
+        lost = sorted(key for key, value in changes.items()
+                      if current.get(key) != value)
+        if lost:
+            raise MetadataWriteNotApplied(lost)
 
     # Retry a few times if the fingerprints conflict
     _save_common_metadata(provider)
@@ -121,15 +167,24 @@ def modify_or_add_metadata_item(provider: "GCPCloudProvider", key: str,
     gcp_metadata_save_op(provider, _update_metadata_key)
 
 
-# This function will raise an HttpError with message containing
-# "Metadata has duplicate key" if it's not unique, unlike the previous
-# method which either adds or updates the value corresponding to that key
 def add_metadata_item(provider: "GCPCloudProvider", key: str,
                       value: str) -> None:
+    """Add ``key``, raising ``DuplicateResourceException`` if it is taken.
+
+    Unlike ``modify_or_add_metadata_item`` this never overwrites. The
+    check is done on the freshly fetched metadata so that a retry after a
+    lost write does not append a second copy of a key that did land: a key
+    already holding this very value is this write, and counts as done.
+    """
     def _add_metadata_key(metadata: Any) -> None:
-        entry = {'key': key, 'value': value}
         entries = metadata.get('items', [])
-        entries.append(entry)
+        existing = [item for item in entries if item['key'] == key]
+        if existing:
+            if existing[-1].get('value') == value:
+                return
+            raise DuplicateResourceException(
+                'Metadata key {0} already exists'.format(key))
+        entries.append({'key': key, 'value': value})
         # Reassign explicitly in case the original get returned [] although
         # if not it will be already updated
         metadata['items'] = entries
@@ -159,30 +214,25 @@ def get_metadata_item_value(provider: "GCPCloudProvider", key: str) -> Any:
 
 
 def remove_metadata_item(provider: "GCPCloudProvider", key: str) -> bool:
-    def _remove_metadata_by_key(metadata: Any) -> bool | None:
+    """Remove ``key``; ``False`` if there was nothing to remove."""
+    removed = False
+
+    def _remove_metadata_by_key(metadata: Any) -> None:
+        nonlocal removed
         items = metadata.get('items', [])
-        # No metadata to delete
-        if not items:
-            return False
-        else:
-            entries = [item for item in metadata.get('items', [])
-                       if item['key'] != key]
-
-            # Make sure only one entry is deleted
-            if len(entries) < len(items) - 1:
-                raise ProviderInternalException("Multiple metadata entries "
-                                                "found for the same key {}"
-                                                .format(key))
-            # If none is deleted indicate so by returning False
-            elif len(entries) == len(items):
-                return False
-
-            else:
-                metadata['items'] = entries
-                return None
+        entries = [item for item in items if item['key'] != key]
+        # Make sure only one entry is deleted
+        if len(entries) < len(items) - 1:
+            raise ProviderInternalException("Multiple metadata entries "
+                                            "found for the same key {}"
+                                            .format(key))
+        # A retry after a lost write finds the key still present and
+        # removes it again; the first attempt decides whether it was there.
+        removed = removed or len(entries) < len(items)
+        metadata['items'] = entries
 
     gcp_metadata_save_op(provider, _remove_metadata_by_key)
-    return True
+    return removed
 
 
 def __if_label_fingerprint_differs(e: BaseException) -> bool:
