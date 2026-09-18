@@ -1,5 +1,5 @@
-4.4.2 - unreleased
-------------------
+4.4.2 - September 18, 2026 (sha bd6fac9aeaac5c3cb6005d0be77319e9b0cf7fb8)
+-------------------------------------------------------------------------
 
 ## Fixes
 * **GCP common-metadata writes now survive concurrent writers.** Labels for
@@ -43,6 +43,19 @@
   separately: the environment only completes the set the config names (a
   configured ``os_username`` with the password in ``OS_PASSWORD`` still
   works), and is consulted for both only when neither is configured.
+
+## Build and CI
+* **``CB_TEST_TRACE`` trace files are now printed even when the suite
+  fails.** They were emitted by a command placed after pytest in tox's
+  ``commands``, and tox stops at the first failing command - so the trace
+  was lost for exactly the runs worth reading. It now runs from
+  ``commands_post``.
+
+## Pull Requests
+* Retry GCP metadata writes on an operation-level fingerprint conflict by @nuwang in https://github.com/CloudVE/cloudbridge/pull/349
+* Honor falsy config values, and configured OpenStack credentials over the environment by @nuwang in https://github.com/CloudVE/cloudbridge/pull/348
+
+**Full Changelog**: https://github.com/CloudVE/cloudbridge/compare/v4.4.1...v4.4.2
 
 4.4.1 - August 21, 2026 (sha 093ef669598d9f324be28d400a851396739cf1d8)
 ----------------------------------------------------------------------
