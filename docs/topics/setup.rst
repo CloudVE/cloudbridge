@@ -16,8 +16,12 @@ available credentials in one of following ways:
 Providing access credentials through a dictionary
 -------------------------------------------------
 You can initialize a simple config as follows. The key names are the same
-as the environment variables, in lower case. Note that the config dictionary
-will override environment values.
+as the environment variables, in lower case. A value is looked up in the
+config dictionary first, then in the `CloudBridge config file`_, and only
+then in the environment; ``None`` and the empty string count as not set, so
+``False`` and ``0`` are honored as configured.
+
+.. _CloudBridge config file: #providing-access-credentials-in-a-cloudbridge-config-file
 
 .. code-block:: python
 
@@ -174,53 +178,60 @@ GCP
 OpenStack
 ~~~~~~~~~
 
-+-------------------------+--------------------------------------------------------------+
-| Variable                | Description                                                  |
-+=========================+==============================================================+
-| os_auth_url             | Required. OpenStack authentication endpoint.                 |
-|                         | eg: https://my-openstack.com:5000/v3                         |
-+-------------------------+--------------------------------------------------------------+
-| os_username             | Required. Username for authentication.                       |
-+-------------------------+--------------------------------------------------------------+
-| os_password             | Required. password for authentication.                       |
-+-------------------------+--------------------------------------------------------------+
-| os_project_name         | Required. The project in which to manage resources.          |
-+-------------------------+--------------------------------------------------------------+
-| os_region_name          | Required. Region in which to manage resources.               |
-+-------------------------+--------------------------------------------------------------+
-| os_zone_name            | Default Availability Zone in which to manage resources.      |
-|                         | If not provided, will default to the first available zone    |
-|                         | in the region. This zone will be the default for all services|
-|                         | unless overwritten by service-specific zone configs          |
-+-------------------------+--------------------------------------------------------------+
-| os_compute_zone_name    | Default Availability Zone for Compute servies.               |
-|                         | If not provided, will default to `os_zone_name`              |
-+-------------------------+--------------------------------------------------------------+
-| os_networking_zone_name | Default Availability Zone for Networking servies.            |
-|                         | If not provided, will default to `os_zone_name`              |
-+-------------------------+--------------------------------------------------------------+
-| os_security_zone_name   | Default Availability Zone for Security servies.              |
-|                         | If not provided, will default to `os_zone_name`              |
-+-------------------------+--------------------------------------------------------------+
-| os_storage_zone_name    | Default Availability Zone for Storage servies.               |
-|                         | If not provided, will default to `os_zone_name`              |
-+-------------------------+--------------------------------------------------------------+
-| nova_service_name       | Service name for the NOVA client.                            |
-+-------------------------+--------------------------------------------------------------+
-| os_auth_token           | Authentication token, if applicable.                         |
-+-------------------------+--------------------------------------------------------------+
-| os_compute_api_version  | Compute API version, if applicable.                          |
-+-------------------------+--------------------------------------------------------------+
-| os_volume_api_version   | Volume API version, if applicable.                           |
-+-------------------------+--------------------------------------------------------------+
-| os_storage_url          | Storage endpoint URL, if applicable                          |
-+-------------------------+--------------------------------------------------------------+
-| os_project_domain_id    | Project domain id for authentication.                        |
-+-------------------------+--------------------------------------------------------------+
-| os_project_domain_name  | Project domain name for authentication.                      |
-+-------------------------+--------------------------------------------------------------+
-| os_user_domain_name     | User domain name for authentication.                         |
-+-------------------------+--------------------------------------------------------------+
++----------------------------------+--------------------------------------------------------------+
+| Variable                         | Description                                                  |
++==================================+==============================================================+
+| os_auth_url                      | Required. OpenStack authentication endpoint.                 |
+|                                  | eg: https://my-openstack.com:5000/v3                         |
++----------------------------------+--------------------------------------------------------------+
+| os_username                      | Username for password authentication. Required unless an     |
+|                                  | application credential is given.                             |
++----------------------------------+--------------------------------------------------------------+
+| os_password                      | Password for password authentication. Required unless an     |
+|                                  | application credential is given.                             |
++----------------------------------+--------------------------------------------------------------+
+| os_application_credential_id     | Keystone application credential ID. Together with the secret,|
+|                                  | an alternative to a username and password.                   |
++----------------------------------+--------------------------------------------------------------+
+| os_application_credential_secret | Keystone application credential secret.                      |
++----------------------------------+--------------------------------------------------------------+
+| os_project_name                  | Required. The project in which to manage resources.          |
++----------------------------------+--------------------------------------------------------------+
+| os_region_name                   | Required. Region in which to manage resources.               |
++----------------------------------+--------------------------------------------------------------+
+| os_zone_name                     | Default Availability Zone in which to manage resources.      |
+|                                  | If not provided, will default to the first available zone    |
+|                                  | in the region. This zone will be the default for all services|
+|                                  | unless overwritten by service-specific zone configs          |
++----------------------------------+--------------------------------------------------------------+
+| os_compute_zone_name             | Default Availability Zone for Compute servies.               |
+|                                  | If not provided, will default to `os_zone_name`              |
++----------------------------------+--------------------------------------------------------------+
+| os_networking_zone_nam         e | Default Availability Zone for Networking servies.            |
+|                                  | If not provided, will default to `os_zone_name`              |
++----------------------------------+--------------------------------------------------------------+
+| os_security_zone_name            | Default Availability Zone for Security servies.              |
+|                                  | If not provided, will default to `os_zone_name`              |
++----------------------------------+--------------------------------------------------------------+
+| os_storage_zone_name             | Default Availability Zone for Storage servies.               |
+|                                  | If not provided, will default to `os_zone_name`              |
++----------------------------------+--------------------------------------------------------------+
+| nova_service_name                | Service name for the NOVA client.                            |
++----------------------------------+--------------------------------------------------------------+
+| os_auth_token                    | Authentication token, if applicable.                         |
++----------------------------------+--------------------------------------------------------------+
+| os_compute_api_version           | Compute API version, if applicable.                          |
++----------------------------------+--------------------------------------------------------------+
+| os_volume_api_version            | Volume API version, if applicable.                           |
++----------------------------------+--------------------------------------------------------------+
+| os_storage_url                   | Storage endpoint URL, if applicable                          |
++----------------------------------+--------------------------------------------------------------+
+| os_project_domain_id             | Project domain id for authentication.                        |
++----------------------------------+--------------------------------------------------------------+
+| os_project_domain_name           | Project domain name for authentication.                      |
++----------------------------------+--------------------------------------------------------------+
+| os_user_domain_name              | User domain name for authentication.                         |
++----------------------------------+--------------------------------------------------------------+
 
 Providing access credentials through environment variables
 ----------------------------------------------------------
@@ -344,6 +355,12 @@ OpenStack
 +----------------------------------+-----------+
 | OS_USER_DOMAIN_NAME              |           |
 +----------------------------------+-----------+
+
+``OS_USERNAME``/``OS_PASSWORD`` and ``OS_APPLICATION_CREDENTIAL_ID``/
+``OS_APPLICATION_CREDENTIAL_SECRET`` are alternatives. When a config
+dictionary names either set, the environment only completes that set: a
+provider configured with an application credential does not pick up an
+``OS_USERNAME`` and ``OS_PASSWORD`` that happen to be in its environment.
 
 Once the environment variables are set, you can create a connection as follows,
 replacing ``ProviderList.AWS`` with the desired provider (AZURE, GCP, or

@@ -22,6 +22,27 @@
   ``DuplicateResourceException``, so a retry never appends a second copy;
   and ``remove_metadata_item`` returns ``False`` when there was nothing to
   remove, as its callers always assumed.
+* **A config value of ``False`` or ``0`` is now honored instead of being
+  replaced by the default.** ``_get_config_value`` treated every falsy value
+  as "not configured", so ``s3_validate_certs: False`` (and
+  ``ec2_validate_certs``) silently left certificate verification switched on,
+  and a ``0`` for any numeric option was quietly swapped for its default.
+  Only ``None`` and the empty string now count as unset - what an absent
+  value looks like coming from YAML, a blank environment variable or a blank
+  ini option. A value that was previously ignored for being falsy now takes
+  effect; a misconfigured ``0`` (say for ``multipart_max_concurrency``)
+  therefore errors where it used to be masked.
+* **Explicitly configured OpenStack credentials take precedence over the
+  ``OS_*`` environment.** The provider filled in every credential field from
+  the environment whenever the config did not name it, and Keystone password
+  authentication was preferred when both a password and an application
+  credential were present. So a provider configured with only an application
+  credential, running in a process that carried ``OS_USERNAME`` and
+  ``OS_PASSWORD``, authenticated as that ambient identity rather than the
+  credential it was given. The two credential sets are now resolved
+  separately: the environment only completes the set the config names (a
+  configured ``os_username`` with the password in ``OS_PASSWORD`` still
+  works), and is consulted for both only when neither is configured.
 
 4.4.1 - August 21, 2026 (sha 093ef669598d9f324be28d400a851396739cf1d8)
 ----------------------------------------------------------------------
