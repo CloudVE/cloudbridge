@@ -188,7 +188,12 @@ class GCPKeyPairService(BaseKeyPairService):
                                       GCPKeyPair.KP_TAG_PREFIX + name,
                                       metadata_value)
             return GCPKeyPair(provider, kp_info, private_key)
+        except DuplicateResourceException:
+            raise DuplicateResourceException(
+                'A KeyPair with name {0} already exists'.format(name))
         except googleapiclient.errors.HttpError as err:
+            # GCP's own duplicate-key rejection, should a concurrent create
+            # slip past the check on the fetched metadata.
             if err.resp.get('content-type', '').startswith('application/json'):
                 message = (json.loads(err.content).get('error', {})
                            .get('errors', [{}])[0].get('message'))

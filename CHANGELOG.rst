@@ -1,3 +1,28 @@
+4.4.2 - unreleased
+------------------
+
+## Fixes
+* **GCP common-metadata writes now survive concurrent writers.** Labels for
+  networks, routers, firewalls and key pairs live in the project-wide common
+  instance metadata, which every write re-uploads under an optimistic
+  fingerprint. Two things went wrong under parallel use. The retry for a
+  stale fingerprint only recognised the conflict as an HTTP error, but a
+  concurrent writer produces it differently: the upload is accepted and the
+  resulting *operation* completes with ``CONDITION_NOT_MET``, which
+  ``wait_for_operation`` raised as a plain ``Exception`` the retry ignored.
+  And - measured in the live suite - GCP accepts several writes against the
+  same fingerprint while an earlier one is still pending, and a later one can
+  complete as ``DONE`` with its change absent from the document: 11 of 56
+  writes in one run. ``wait_for_operation`` now raises ``GCPOperationError``
+  (a ``ProviderInternalException`` carrying the operation's error payload and
+  ``codes``); a metadata write is only finished once its change reads back,
+  and is redone on fresh metadata otherwise (``MetadataWriteNotApplied`` once
+  the retries are exhausted); a write that changes nothing is not sent at
+  all; ``add_metadata_item`` checks for an existing key itself and raises
+  ``DuplicateResourceException``, so a retry never appends a second copy;
+  and ``remove_metadata_item`` returns ``False`` when there was nothing to
+  remove, as its callers always assumed.
+
 4.4.1 - August 21, 2026 (sha 093ef669598d9f324be28d400a851396739cf1d8)
 ----------------------------------------------------------------------
 
