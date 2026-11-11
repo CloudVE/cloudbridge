@@ -523,23 +523,11 @@ class AzureClient(object):
                      expiry_time: int, writable: bool,
                      content_disposition: str | None = None,
                      content_type: str | None = None) -> str:
-        now = datetime.datetime.utcnow()
-        expiry = now + datetime.timedelta(
-            seconds=expiry_time)
-        blob_name = blob_name
-        container_name = container_name.name
-        delegation_key = self.blob_service.get_user_delegation_key(
-            key_start_time=now, key_expiry_time=expiry
-        )
-        sas = generate_blob_sas(
-            self.storage_account, container_name, blob_name,
-            permission=BlobSasPermissions(read=True, write=writable), expiry=expiry,
-            user_delegation_key=delegation_key,
+        return self._blob_sas_url(
+            container_name.name, blob_name, expiry_time,
+            BlobSasPermissions(read=True, write=writable),
             content_disposition=content_disposition,
-            content_type=content_type
-        )
-        url = f"https://{self.storage_account}.blob.core.windows.net/{container_name}/{blob_name}?{sas}"
-        return url
+            content_type=content_type)
 
     def get_blob_upload_url(self, container_name: str, blob_name: str,
                             expiry_time: int) -> str:
@@ -547,14 +535,21 @@ class AzureClient(object):
         A URL that writes the blob, new or existing, or a block of it, until it
         expires.
         """
+        return self._blob_sas_url(container_name, blob_name, expiry_time,
+                                  BlobSasPermissions(write=True))
+
+    def _blob_sas_url(self, container_name: str, blob_name: str,
+                      expiry_time: int, permission: BlobSasPermissions,
+                      **sas_options: Any) -> str:
         now = datetime.datetime.now(datetime.timezone.utc)
         expiry = now + datetime.timedelta(seconds=expiry_time)
         delegation_key = self.blob_service.get_user_delegation_key(
             key_start_time=now, key_expiry_time=expiry)
         sas = generate_blob_sas(
             self.storage_account, container_name, blob_name,
-            permission=BlobSasPermissions(write=True), expiry=expiry,
-            user_delegation_key=delegation_key)
+            permission=permission, expiry=expiry,
+            user_delegation_key=delegation_key, **sas_options)
+        # The blob client's URL escapes the blob's name.
         return "{0}?{1}".format(
             self.blob_client(container_name, blob_name).url, sas)
 

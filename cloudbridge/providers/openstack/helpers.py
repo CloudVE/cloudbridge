@@ -8,7 +8,7 @@ import logging as log
 import secrets
 from typing import Any
 from typing import Sequence
-from urllib.parse import urljoin
+from urllib.parse import quote
 from urllib.parse import urlparse
 
 from swiftclient.utils import generate_temp_url
@@ -86,6 +86,7 @@ def temp_url(swift: Any, container: str, object_name: str, expires_in: int,
     # storage URL, from Keystone or as configured.
     storage_url = urlparse(swift.url)
     path = "/".join([storage_url.path, container, object_name])
-    return urljoin(
-        "{0}://{1}".format(storage_url.scheme, storage_url.netloc),
-        generate_temp_url(path, expires_in, key, method))
+    # Swift checks the signature against the path unescaped.
+    query = generate_temp_url(path, expires_in, key, method).split('?', 1)[1]
+    return "{0}://{1}{2}?{3}".format(storage_url.scheme, storage_url.netloc,
+                                     quote(path), query)

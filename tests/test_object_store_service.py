@@ -656,6 +656,24 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 self.assertEqual(target_stream.getvalue(), content)
 
     @helpers.skipIfNoService(['storage.buckets'])
+    def test_presigned_urls_for_a_name_that_needs_escaping(self):
+        name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "a dir/a file #1 \u00e9.txt"
+            content = b"Uploaded by a client without credentials."
+            _send(test_bucket.objects.generate_upload_url(obj_name, 300),
+                  content).raise_for_status()
+            stored = test_bucket.objects.get(obj_name)
+            self.assertIsNotNone(stored)
+
+            with cb_helpers.cleanup_action(lambda: stored.delete()):
+                response = requests.get(stored.generate_url(300))
+                response.raise_for_status()
+                self.assertEqual(response.content, content)
+
+    @helpers.skipIfNoService(['storage.buckets'])
     def test_presigned_urls_binding_a_size_refuse_another_size(self):
         if isinstance(self.provider, TestMockHelperMixin):
             self.skipTest("Mock providers don't check signatures")
