@@ -58,6 +58,7 @@ from cloudbridge.interfaces.exceptions \
 from cloudbridge.interfaces.exceptions \
     import DuplicateResourceException
 from cloudbridge.interfaces.exceptions import InvalidParamException
+from cloudbridge.interfaces.exceptions import InvalidPartException
 from cloudbridge.interfaces.exceptions import InvalidValueException
 from cloudbridge.interfaces.exceptions import ProviderInternalException
 from cloudbridge.interfaces.resources import Bucket
@@ -787,31 +788,76 @@ class OpenStackBucketObjectService(BaseBucketObjectService):
         ordered = sorted(parts, key=lambda p: p.part_number)
         manifest = [p.etag for p in ordered]
         provider = cast("OpenStackCloudProvider", self.provider)
-        provider.swift.put_object(
-            cast(Any, bucket).name, upload.object_name, json.dumps(manifest),
-            query_string='multipart-manifest=put')
+        try:
+            provider.swift.put_object(
+                cast(Any, bucket).name, upload.object_name,
+                json.dumps(manifest), query_string='multipart-manifest=put')
+        except SwiftClientException as e:
+            # Swift refuses a manifest naming a segment it doesn't hold, or
+            # holds with another ETag.
+            if e.http_status == 400:
+                raise InvalidPartException(
+                    "Swift refused the parts of {0}: {1}".format(
+                        upload.object_name,
+                        e.http_response_content.decode(errors='replace')
+                        .strip())) from e
+            raise
         # The interface declares this -> BucketObject; the SLO manifest was just
         # written above, so get() returns it (not None) here.
         return cast(BucketObject, self.get(bucket, upload.object_name))
 
-    # Presigned uploads are not supported on OpenStack yet.
+    # Swift's temporary URLs sign only the method, path and expiry: they can't
+    # bind a size.
+    @dispatch(event="provider.storage._bucket_objects.generate_upload_url",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
     def generate_upload_url(self, bucket: Bucket | str, object_name: str,
                             expires_in: int,
                             size: int | None) -> PresignedRequest:
-        raise NotImplementedError("Presigned uploads are not supported on OpenStack yet")
+        provider = cast("OpenStackCloudProvider", self.provider)
+        return PresignedRequest('PUT', oshelpers.temp_url(
+            provider.swift, cast(Any, bucket).name, object_name, expires_in,
+            'PUT'))
 
+    @dispatch(event="provider.storage._bucket_objects.generate_part_url",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
     def generate_part_url(self, bucket: Bucket | str, upload: MultipartUpload,
                           part_number: int, expires_in: int,
                           size: int | None) -> PresignedRequest:
-        raise NotImplementedError("Presigned uploads are not supported on OpenStack yet")
+        provider = cast("OpenStackCloudProvider", self.provider)
+        return PresignedRequest('PUT', oshelpers.temp_url(
+            provider.swift, cast(Any, bucket).name,
+            self._segment_name(upload, part_number), expires_in, 'PUT'))
 
+    @dispatch(event="provider.storage._bucket_objects.reported_part",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
     def reported_part(self, bucket: Bucket | str, upload: MultipartUpload,
                       part_number: int, etag: str | None) -> UploadPart:
-        raise NotImplementedError("Presigned uploads are not supported on OpenStack yet")
+        if not etag:
+            raise InvalidPartException(
+                "Part {0} of {1} was reported without the ETag Swift returns"
+                " for every segment".format(part_number, upload.object_name))
+        # Swift compares each segment with its manifest entry's ETag when the
+        # upload completes.
+        return BaseUploadPart(part_number, {
+            'path': "/{0}/{1}".format(cast(Any, bucket).name,
+                                      self._segment_name(upload, part_number)),
+            'etag': etag.strip('"'),
+            'size_bytes': None})
 
+    @dispatch(event="provider.storage._bucket_objects.list_parts",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
     def list_parts(self, bucket: Bucket | str,
                    upload: MultipartUpload) -> builtins.list[UploadPart]:
-        raise NotImplementedError("Presigned uploads are not supported on OpenStack yet")
+        prefix = self._segment_prefix(upload)
+        provider = cast("OpenStackCloudProvider", self.provider)
+        _, segments = provider.swift.get_container(
+            cast(Any, bucket).name, prefix=prefix, full_listing=True)
+        # Segment names sort in part order.
+        return [BaseUploadPart(int(segment['name'][len(prefix):]), {
+            'path': "/{0}/{1}".format(cast(Any, bucket).name, segment['name']),
+            'etag': segment['hash'],
+            'size_bytes': segment['bytes']}, size=segment['bytes'])
+            for segment in segments]
 
     @dispatch(event="provider.storage._bucket_objects.abort_multipart_upload",
               priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
