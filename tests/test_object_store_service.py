@@ -632,6 +632,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 obj_name, 300, size=len(content))
             # Signing the URL creates nothing.
             self.assertIsNone(test_bucket.objects.get(obj_name))
+            # The signature stays out of logs.
+            self.assertNotIn(request.url.split('?', 1)[1], repr(request))
 
             _send(request, content).raise_for_status()
             stored = test_bucket.objects.get(obj_name)

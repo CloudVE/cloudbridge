@@ -28,6 +28,7 @@ import cloudbridge.base.helpers as cb_helpers
 from cloudbridge.base.middleware import dispatch
 from cloudbridge.base.resources import BaseLaunchConfig
 from cloudbridge.base.resources import BaseMultipartUpload
+from cloudbridge.base.resources import BasePresignedRequest
 from cloudbridge.base.resources import BaseUploadPart
 from cloudbridge.base.resources import ClientPagedResultList
 from cloudbridge.base.services import BaseBucketObjectService
@@ -814,7 +815,7 @@ class OpenStackBucketObjectService(BaseBucketObjectService):
                             expires_in: int,
                             size: int | None) -> PresignedRequest:
         provider = cast("OpenStackCloudProvider", self.provider)
-        return PresignedRequest('PUT', oshelpers.temp_url(
+        return BasePresignedRequest('PUT', oshelpers.temp_url(
             provider.swift, cast(Any, bucket).name, object_name, expires_in,
             'PUT'))
 
@@ -824,7 +825,7 @@ class OpenStackBucketObjectService(BaseBucketObjectService):
                           part_number: int, expires_in: int,
                           size: int | None) -> PresignedRequest:
         provider = cast("OpenStackCloudProvider", self.provider)
-        return PresignedRequest('PUT', oshelpers.temp_url(
+        return BasePresignedRequest('PUT', oshelpers.temp_url(
             provider.swift, cast(Any, bucket).name,
             self._segment_name(upload, part_number), expires_in, 'PUT'))
 

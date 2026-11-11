@@ -2211,23 +2211,49 @@ class PresignedRequest(object):
     :meth:`.MultipartUpload.generate_part_url`. Send the payload as the body of
     a ``method`` request to ``url``, with ``headers``.
     """
+    __metaclass__ = ABCMeta
 
-    def __init__(self, method: str, url: str,
-                 headers: dict[str, str] | None = None,
-                 enforces_size: bool = False) -> None:
-        self.method = method
-        self.url = url
-        # Headers the store requires, which an HTTP client would not send of
-        # its own accord.
-        self.headers = dict(headers or {})
-        # Whether the store refuses a body of another size than the request
-        # was signed for. Where it doesn't, check the size after the upload.
-        self.enforces_size = enforces_size
+    @abstractproperty
+    def method(self) -> str:
+        """
+        The HTTP method of the request.
 
-    def __repr__(self) -> str:
-        # The query string carries the signature.
-        return "<CB-PresignedRequest: {0} {1}>".format(
-            self.method, self.url.split('?', 1)[0])
+        :rtype: ``str``
+        :return: The method, such as ``PUT``.
+        """
+        pass
+
+    @abstractproperty
+    def url(self) -> str:
+        """
+        The URL to send the request to. It carries the signature.
+
+        :rtype: ``str``
+        :return: The presigned URL.
+        """
+        pass
+
+    @abstractproperty
+    def headers(self) -> dict[str, str]:
+        """
+        Headers the store requires, which an HTTP client would not send of
+        its own accord.
+
+        :rtype: ``dict``
+        :return: The names and values of the headers to send.
+        """
+        pass
+
+    @abstractproperty
+    def enforces_size(self) -> bool:
+        """
+        Whether the store refuses a body of another size than the request was
+        signed for. Where it doesn't, check the size after the upload.
+
+        :rtype: ``bool``
+        :return: ``True`` if the store enforces the size.
+        """
+        pass
 
 
 class UploadPart(object):

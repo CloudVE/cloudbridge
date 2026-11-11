@@ -18,6 +18,7 @@ from botocore.exceptions import ClientError
 import cloudbridge.base.helpers as cb_helpers
 from cloudbridge.base.middleware import dispatch
 from cloudbridge.base.resources import BaseMultipartUpload
+from cloudbridge.base.resources import BasePresignedRequest
 from cloudbridge.base.resources import BaseUploadPart
 from cloudbridge.base.resources import ClientPagedResultList
 from cloudbridge.base.resources import ServerPagedResultList
@@ -722,7 +723,7 @@ class AWSBucketObjectService(BaseBucketObjectService):
         # 's3') signs no headers.
         signed_headers = parse_qs(urlparse(url).query).get(
             'X-Amz-SignedHeaders', [''])[0].split(';')
-        return PresignedRequest(
+        return BasePresignedRequest(
             'PUT', url, enforces_size='content-length' in signed_headers)
 
     @dispatch(event="provider.storage._bucket_objects.generate_upload_url",

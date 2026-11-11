@@ -735,6 +735,42 @@ class BaseRegion(BaseCloudResource, Region):
         return next(iter(self.zones))
 
 
+class BasePresignedRequest(PresignedRequest):
+    """
+    A presigned request, as concrete providers return it from
+    ``generate_upload_url`` and ``generate_part_url``.
+    """
+
+    def __init__(self, method: str, url: str,
+                 headers: dict[str, str] | None = None,
+                 enforces_size: bool = False) -> None:
+        self._method = method
+        self._url = url
+        self._headers = dict(headers or {})
+        self._enforces_size = enforces_size
+
+    @property
+    def method(self) -> str:
+        return self._method
+
+    @property
+    def url(self) -> str:
+        return self._url
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return self._headers
+
+    @property
+    def enforces_size(self) -> bool:
+        return self._enforces_size
+
+    def __repr__(self) -> str:
+        # The query string carries the signature.
+        return "<CB-{0}: {1} {2}>".format(
+            self.__class__.__name__, self._method, self._url.split('?', 1)[0])
+
+
 class BaseUploadPart(UploadPart):
     """
     A simple, serializable handle for a single uploaded part. Concrete
