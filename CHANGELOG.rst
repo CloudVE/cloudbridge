@@ -1,5 +1,5 @@
-4.5.0 - unreleased
-------------------
+4.5.0 - November 11, 2026 (sha 920495e7b4ed1c2e4173dce4c9622358ca31237a)
+------------------------------------------------------------------------
 
 ## Enhancements
 * **Upload objects, and the parts of a multipart upload, through presigned
@@ -37,6 +37,8 @@
 
 ## Pull Requests
 * Upload objects and multipart parts through presigned URLs by @nuwang in https://github.com/CloudVE/cloudbridge/pull/350
+
+**Full Changelog**: https://github.com/CloudVE/cloudbridge/compare/v4.4.2...v4.5.0
 
 4.4.2 - September 18, 2026 (sha bd6fac9aeaac5c3cb6005d0be77319e9b0cf7fb8)
 -------------------------------------------------------------------------
