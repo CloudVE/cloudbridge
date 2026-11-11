@@ -498,6 +498,12 @@ class AzureClient(object):
         block_list = [BlobBlock(block_id=block_id) for block_id in block_ids]
         blob_client.commit_block_list(block_list)
 
+    def get_uncommitted_blocks(self, container_name: str,
+                               blob_name: str) -> list[BlobBlock]:
+        blob_client = self.blob_client(container_name, blob_name)
+        _, uncommitted = blob_client.get_block_list('uncommitted')
+        return uncommitted
+
     def get_blob(self, container_name: str, blob_name: str) -> Any:
         blob_client = self.blob_client(container_name, blob_name)
         return blob_client.get_blob_properties(container_name, blob_name)
@@ -534,6 +540,23 @@ class AzureClient(object):
         )
         url = f"https://{self.storage_account}.blob.core.windows.net/{container_name}/{blob_name}?{sas}"
         return url
+
+    def get_blob_upload_url(self, container_name: str, blob_name: str,
+                            expiry_time: int) -> str:
+        """
+        A URL that writes the blob, new or existing, or a block of it, until it
+        expires.
+        """
+        now = datetime.datetime.now(datetime.timezone.utc)
+        expiry = now + datetime.timedelta(seconds=expiry_time)
+        delegation_key = self.blob_service.get_user_delegation_key(
+            key_start_time=now, key_expiry_time=expiry)
+        sas = generate_blob_sas(
+            self.storage_account, container_name, blob_name,
+            permission=BlobSasPermissions(write=True), expiry=expiry,
+            user_delegation_key=delegation_key)
+        return "{0}?{1}".format(
+            self.blob_client(container_name, blob_name).url, sas)
 
     def create_empty_disk(self, disk_name: str, params: dict[str, Any]) -> Any:
         return self.compute_client.disks.begin_create_or_update(

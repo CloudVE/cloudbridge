@@ -621,6 +621,19 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     upload.complete([upload.reported_part(1, None)])
 
     @helpers.skipIfNoService(['storage.buckets'])
+    def test_an_upload_without_parts_lists_none(self):
+        name = "cbtest-presigned-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "presigned-mpu-empty.bin"
+            upload = test_bucket.objects.create_multipart_upload(obj_name)
+
+            with cb_helpers.cleanup_action(
+                    lambda: _remove_upload(test_bucket, obj_name, upload)):
+                self.assertEqual(upload.list_parts(), [])
+
+    @helpers.skipIfNoService(['storage.buckets'])
     def test_presigned_upload_url_writes_a_new_object(self):
         name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
         test_bucket = self.provider.storage.buckets.create(name)
