@@ -2202,14 +2202,44 @@ class TransferConfig(object):
                     self.threshold, self.part_size, self.max_concurrency))
 
 
+class PresignedRequest(object):
+    """
+    A request to the object store that anyone holding it can send, without
+    credentials, until it expires.
+
+    Returned by :meth:`.BucketObjectSubService.generate_upload_url` and
+    :meth:`.MultipartUpload.generate_part_url`. Send the payload as the body of
+    a ``method`` request to ``url``, with ``headers``.
+    """
+
+    def __init__(self, method: str, url: str,
+                 headers: dict[str, str] | None = None,
+                 enforces_size: bool = False) -> None:
+        self.method = method
+        self.url = url
+        # Headers the store requires, which an HTTP client would not send of
+        # its own accord.
+        self.headers = dict(headers or {})
+        # Whether the store refuses a body of another size than the request
+        # was signed for. Where it doesn't, check the size after the upload.
+        self.enforces_size = enforces_size
+
+    def __repr__(self) -> str:
+        # The query string carries the signature.
+        return "<CB-PresignedRequest: {0} {1}>".format(
+            self.method, self.url.split('?', 1)[0])
+
+
 class UploadPart(object):
     """
     A handle for a single part uploaded as part of a multipart upload.
 
-    Returned by :meth:`.MultipartUpload.upload_part`. Callers must retain the
-    parts they receive and pass them to :meth:`.MultipartUpload.complete`.
-    The handle is a simple, serializable value object so that parts may be
-    collected across threads or processes when uploading in parallel.
+    Returned by :meth:`.MultipartUpload.upload_part`,
+    :meth:`.MultipartUpload.reported_part` and
+    :meth:`.MultipartUpload.list_parts`. Callers must retain the parts they
+    receive and pass them to :meth:`.MultipartUpload.complete`. The handle is
+    a simple, serializable value object so that parts may be collected across
+    threads or processes when uploading in parallel.
     """
     __metaclass__ = ABCMeta
 
@@ -2234,6 +2264,17 @@ class UploadPart(object):
 
         :rtype: ``object``
         :return: The provider-specific part handle.
+        """
+        pass
+
+    @abstractproperty
+    def size(self) -> int | None:
+        """
+        The size of the part in bytes, where known.
+
+        :rtype: ``int`` or ``None``
+        :return: The part's size, as listed by :meth:`.MultipartUpload.list_parts`;
+            ``None`` for a part reported by its uploader.
         """
         pass
 
@@ -2290,16 +2331,81 @@ class MultipartUpload(CloudResource):
         pass
 
     @abstractmethod
+    def generate_part_url(self, part_number: int, expires_in: int,
+                          size: int | None = None) -> PresignedRequest:
+        """
+        Generate a request that uploads one part, for a client without
+        credentials.
+
+        The client sends the part with the request and reports the ``ETag``
+        response header back, to be passed to :meth:`reported_part`.
+
+        :type part_number: ``int``
+        :param part_number: 1-based index of the part, as for
+            :meth:`upload_part`.
+
+        :type expires_in: ``int``
+        :param expires_in: Time to live of the request in seconds. The request
+            can be sent again until it expires, replacing the part.
+
+        :type size: ``int``
+        :param size: The part's size in bytes. Where the store can bind it
+            into the signature (see :attr:`.PresignedRequest.enforces_size`),
+            it refuses a part of another size.
+
+        :rtype: :class:`.PresignedRequest`
+        :return: The request that uploads the part.
+        """
+        pass
+
+    @abstractmethod
+    def reported_part(self, part_number: int,
+                      etag: str | None) -> UploadPart:
+        """
+        A handle for a part uploaded through :meth:`generate_part_url`, from
+        what its uploader reported.
+
+        :meth:`complete` refuses the part if the store doesn't hold it, or,
+        where the store keeps a checksum of each part, if the part it holds is
+        not the one that received ``etag``: a part URL can be used again
+        until it expires, to replace the part.
+
+        :type part_number: ``int``
+        :param part_number: 1-based index of the part.
+
+        :type etag: ``str``
+        :param etag: The ``ETag`` response header the part's upload received,
+            as is; ``None`` if it had none.
+
+        :rtype: :class:`.UploadPart`
+        :return: A part handle to pass to :meth:`complete`.
+        """
+        pass
+
+    @abstractmethod
+    def list_parts(self) -> list[UploadPart]:
+        """
+        The parts the store holds for this upload, with their sizes.
+
+        :rtype: ``list`` of :class:`.UploadPart`
+        :return: The uploaded parts, in ascending ``part_number``.
+        """
+        pass
+
+    @abstractmethod
     def complete(self, parts: list[UploadPart]) -> BucketObject:
         """
         Finalize the upload, assembling parts in ascending ``part_number``.
 
         :type parts: ``list`` of :class:`.UploadPart`
-        :param parts: The handles returned by :meth:`upload_part`. They may be
-            supplied in any order.
+        :param parts: The handles returned by :meth:`upload_part` or
+            :meth:`reported_part`. They may be supplied in any order.
 
         :rtype: :class:`.BucketObject`
         :return: The completed object.
+
+        :raises InvalidPartException: if the store doesn't hold a reported
+            part as its uploader reported it.
         """
         pass
 

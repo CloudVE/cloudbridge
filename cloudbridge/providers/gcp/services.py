@@ -55,6 +55,7 @@ from cloudbridge.interfaces.resources import LaunchConfig
 from cloudbridge.interfaces.resources import MachineImage
 from cloudbridge.interfaces.resources import MultipartUpload
 from cloudbridge.interfaces.resources import Network
+from cloudbridge.interfaces.resources import PresignedRequest
 from cloudbridge.interfaces.resources import Region
 from cloudbridge.interfaces.resources import ResultList
 from cloudbridge.interfaces.resources import Router
@@ -1766,6 +1767,25 @@ class GCPBucketObjectService(BaseBucketObjectService):
         self._delete_objects(bucket, sources + intermediates,
                              ignore_missing=True)
         return self.get(bucket, upload.object_name)
+
+    # Presigned uploads are not supported on GCP yet.
+    def generate_upload_url(self, bucket: Bucket | str, object_name: str,
+                            expires_in: int,
+                            size: int | None) -> PresignedRequest:
+        raise NotImplementedError("Presigned uploads are not supported on GCP yet")
+
+    def generate_part_url(self, bucket: Bucket | str, upload: MultipartUpload,
+                          part_number: int, expires_in: int,
+                          size: int | None) -> PresignedRequest:
+        raise NotImplementedError("Presigned uploads are not supported on GCP yet")
+
+    def reported_part(self, bucket: Bucket | str, upload: MultipartUpload,
+                      part_number: int, etag: str | None) -> UploadPart:
+        raise NotImplementedError("Presigned uploads are not supported on GCP yet")
+
+    def list_parts(self, bucket: Bucket | str,
+                   upload: MultipartUpload) -> builtins.list[UploadPart]:
+        raise NotImplementedError("Presigned uploads are not supported on GCP yet")
 
     @dispatch(event="provider.storage._bucket_objects.abort_multipart_upload",
               priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)

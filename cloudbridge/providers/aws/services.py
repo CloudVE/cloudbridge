@@ -10,6 +10,8 @@ from typing import Any
 from typing import IO
 from typing import TYPE_CHECKING
 from typing import cast
+from urllib.parse import parse_qs
+from urllib.parse import urlparse
 
 from botocore.exceptions import ClientError
 
@@ -47,6 +49,7 @@ from cloudbridge.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.interfaces.exceptions import InvalidParamException
+from cloudbridge.interfaces.exceptions import InvalidPartException
 from cloudbridge.interfaces.exceptions import InvalidValueException
 from cloudbridge.interfaces.exceptions import ProviderInternalException
 from cloudbridge.interfaces.resources import Bucket
@@ -63,6 +66,7 @@ from cloudbridge.interfaces.resources import MachineImage
 from cloudbridge.interfaces.resources import MultipartUpload
 from cloudbridge.interfaces.resources import Network
 from cloudbridge.interfaces.resources import PlacementZone
+from cloudbridge.interfaces.resources import PresignedRequest
 from cloudbridge.interfaces.resources import Region
 from cloudbridge.interfaces.resources import ResultList
 from cloudbridge.interfaces.resources import Router
@@ -706,6 +710,65 @@ class AWSBucketObjectService(BaseBucketObjectService):
             UploadId=upload.id, PartNumber=part_number, Body=data)
         return BaseUploadPart(part_number, response['ETag'])
 
+    def _presigned_put(self, client_method: str, params: dict[str, Any],
+                       expires_in: int,
+                       size: int | None) -> PresignedRequest:
+        if size is not None:
+            params['ContentLength'] = size
+        client = cast("AWSCloudProvider", self.provider).s3_conn.meta.client
+        url = client.generate_presigned_url(client_method, Params=params,
+                                            ExpiresIn=expires_in)
+        # SigV4 signs the size into the URL; SigV2 (s3_signature_version
+        # 's3') signs no headers.
+        signed_headers = parse_qs(urlparse(url).query).get(
+            'X-Amz-SignedHeaders', [''])[0].split(';')
+        return PresignedRequest(
+            'PUT', url, enforces_size='content-length' in signed_headers)
+
+    @dispatch(event="provider.storage._bucket_objects.generate_upload_url",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def generate_upload_url(self, bucket: Bucket | str, object_name: str,
+                            expires_in: int,
+                            size: int | None) -> PresignedRequest:
+        return self._presigned_put(
+            'put_object',
+            {'Bucket': cast(Any, bucket).name, 'Key': object_name},
+            expires_in, size)
+
+    @dispatch(event="provider.storage._bucket_objects.generate_part_url",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def generate_part_url(self, bucket: Bucket | str, upload: MultipartUpload,
+                          part_number: int, expires_in: int,
+                          size: int | None) -> PresignedRequest:
+        return self._presigned_put(
+            'upload_part',
+            {'Bucket': cast(Any, bucket).name, 'Key': upload.object_name,
+             'UploadId': upload.id, 'PartNumber': part_number},
+            expires_in, size)
+
+    @dispatch(event="provider.storage._bucket_objects.reported_part",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def reported_part(self, bucket: Bucket | str, upload: MultipartUpload,
+                      part_number: int, etag: str | None) -> UploadPart:
+        if not etag:
+            raise InvalidPartException(
+                "Part {0} of {1} was reported without the ETag S3 returns for"
+                " every part".format(part_number, upload.object_name))
+        # S3 compares the ETag with the part it holds when the upload
+        # completes.
+        return BaseUploadPart(part_number, etag)
+
+    @dispatch(event="provider.storage._bucket_objects.list_parts",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def list_parts(self, bucket: Bucket | str,
+                   upload: MultipartUpload) -> builtins.list[UploadPart]:
+        client = cast("AWSCloudProvider", self.provider).s3_conn.meta.client
+        pages = client.get_paginator('list_parts').paginate(
+            Bucket=cast(Any, bucket).name, Key=upload.object_name,
+            UploadId=upload.id)
+        return [BaseUploadPart(part['PartNumber'], part['ETag'], part['Size'])
+                for page in pages for part in page.get('Parts', [])]
+
     @dispatch(event="provider.storage._bucket_objects."
                     "complete_multipart_upload",
               priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
@@ -715,12 +778,18 @@ class AWSBucketObjectService(BaseBucketObjectService):
                                   ) -> BucketObject:
         ordered = sorted(parts, key=lambda p: p.part_number)
         client = cast("AWSCloudProvider", self.provider).s3_conn.meta.client
-        client.complete_multipart_upload(
-            Bucket=cast(Any, bucket).name, Key=upload.object_name,
-            UploadId=upload.id,
-            MultipartUpload={'Parts': [
-                {'PartNumber': p.part_number, 'ETag': p.etag}
-                for p in ordered]})
+        try:
+            client.complete_multipart_upload(
+                Bucket=cast(Any, bucket).name, Key=upload.object_name,
+                UploadId=upload.id,
+                MultipartUpload={'Parts': [
+                    {'PartNumber': p.part_number, 'ETag': p.etag}
+                    for p in ordered]})
+        except ClientError as e:
+            # A part S3 doesn't hold, or holds with another ETag.
+            if e.response['Error']['Code'] == 'InvalidPart':
+                raise InvalidPartException(str(e)) from e
+            raise
         # get() may return None, but the completed object is expected to exist.
         return cast(BucketObject, self.get(bucket, upload.object_name))
 
