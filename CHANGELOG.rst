@@ -30,6 +30,10 @@
 * **``generate_url`` works on OpenStack with ``os_storage_url`` and
   ``os_auth_token``.** It took the storage URL from Keystone, which such a
   provider doesn't use.
+* **Signed URLs work for object names that need escaping, on Azure and
+  OpenStack.** Azure's ``generate_url`` put the name into the URL unescaped,
+  and so did Swift temporary URLs, so that a name with a ``#`` or a space gave
+  a URL that failed.
 
 ## Pull Requests
 * Upload objects and multipart parts through presigned URLs by @nuwang in https://github.com/CloudVE/cloudbridge/pull/350
