@@ -1,6 +1,7 @@
-"""Completing a GCS multipart upload from the parts its uploaders reported.
+"""Uploads to GCS through signed requests.
 
-GCS has no multipart API: cloudbridge uploads each part as a temporary object
+A signed request must be signed as GCS checks it, the headers it signs
+included. GCS has no multipart API: cloudbridge uploads each part as a temporary object
 and composes the parts. A client without credentials uploads a part through a
 signed URL, which it can send again until it expires, and reports the ETag GCS
 returned: the part's MD5. Completing the upload checks each part against its
@@ -17,17 +18,24 @@ import re
 import unittest
 from unittest import mock
 from urllib.parse import parse_qs
+from urllib.parse import quote
 from urllib.parse import unquote
 from urllib.parse import urlsplit
 
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric import rsa
+
+from google.oauth2.service_account import Credentials
 
 from googleapiclient import discovery
 
 import httplib2
 
 from cloudbridge.interfaces.exceptions import InvalidPartException
+from cloudbridge.providers.gcp import helpers
 from cloudbridge.providers.gcp.provider import GCPCloudProvider
 from cloudbridge.providers.gcp.resources import GCPBucket
 
@@ -43,6 +51,36 @@ _SERVICE_ACCOUNT = {
         serialization.NoEncryption()).decode(),
     'token_uri': 'https://oauth2.googleapis.com/token',
 }
+
+
+def _signed_as_gcs_checks(url, method, headers):
+    """Whether GCS would accept a V4 signed ``url`` sent with ``headers``."""
+    parts = urlsplit(url)
+    query = {k: v[0] for k, v in parse_qs(parts.query).items()}
+    signature = query.pop('x-goog-signature')
+    sent = dict({k.lower(): v for k, v in headers.items()},
+                host=parts.hostname)
+    signed = query['X-Goog-SignedHeaders'].split(';')
+    canonical_request = '\n'.join([
+        method, parts.path,
+        '&'.join('{0}={1}'.format(quote(k, safe=''), quote(v, safe=''))
+                 for k, v in sorted(query.items())),
+        ''.join('{0}:{1}\n'.format(name, ' '.join(sent[name].split()))
+                for name in signed),
+        ';'.join(signed), 'UNSIGNED-PAYLOAD'])
+    string_to_sign = '\n'.join([
+        'GOOG4-RSA-SHA256', query['X-Goog-Date'],
+        query['X-Goog-Credential'].split('/', 1)[1],
+        hashlib.sha256(canonical_request.encode()).hexdigest()])
+    try:
+        _KEY.public_key().verify(bytes.fromhex(signature),
+                                 string_to_sign.encode(), padding.PKCS1v15(),
+                                 hashes.SHA256())
+        return True
+    except InvalidSignature:
+        return False
+
+
 _OBJECT_PATH = re.compile(r'/storage/v1/b/([^/]+)/o(?:/([^/]+))?(/compose)?$')
 
 
@@ -197,3 +235,31 @@ class GCSReportedPartsTestCase(unittest.TestCase):
         with self.assertRaises(InvalidPartException):
             self._complete([(1, etag)])
         self.assertNotIn('dataset.dat', self.gcs.objects)
+
+
+class GCSSignedRequestTestCase(unittest.TestCase):
+
+    def test_upload_urls_sign_the_size_they_bind(self):
+        provider = GCPCloudProvider({
+            'gcp_service_creds_dict': _SERVICE_ACCOUNT,
+            'gcp_zone_name': 'us-central1-a'})
+        bucket = GCPBucket(provider, {'name': 'outputs'})
+
+        request = bucket.objects.generate_upload_url('a dir/dataset.dat', 300,
+                                                     size=5)
+
+        self.assertTrue(request.enforces_size)
+        self.assertTrue(_signed_as_gcs_checks(request.url, 'PUT',
+                                              request.headers))
+        self.assertFalse(_signed_as_gcs_checks(
+            request.url, 'PUT', {'x-goog-content-length-range': '0,50'}))
+
+    def test_signed_header_values_keep_their_case(self):
+        headers = {'x-goog-meta-label': 'Mixed  Case'}
+
+        url = helpers.generate_signed_url(
+            Credentials.from_service_account_info(_SERVICE_ACCOUNT),
+            'outputs', 'dataset.dat', expiration=300, http_method='PUT',
+            headers=dict(headers))
+
+        self.assertTrue(_signed_as_gcs_checks(url, 'PUT', headers))
