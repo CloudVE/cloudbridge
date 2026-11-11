@@ -52,6 +52,7 @@ from cloudbridge.interfaces.resources import NetworkState
 from cloudbridge.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.interfaces.resources import PageableObjectMixin
 from cloudbridge.interfaces.resources import PlacementZone
+from cloudbridge.interfaces.resources import PresignedRequest
 from cloudbridge.interfaces.resources import Region
 from cloudbridge.interfaces.resources import ResultList
 from cloudbridge.interfaces.resources import Router
@@ -734,16 +735,54 @@ class BaseRegion(BaseCloudResource, Region):
         return next(iter(self.zones))
 
 
+class BasePresignedRequest(PresignedRequest):
+    """
+    A presigned request, as concrete providers return it from
+    ``generate_upload_url`` and ``generate_part_url``.
+    """
+
+    def __init__(self, method: str, url: str,
+                 headers: dict[str, str] | None = None,
+                 enforces_size: bool = False) -> None:
+        self._method = method
+        self._url = url
+        self._headers = dict(headers or {})
+        self._enforces_size = enforces_size
+
+    @property
+    def method(self) -> str:
+        return self._method
+
+    @property
+    def url(self) -> str:
+        return self._url
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return self._headers
+
+    @property
+    def enforces_size(self) -> bool:
+        return self._enforces_size
+
+    def __repr__(self) -> str:
+        # The query string carries the signature.
+        return "<CB-{0}: {1} {2}>".format(
+            self.__class__.__name__, self._method, self._url.split('?', 1)[0])
+
+
 class BaseUploadPart(UploadPart):
     """
     A simple, serializable handle for a single uploaded part. Concrete
-    providers return these from ``upload_part`` and consume them in
-    ``complete_multipart_upload``.
+    providers return these from ``upload_part``, ``reported_part`` and
+    ``list_parts``, and consume them in ``complete_multipart_upload``.
     """
 
-    def __init__(self, part_number: int, etag: object) -> None:
+    def __init__(self, part_number: int, etag: object,
+                 size: int | None = None) -> None:
         self._part_number = part_number
         self._etag = etag
+        self._size = size
 
     @property
     def part_number(self) -> int:
@@ -752,6 +791,10 @@ class BaseUploadPart(UploadPart):
     @property
     def etag(self) -> object:
         return self._etag
+
+    @property
+    def size(self) -> int | None:
+        return self._size
 
     def __repr__(self) -> str:
         return "<CB-{0}: {1} ({2})>".format(
@@ -796,6 +839,19 @@ class BaseMultipartUpload(BaseCloudResource, MultipartUpload):
         # public StorageService interface, hence the typed cast + ignore.
         return self._bucket_objects.upload_part(
             self._bucket, self, part_number, data)
+
+    def generate_part_url(self, part_number: int, expires_in: int,
+                          size: int | None = None) -> PresignedRequest:
+        return self._bucket_objects.generate_part_url(
+            self._bucket, self, part_number, expires_in, size)
+
+    def reported_part(self, part_number: int,
+                      etag: str | None) -> UploadPart:
+        return self._bucket_objects.reported_part(
+            self._bucket, self, part_number, etag)
+
+    def list_parts(self) -> list[UploadPart]:
+        return self._bucket_objects.list_parts(self._bucket, self)
 
     def complete(self, parts: list[UploadPart]) -> BucketObject:
         # pylint:disable=protected-access

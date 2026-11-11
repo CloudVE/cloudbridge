@@ -102,3 +102,12 @@ class InvalidParamException(InvalidNameException):
 
     def __init__(self, msg: str) -> None:
         super(InvalidParamException, self).__init__(msg)
+
+
+class InvalidPartException(CloudBridgeBaseException):
+    """
+    Thrown when completing a multipart upload with parts the store does not
+    hold as reported: a part that was never uploaded, or one replaced after its
+    uploader received its ETag.
+    """
+    pass

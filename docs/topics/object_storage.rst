@@ -152,4 +152,78 @@ With your signed URL, you or someone on your team can upload a file like this
     # Only Azure requires the x-ms-blob-type header to be present, but there's no harm
     # in sending this in for all providers.
     headers = {'x-ms-blob-type': 'BlockBlob'}
-    requests.put(url, data=content)
+    requests.put(url, data=content, headers=headers)
+
+
+Uploading without credentials
+-----------------------------
+
+A signed URL from ``generate_url`` needs the object to exist first. To let a
+client without credentials upload an object that doesn't exist yet, generate
+a presigned request for it by name. Signing it creates nothing.
+
+.. code-block:: python
+
+    bucket = provider.storage.buckets.get("my-bucket")
+    request = bucket.objects.generate_upload_url(
+        "my-file.txt", expires_in=3600, size=len(content))
+
+The client sends the content as the body of a ``request.method`` request to
+``request.url``, with ``request.headers``. Azure, for instance, needs the
+``x-ms-blob-type`` header there.
+
+.. code-block:: python
+
+    import requests
+
+    response = requests.request(request.method, request.url,
+                                headers=request.headers, data=content)
+    response.raise_for_status()
+
+Where the store can bind the size into the signature,
+``request.enforces_size`` is ``True`` and the store refuses a body of any
+other size. Otherwise, check the object's size once it is uploaded.
+
+A large object can be uploaded in parts, each through a request of its own.
+The upload is begun and completed with credentials, possibly by different
+processes: ``get_multipart_upload`` reopens an upload from its id.
+
+.. code-block:: python
+
+    upload = bucket.objects.create_multipart_upload("my-file.bin")
+    requests_for_client = [upload.generate_part_url(part_number, 3600)
+                           for part_number in (1, 2, 3)]
+    # The client sends each part and reports the ETag header of each
+    # response.
+
+    upload = bucket.objects.get_multipart_upload("my-file.bin", upload.id)
+    upload.complete([upload.reported_part(part_number, etag)
+                     for part_number, etag in reported_etags.items()])
+
+A part's URL works until it expires, so the part it uploaded may have been
+replaced since its ETag was reported. ``complete`` raises
+``InvalidPartException`` if the store doesn't hold a part as reported, where
+the store can tell. ``upload.list_parts()`` lists the parts the store holds,
+with their sizes, which can be checked before completing.
+
+What each store can check:
+
+======================  ============================  =========================
+Provider                Size bound into the request   Reported ETag checked
+======================  ============================  =========================
+AWS                     Yes, with SigV4 signatures    Yes, by S3
+GCP                     Yes                           Yes, against each part's
+                                                      MD5
+OpenStack               No                            Yes, by Swift
+Azure                   No                            No: Azure returns no ETag
+                                                      for a part, and
+                                                      ``reported_part`` ignores
+                                                      it
+======================  ============================  =========================
+
+On Azure a part's request can't be limited to that part: until it expires, it
+can write any part of the object, or the whole object.
+
+On OpenStack, presigned requests and ``generate_url`` sign with the account's
+temp-URL key (``X-Account-Meta-Temp-URL-Key``, else ``-Key-2``). On an account
+without one, cloudbridge sets a random key and keeps it for later requests.

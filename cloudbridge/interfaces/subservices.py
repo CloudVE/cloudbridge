@@ -10,7 +10,9 @@ from cloudbridge.interfaces.resources import DnsRecord
 from cloudbridge.interfaces.resources import FloatingIP
 from cloudbridge.interfaces.resources import Gateway
 from cloudbridge.interfaces.resources import InternetGateway
+from cloudbridge.interfaces.resources import MultipartUpload
 from cloudbridge.interfaces.resources import PageableObjectMixin
+from cloudbridge.interfaces.resources import PresignedRequest
 from cloudbridge.interfaces.resources import ResultList
 from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import TrafficDirection
@@ -83,6 +85,65 @@ class BucketObjectSubService(PageableObjectMixin[BucketObject]):
 
         :rtype: :class:``.BucketObject``
         :return: The newly created bucket object
+        """
+        pass
+
+    @abstractmethod
+    def generate_upload_url(self, name: str, expires_in: int,
+                            size: int | None = None) -> PresignedRequest:
+        """
+        Generate a request that uploads an object, new or existing, for a
+        client without credentials.
+
+        Unlike :meth:`.BucketObject.generate_url`, it needs no object to exist
+        first, and creates none.
+
+        :type name: ``str``
+        :param name: The name of the object to upload.
+
+        :type expires_in: ``int``
+        :param expires_in: Time to live of the request in seconds.
+
+        :type size: ``int``
+        :param size: The object's size in bytes. Where the store can bind it
+            into the signature (see :attr:`.PresignedRequest.enforces_size`),
+            it refuses an object of another size.
+
+        :rtype: :class:`.PresignedRequest`
+        :return: The request that uploads the object.
+        """
+        pass
+
+    @abstractmethod
+    def create_multipart_upload(self, name: str) -> MultipartUpload:
+        """
+        Begin a multipart upload of an object, new or existing.
+
+        Unlike :meth:`.BucketObject.create_multipart_upload`, it needs no
+        object to exist first. The object appears once the upload completes.
+
+        :type name: ``str``
+        :param name: The name of the object to upload.
+
+        :rtype: :class:`.MultipartUpload`
+        :return: An in-progress multipart upload handle.
+        """
+        pass
+
+    @abstractmethod
+    def get_multipart_upload(self, name: str,
+                             upload_id: str) -> MultipartUpload:
+        """
+        A handle for an upload begun earlier, possibly by another process.
+
+        :type name: ``str``
+        :param name: The name of the object being uploaded.
+
+        :type upload_id: ``str``
+        :param upload_id: The upload's :attr:`.MultipartUpload.id`.
+
+        :rtype: :class:`.MultipartUpload`
+        :return: The in-progress multipart upload handle.
         """
         pass
 

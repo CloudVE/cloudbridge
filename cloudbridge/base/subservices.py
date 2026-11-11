@@ -12,7 +12,9 @@ from cloudbridge.interfaces.resources import DnsZone
 from cloudbridge.interfaces.resources import FloatingIP
 from cloudbridge.interfaces.resources import Gateway
 from cloudbridge.interfaces.resources import InternetGateway
+from cloudbridge.interfaces.resources import MultipartUpload
 from cloudbridge.interfaces.resources import Network
+from cloudbridge.interfaces.resources import PresignedRequest
 from cloudbridge.interfaces.resources import ResultList
 from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import TrafficDirection
@@ -26,6 +28,7 @@ from cloudbridge.interfaces.subservices import GatewaySubService
 from cloudbridge.interfaces.subservices import SubnetSubService
 from cloudbridge.interfaces.subservices import VMFirewallRuleSubService
 
+from .resources import BaseMultipartUpload
 from .resources import BasePageableObjectMixin
 
 if TYPE_CHECKING:
@@ -65,6 +68,19 @@ class BaseBucketObjectSubService(BasePageableObjectMixin[BucketObject],
 
     def create(self, name: str) -> BucketObject:
         return self._bucket_objects.create(self.bucket, name)
+
+    def generate_upload_url(self, name: str, expires_in: int,
+                            size: int | None = None) -> PresignedRequest:
+        return self._bucket_objects.generate_upload_url(
+            self.bucket, name, expires_in, size)
+
+    def create_multipart_upload(self, name: str) -> MultipartUpload:
+        return self._bucket_objects.create_multipart_upload(self.bucket, name)
+
+    def get_multipart_upload(self, name: str,
+                             upload_id: str) -> MultipartUpload:
+        return BaseMultipartUpload(self._provider, self.bucket, name,
+                                   upload_id)
 
 
 class BaseGatewaySubService(GatewaySubService,

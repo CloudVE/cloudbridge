@@ -11,6 +11,7 @@ import requests
 from cloudbridge.base import helpers as cb_helpers
 from cloudbridge.base.resources import BaseBucketObject
 from cloudbridge.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.interfaces.exceptions import InvalidPartException
 from cloudbridge.interfaces.provider import TestMockHelperMixin
 from cloudbridge.interfaces.resources import Bucket
 from cloudbridge.interfaces.resources import BucketObject
@@ -23,6 +24,21 @@ from tests.helpers import standard_interface_tests as sit
 # S3 (and Swift) require every part except the last to be >= 5 MiB. Tests use
 # this size so they remain valid against real cloud providers, not just moto.
 MIN_PART_SIZE = 5 * 1024 * 1024
+
+
+def _send(request, data):
+    """Send ``data`` as a client holding nothing but the presigned ``request``."""
+    return requests.request(request.method, request.url,
+                            headers=request.headers, data=data)
+
+
+def _remove_upload(bucket, name, upload):
+    """Remove what an upload left: the object once completed, else its parts."""
+    obj = bucket.objects.get(name)
+    if obj:
+        obj.delete()
+    else:
+        upload.abort()
 
 
 class CloudObjectStoreServiceTestCase(ProviderTestBase):
@@ -497,6 +513,189 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 self.assertTrue(
                     stored is None or stored.size == 0,
                     "Aborted multipart upload must not commit any part data")
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_presigned_multipart_upload_roundtrip(self):
+        name = "cbtest-presigned-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "presigned-mpu.bin"
+            contents = [b"a" * MIN_PART_SIZE, b"b" * MIN_PART_SIZE, b"c" * 1024]
+            upload = test_bucket.objects.create_multipart_upload(obj_name)
+
+            with cb_helpers.cleanup_action(
+                    lambda: _remove_upload(test_bucket, obj_name, upload)):
+                etags = {}
+                for part_number, content in enumerate(contents, start=1):
+                    request = upload.generate_part_url(part_number, 300,
+                                                       size=len(content))
+                    response = _send(request, content)
+                    response.raise_for_status()
+                    etags[part_number] = response.headers.get('ETag')
+                # Nobody sees the object until its upload completes.
+                self.assertIsNone(test_bucket.objects.get(obj_name))
+
+                # Completed later, as by another process, from the upload's id
+                # and the ETags its uploader reported.
+                reopened = test_bucket.objects.get_multipart_upload(
+                    obj_name, upload.id)
+                self.assertEqual(
+                    [(part.part_number, part.size)
+                     for part in reopened.list_parts()],
+                    [(part_number, len(content)) for part_number, content
+                     in enumerate(contents, start=1)])
+                reopened.complete([reopened.reported_part(part_number, etag)
+                                   for part_number, etag in etags.items()])
+
+                stored = test_bucket.objects.get(obj_name)
+                target_stream = BytesIO()
+                stored.save_content(target_stream)
+                self.assertEqual(target_stream.getvalue(), b"".join(contents))
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_presigned_part_replaced_after_its_upload_is_refused(self):
+        # A part URL works until it expires, so the part its uploader sent
+        # may have been replaced by the time the upload is completed.
+        name = "cbtest-presigned-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "presigned-mpu-replaced.bin"
+            upload = test_bucket.objects.create_multipart_upload(obj_name)
+
+            with cb_helpers.cleanup_action(
+                    lambda: _remove_upload(test_bucket, obj_name, upload)):
+                request = upload.generate_part_url(1, 300)
+                sent = _send(request, b"what the uploader sent")
+                sent.raise_for_status()
+                if sent.headers.get('ETag') is None:
+                    self.skipTest("This provider's part uploads return no ETag"
+                                  " to compare")
+                _send(request, b"what replaced it").raise_for_status()
+
+                with self.assertRaises(InvalidPartException):
+                    upload.complete(
+                        [upload.reported_part(1, sent.headers['ETag'])])
+                self.assertIsNone(test_bucket.objects.get(obj_name))
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_reported_part_the_store_does_not_hold_is_refused(self):
+        name = "cbtest-presigned-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "presigned-mpu-missing.bin"
+            upload = test_bucket.objects.create_multipart_upload(obj_name)
+
+            with cb_helpers.cleanup_action(
+                    lambda: _remove_upload(test_bucket, obj_name, upload)):
+                # Part 2 is uploaded; part 1 never is.
+                sent = _send(upload.generate_part_url(2, 300), b"last part")
+                sent.raise_for_status()
+                etag = sent.headers.get('ETag')
+
+                with self.assertRaises(InvalidPartException):
+                    upload.complete([upload.reported_part(1, etag),
+                                     upload.reported_part(2, etag)])
+                self.assertIsNone(test_bucket.objects.get(obj_name))
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_part_reported_without_its_etag_is_refused(self):
+        name = "cbtest-presigned-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "presigned-mpu-no-etag.bin"
+            upload = test_bucket.objects.create_multipart_upload(obj_name)
+
+            with cb_helpers.cleanup_action(
+                    lambda: _remove_upload(test_bucket, obj_name, upload)):
+                sent = _send(upload.generate_part_url(1, 300), b"only part")
+                sent.raise_for_status()
+                if sent.headers.get('ETag') is None:
+                    self.skipTest("This provider's part uploads return no ETag"
+                                  " to compare")
+
+                with self.assertRaises(InvalidPartException):
+                    upload.complete([upload.reported_part(1, None)])
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_an_upload_without_parts_lists_none(self):
+        name = "cbtest-presigned-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "presigned-mpu-empty.bin"
+            upload = test_bucket.objects.create_multipart_upload(obj_name)
+
+            with cb_helpers.cleanup_action(
+                    lambda: _remove_upload(test_bucket, obj_name, upload)):
+                self.assertEqual(upload.list_parts(), [])
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_presigned_upload_url_writes_a_new_object(self):
+        name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "presigned-upload.txt"
+            content = b"Uploaded by a client without credentials."
+            request = test_bucket.objects.generate_upload_url(
+                obj_name, 300, size=len(content))
+            # Signing the URL creates nothing.
+            self.assertIsNone(test_bucket.objects.get(obj_name))
+            # The signature stays out of logs.
+            self.assertNotIn(request.url.split('?', 1)[1], repr(request))
+
+            _send(request, content).raise_for_status()
+            stored = test_bucket.objects.get(obj_name)
+            with cb_helpers.cleanup_action(lambda: stored.delete()):
+                target_stream = BytesIO()
+                stored.save_content(target_stream)
+                self.assertEqual(target_stream.getvalue(), content)
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_presigned_urls_for_a_name_that_needs_escaping(self):
+        name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "a dir/a file #1 \u00e9.txt"
+            content = b"Uploaded by a client without credentials."
+            _send(test_bucket.objects.generate_upload_url(obj_name, 300),
+                  content).raise_for_status()
+            stored = test_bucket.objects.get(obj_name)
+            self.assertIsNotNone(stored)
+
+            with cb_helpers.cleanup_action(lambda: stored.delete()):
+                response = requests.get(stored.generate_url(300))
+                response.raise_for_status()
+                self.assertEqual(response.content, content)
+
+    @helpers.skipIfNoService(['storage.buckets'])
+    def test_presigned_urls_binding_a_size_refuse_another_size(self):
+        if isinstance(self.provider, TestMockHelperMixin):
+            self.skipTest("Mock providers don't check signatures")
+        name = "cbtest-presigned-mpu-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "presigned-sized.bin"
+            upload = test_bucket.objects.create_multipart_upload(obj_name)
+
+            with cb_helpers.cleanup_action(
+                    lambda: _remove_upload(test_bucket, obj_name, upload)):
+                sized = [request for request in (
+                    test_bucket.objects.generate_upload_url(obj_name, 300,
+                                                            size=5),
+                    upload.generate_part_url(1, 300, size=5))
+                    if request.enforces_size]
+                if not sized:
+                    self.skipTest("This provider's presigned URLs can't bind"
+                                  " a size")
+                for request in sized:
+                    self.assertFalse(_send(request, b"more than five").ok)
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_transparent_upload_large_stream_uses_multipart(self):

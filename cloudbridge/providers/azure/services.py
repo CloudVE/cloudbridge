@@ -7,7 +7,9 @@ import uuid
 from typing import Any
 from typing import TYPE_CHECKING
 from typing import cast
+from urllib.parse import quote
 
+from azure.core.exceptions import HttpResponseError
 from azure.core.exceptions import ResourceNotFoundError
 from azure.mgmt.compute.models import CreationData
 from azure.mgmt.compute.models import DataDisk
@@ -32,6 +34,7 @@ from azure.mgmt.network.models import SubResource
 import cloudbridge.base.helpers as cb_helpers
 from cloudbridge.base.middleware import dispatch
 from cloudbridge.base.resources import BaseMultipartUpload
+from cloudbridge.base.resources import BasePresignedRequest
 from cloudbridge.base.resources import BaseUploadPart
 from cloudbridge.base.resources import ClientPagedResultList
 from cloudbridge.base.resources import ServerPagedResultList
@@ -60,6 +63,7 @@ from cloudbridge.base.services import BaseVMTypeService
 from cloudbridge.base.services import BaseVolumeService
 from cloudbridge.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.interfaces.exceptions import InvalidParamException
+from cloudbridge.interfaces.exceptions import InvalidPartException
 from cloudbridge.interfaces.exceptions import InvalidValueException
 from cloudbridge.interfaces.exceptions import ProviderInternalException
 from cloudbridge.interfaces.resources import Bucket
@@ -75,6 +79,7 @@ from cloudbridge.interfaces.resources import LaunchConfig
 from cloudbridge.interfaces.resources import MachineImage
 from cloudbridge.interfaces.resources import MultipartUpload
 from cloudbridge.interfaces.resources import Network
+from cloudbridge.interfaces.resources import PresignedRequest
 from cloudbridge.interfaces.resources import Region
 from cloudbridge.interfaces.resources import ResultList
 from cloudbridge.interfaces.resources import Router
@@ -745,16 +750,84 @@ class AzureBucketObjectService(BaseBucketObjectService):
                                   parts: builtins.list[UploadPart]
                                   ) -> BucketObject:
         ordered = sorted(parts, key=lambda p: p.part_number)
-        cast("AzureCloudProvider", self.provider).azure_client.\
-            commit_block_list(
-                cast("Bucket", bucket).name, upload.object_name,
-                [p.etag for p in ordered])
+        try:
+            cast("AzureCloudProvider", self.provider).azure_client.\
+                commit_block_list(
+                    cast("Bucket", bucket).name, upload.object_name,
+                    [p.etag for p in ordered])
+        except HttpResponseError as e:
+            # A block Azure doesn't hold. azure-storage-blob adds the
+            # service's error code to the errors it raises.
+            if e.error_code == 'InvalidBlockList':  # type: ignore[attr-defined]
+                raise InvalidPartException(str(e)) from e
+            raise
         obj = self.get(bucket, upload.object_name)
         if obj is None:
             raise ProviderInternalException(
                 "Object %s not found after completing multipart upload"
                 % upload.object_name)
         return obj
+
+    # A SAS can't bind a size, and can't be limited to a block: a part's URL
+    # writes any block of the object, or the whole object, until it expires.
+    @dispatch(event="provider.storage._bucket_objects.generate_upload_url",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def generate_upload_url(self, bucket: Bucket | str, object_name: str,
+                            expires_in: int,
+                            size: int | None) -> PresignedRequest:
+        url = cast("AzureCloudProvider", self.provider).azure_client.\
+            get_blob_upload_url(cast("Bucket", bucket).name, object_name,
+                                expires_in)
+        return BasePresignedRequest('PUT', url,
+                                    headers={'x-ms-blob-type': 'BlockBlob'})
+
+    @dispatch(event="provider.storage._bucket_objects.generate_part_url",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def generate_part_url(self, bucket: Bucket | str, upload: MultipartUpload,
+                          part_number: int, expires_in: int,
+                          size: int | None) -> PresignedRequest:
+        url = cast("AzureCloudProvider", self.provider).azure_client.\
+            get_blob_upload_url(cast("Bucket", bucket).name,
+                                upload.object_name, expires_in)
+        # The SDK sends a block id base64-encoded, as stage_block and
+        # commit_block_list do.
+        block_id = base64.b64encode(
+            self._block_id(upload.id, part_number).encode()).decode()
+        return BasePresignedRequest('PUT', "{0}&comp=block&blockid={1}".format(
+            url, quote(block_id, safe='')))
+
+    @dispatch(event="provider.storage._bucket_objects.reported_part",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def reported_part(self, bucket: Bucket | str, upload: MultipartUpload,
+                      part_number: int, etag: str | None) -> UploadPart:
+        # Azure returns no ETag for a block, and keeps no checksum of it to
+        # compare one with: completing the upload refuses a block Azure
+        # doesn't hold, but not one replaced since.
+        return BaseUploadPart(part_number,
+                              self._block_id(upload.id, part_number))
+
+    @dispatch(event="provider.storage._bucket_objects.list_parts",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
+    def list_parts(self, bucket: Bucket | str,
+                   upload: MultipartUpload) -> builtins.list[UploadPart]:
+        try:
+            blocks = cast("AzureCloudProvider", self.provider).azure_client.\
+                get_uncommitted_blocks(cast("Bucket", bucket).name,
+                                       upload.object_name)
+        except ResourceNotFoundError:
+            # The first block staged creates the blob.
+            return []
+        prefix = "{0}-".format(upload.id)
+        parts = []
+        for block in blocks:
+            try:
+                name = base64.b64decode(block.id, validate=True).decode()
+            except ValueError:
+                continue  # A block another client staged
+            if name.startswith(prefix):
+                parts.append(BaseUploadPart(int(name[len(prefix):]), block.id,
+                                            size=block.size))
+        return sorted(parts, key=lambda p: p.part_number)
 
     @dispatch(event="provider.storage._bucket_objects.abort_multipart_upload",
               priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)

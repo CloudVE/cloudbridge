@@ -22,6 +22,7 @@ from cloudbridge.interfaces.resources import MachineImage
 from cloudbridge.interfaces.resources import MultipartUpload
 from cloudbridge.interfaces.resources import Network
 from cloudbridge.interfaces.resources import PageableObjectMixin
+from cloudbridge.interfaces.resources import PresignedRequest
 from cloudbridge.interfaces.resources import Region
 from cloudbridge.interfaces.resources import ResultList
 from cloudbridge.interfaces.resources import Router
@@ -1345,6 +1346,48 @@ class BucketObjectService(CloudService):
 
         :rtype: :class:`.UploadPart`
         :return: A handle for the uploaded part.
+        """
+        pass
+
+    @abstractmethod
+    def generate_upload_url(self, bucket: Bucket | str, object_name: str,
+                            expires_in: int,
+                            size: int | None) -> PresignedRequest:
+        """
+        Generate a request that uploads an object without credentials.
+
+        See :meth:`.BucketObjectSubService.generate_upload_url`.
+        """
+        pass
+
+    @abstractmethod
+    def generate_part_url(self, bucket: Bucket | str, upload: MultipartUpload,
+                          part_number: int, expires_in: int,
+                          size: int | None) -> PresignedRequest:
+        """
+        Generate a request that uploads one part without credentials.
+
+        See :meth:`.MultipartUpload.generate_part_url`.
+        """
+        pass
+
+    @abstractmethod
+    def reported_part(self, bucket: Bucket | str, upload: MultipartUpload,
+                      part_number: int, etag: str | None) -> UploadPart:
+        """
+        A handle for a part uploaded through a part URL.
+
+        See :meth:`.MultipartUpload.reported_part`.
+        """
+        pass
+
+    @abstractmethod
+    def list_parts(self, bucket: Bucket | str,
+                   upload: MultipartUpload) -> builtins.list[UploadPart]:
+        """
+        The parts the store holds for an upload, with their sizes.
+
+        See :meth:`.MultipartUpload.list_parts`.
         """
         pass
 

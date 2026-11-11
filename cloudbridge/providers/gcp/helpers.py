@@ -304,18 +304,13 @@ def generate_signed_url(credentials: Any, bucket_name: str, object_name: str,
     host = '{}.storage.googleapis.com'.format(bucket_name)
     headers['host'] = host
 
-    canonical_headers = ''
-    ordered_headers = collections.OrderedDict(sorted(headers.items()))
-    for k, v in ordered_headers.items():
-        lower_k = str(k).lower()
-        strip_v = str(v).lower()
-        canonical_headers += '{}:{}\n'.format(lower_k, strip_v)
-
-    signed_headers = ''
-    for k, _ in ordered_headers.items():
-        lower_k = str(k).lower()
-        signed_headers += '{};'.format(lower_k)
-    signed_headers = signed_headers[:-1]  # remove trailing ';'
+    # Names in lower case, sorted; values trimmed, with runs of whitespace
+    # collapsed, and their case kept.
+    ordered_headers = sorted(
+        (str(k).lower(), ' '.join(str(v).split())) for k, v in headers.items())
+    canonical_headers = ''.join(
+        '{}:{}\n'.format(k, v) for k, v in ordered_headers)
+    signed_headers = ';'.join(k for k, _ in ordered_headers)
 
     if query_parameters is None:
         query_parameters = dict()

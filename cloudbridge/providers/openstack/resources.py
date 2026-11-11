@@ -15,8 +15,6 @@ from typing import Iterable
 from typing import TYPE_CHECKING
 from typing import cast
 from urllib.parse import quote
-from urllib.parse import urljoin
-from urllib.parse import urlparse
 
 import keystoneclient.exceptions as keystoneex
 from keystoneclient.v3.regions import Region
@@ -24,7 +22,6 @@ from keystoneclient.v3.regions import Region
 import swiftclient
 from swiftclient.service import SwiftService
 from swiftclient.service import SwiftUploadObject
-from swiftclient.utils import generate_temp_url
 
 from cloudbridge.base.resources import BaseAttachmentInfo
 from cloudbridge.base.resources import BaseBucket
@@ -70,6 +67,7 @@ from cloudbridge.interfaces.resources import VMType
 from cloudbridge.interfaces.resources import Volume
 from cloudbridge.interfaces.resources import VolumeState
 
+from . import helpers as oshelpers
 from .subservices import OpenStackBucketObjectSubService
 from .subservices import OpenStackDnsRecordSubService
 from .subservices import OpenStackFloatingIPSubService
@@ -1483,17 +1481,9 @@ class OpenStackBucketObject(BaseBucketObject):
                      content_disposition: str | None = None,
                      content_type: str | None = None) -> str:
         http_method = "PUT" if writable else "GET"
-        # Set a temp url key on the object (http://bit.ly/2NBiXGD)
-        temp_url_key = "cloudbridge-tmp-url-key"
-        swift = cast("OpenStackCloudProvider", self._provider).swift
-        swift.post_account(
-            headers={"x-account-meta-temp-url-key": temp_url_key})
-        base_url = urlparse(swift.get_service_auth()[0])
-        access_point = "{0}://{1}".format(base_url.scheme, base_url.netloc)
-        url_path = "/".join([base_url.path, self.cbcontainer.name, self.name])
-        url = urljoin(access_point, generate_temp_url(url_path, expires_in,
-                                                      temp_url_key,
-                                                      http_method))
+        url = oshelpers.temp_url(
+            cast("OpenStackCloudProvider", self._provider).swift,
+            self.cbcontainer.name, self.name, expires_in, http_method)
         if not writable and content_disposition:
             # Swift's tempurl middleware serves Content-Disposition via the
             # unsigned `filename`/`inline` query parameters (the signature
