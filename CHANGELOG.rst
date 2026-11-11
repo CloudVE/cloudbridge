@@ -1,3 +1,39 @@
+4.5.0 - unreleased
+------------------
+
+## Enhancements
+* **Upload objects, and the parts of a multipart upload, through presigned
+  requests.** ``bucket.objects.generate_upload_url(name, expires_in, size)``
+  signs the upload of an object that need not exist yet.
+  ``bucket.objects.create_multipart_upload(name)`` begins an upload by name,
+  ``get_multipart_upload(name, upload_id)`` reopens it in another process, and
+  ``MultipartUpload.generate_part_url`` signs the upload of each part. An
+  upload completed from the ETags its uploader reported
+  (``MultipartUpload.reported_part``) raises the new ``InvalidPartException``
+  when the store doesn't hold a part as reported, such as a part replaced
+  through its still valid URL. ``MultipartUpload.list_parts`` lists the
+  uploaded parts with their sizes. A ``PresignedRequest`` says whether the
+  store refuses a body of another size, as AWS (with SigV4) and GCP do. Azure
+  can't check the parts reported. See "Uploading without credentials" in the
+  object storage docs.
+
+## Fixes
+* **OpenStack temporary URLs are signed with the account's own key.**
+  ``generate_url`` set the account's ``Temp-URL-Key`` to a fixed, published
+  value on every call, replacing any key the operator had set, so that anyone
+  could sign temporary URLs for the account. It now signs with the account's
+  key (``Temp-URL-Key``, else ``Temp-URL-Key-2``), and sets a random key only
+  on an account without one, or still holding the published one. URLs signed
+  with the published key stop working once it is replaced, and an older
+  cloudbridge signing URLs for the same account would set it again: upgrade
+  every cloudbridge using an account together.
+* **``generate_url`` works on OpenStack with ``os_storage_url`` and
+  ``os_auth_token``.** It took the storage URL from Keystone, which such a
+  provider doesn't use.
+
+## Pull Requests
+* Upload objects and multipart parts through presigned URLs by @nuwang in https://github.com/CloudVE/cloudbridge/pull/350
+
 4.4.2 - September 18, 2026 (sha bd6fac9aeaac5c3cb6005d0be77319e9b0cf7fb8)
 -------------------------------------------------------------------------
 
