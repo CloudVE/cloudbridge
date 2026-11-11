@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import builtins
 import io
 import ipaddress
@@ -16,6 +17,7 @@ import googleapiclient
 from cloudbridge.base import helpers as cb_helpers
 from cloudbridge.base.middleware import dispatch
 from cloudbridge.base.resources import BaseMultipartUpload
+from cloudbridge.base.resources import BasePresignedRequest
 from cloudbridge.base.resources import BaseUploadPart
 from cloudbridge.base.resources import ClientPagedResultList
 from cloudbridge.base.resources import ServerPagedResultList
@@ -44,6 +46,7 @@ from cloudbridge.base.services import BaseVMTypeService
 from cloudbridge.base.services import BaseVolumeService
 from cloudbridge.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.interfaces.exceptions import InvalidParamException
+from cloudbridge.interfaces.exceptions import InvalidPartException
 from cloudbridge.interfaces.exceptions import ProviderInternalException
 from cloudbridge.interfaces.resources import Bucket
 from cloudbridge.interfaces.resources import BucketObject
@@ -1724,9 +1727,18 @@ class GCPBucketObjectService(BaseBucketObjectService):
         return ".cb-mpu/{0}/{1}/".format(upload.object_name, upload.id)
 
     @classmethod
+    def _temp_part_prefix(cls, upload: MultipartUpload) -> str:
+        return "{0}part-".format(cls._temp_prefix(upload))
+
+    @classmethod
     def _temp_part_name(cls, upload: MultipartUpload,
                         part_number: int) -> str:
-        return "{0}part-{1:05d}".format(cls._temp_prefix(upload), part_number)
+        return "{0}{1:05d}".format(cls._temp_part_prefix(upload), part_number)
+
+    @staticmethod
+    def _md5(gcs_object: dict[str, Any]) -> str:
+        # A part's MD5 in hex: the ETag GCS returns for its upload, unquoted.
+        return base64.b64decode(gcs_object['md5Hash']).hex()
 
     @dispatch(event="provider.storage._bucket_objects.create_multipart_upload",
               priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
@@ -1748,8 +1760,9 @@ class GCPBucketObjectService(BaseBucketObjectService):
         media_body = googleapiclient.http.MediaIoBaseUpload(
             data, mimetype='application/octet-stream')
         temp_name = self._temp_part_name(upload, part_number)
-        self._create_object_with_media_body(bucket, temp_name, media_body)
-        return BaseUploadPart(part_number, temp_name)
+        response = self._create_object_with_media_body(bucket, temp_name,
+                                                       media_body)
+        return BaseUploadPart(part_number, self._md5(response))
 
     @dispatch(event="provider.storage._bucket_objects."
                     "complete_multipart_upload",
@@ -1758,41 +1771,95 @@ class GCPBucketObjectService(BaseBucketObjectService):
                                   upload: MultipartUpload,
                                   parts: builtins.list[UploadPart]
                                   ) -> GCPBucketObject | None:
-        ordered = sorted(parts, key=lambda p: p.part_number)
-        sources = cast("builtins.list[str]", [p.etag for p in ordered])
-        intermediates = self._compose(bucket, upload, upload.object_name,
-                                      sources)
+        held = {held_part['name']: held_part for held_part in
+                self._list_objects(bucket, self._temp_part_prefix(upload))}
+        sources: builtins.list[dict[str, Any]] = []
+        for part in sorted(parts, key=lambda p: p.part_number):
+            name = self._temp_part_name(upload, part.part_number)
+            if (name not in held or
+                    self._md5(held[name]) != str(part.etag).strip('"')):
+                raise InvalidPartException(
+                    "GCS doesn't hold part {0} of {1} as reported".format(
+                        part.part_number, upload.object_name))
+            # Compose the part only as checked: GCS refuses a part replaced
+            # since.
+            sources.append({'name': name, 'objectPreconditions': {
+                'ifGenerationMatch': held[name]['generation']}})
+        try:
+            intermediates = self._compose(bucket, upload, upload.object_name,
+                                          sources)
+        except googleapiclient.errors.HttpError as e:
+            if e.resp.status in (404, 412):
+                raise InvalidPartException(
+                    "A part of {0} was removed or replaced while the upload"
+                    " completed".format(upload.object_name)) from e
+            raise
         # The temporary part objects and any compose intermediates are real,
         # billable objects, so remove them once assembled.
-        self._delete_objects(bucket, sources + intermediates,
-                             ignore_missing=True)
+        self._delete_objects(
+            bucket, [source['name'] for source in sources] + intermediates,
+            ignore_missing=True)
         return self.get(bucket, upload.object_name)
 
-    # Presigned uploads are not supported on GCP yet.
+    def _signed_put(self, bucket: Bucket | str, object_name: str,
+                    expires_in: int, size: int | None) -> PresignedRequest:
+        # GCS refuses a body outside this range once the header is signed.
+        headers = {} if size is None else {
+            'x-goog-content-length-range': '{0},{0}'.format(size)}
+        provider = cast("GCPCloudProvider", self.provider)
+        # pylint:disable=protected-access
+        url = helpers.generate_signed_url(
+            provider._credentials, cast(GCPBucket, bucket).name, object_name,
+            expiration=expires_in, http_method='PUT', headers=dict(headers))
+        return BasePresignedRequest('PUT', url, headers=headers,
+                                    enforces_size=size is not None)
+
+    @dispatch(event="provider.storage._bucket_objects.generate_upload_url",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
     def generate_upload_url(self, bucket: Bucket | str, object_name: str,
                             expires_in: int,
                             size: int | None) -> PresignedRequest:
-        raise NotImplementedError("Presigned uploads are not supported on GCP yet")
+        return self._signed_put(bucket, object_name, expires_in, size)
 
+    @dispatch(event="provider.storage._bucket_objects.generate_part_url",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
     def generate_part_url(self, bucket: Bucket | str, upload: MultipartUpload,
                           part_number: int, expires_in: int,
                           size: int | None) -> PresignedRequest:
-        raise NotImplementedError("Presigned uploads are not supported on GCP yet")
+        return self._signed_put(
+            bucket, self._temp_part_name(upload, part_number), expires_in,
+            size)
 
+    @dispatch(event="provider.storage._bucket_objects.reported_part",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
     def reported_part(self, bucket: Bucket | str, upload: MultipartUpload,
                       part_number: int, etag: str | None) -> UploadPart:
-        raise NotImplementedError("Presigned uploads are not supported on GCP yet")
+        if not etag:
+            raise InvalidPartException(
+                "Part {0} of {1} was reported without the ETag GCS returns for"
+                " every part".format(part_number, upload.object_name))
+        # The upload's completion compares the ETag with the part GCS holds.
+        return BaseUploadPart(part_number, etag)
 
+    @dispatch(event="provider.storage._bucket_objects.list_parts",
+              priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
     def list_parts(self, bucket: Bucket | str,
                    upload: MultipartUpload) -> builtins.list[UploadPart]:
-        raise NotImplementedError("Presigned uploads are not supported on GCP yet")
+        prefix = self._temp_part_prefix(upload)
+        # Part names sort in part order.
+        return [BaseUploadPart(int(held_part['name'][len(prefix):]),
+                               self._md5(held_part),
+                               size=int(held_part['size']))
+                for held_part in self._list_objects(bucket, prefix)]
 
     @dispatch(event="provider.storage._bucket_objects.abort_multipart_upload",
               priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
     def abort_multipart_upload(self, bucket: Bucket | str,
                                upload: MultipartUpload) -> None:
-        self._delete_objects(bucket, self._list_temp_objects(bucket, upload),
-                             ignore_missing=True)
+        self._delete_objects(
+            bucket, [temp['name'] for temp in
+                     self._list_objects(bucket, self._temp_prefix(upload))],
+            ignore_missing=True)
 
     @dispatch(event="provider.storage._bucket_objects.download_range",
               priority=BaseBucketObjectService.STANDARD_EVENT_PRIORITY)
@@ -1806,12 +1873,13 @@ class GCPBucketObjectService(BaseBucketObjectService):
         return cast(bytes, request.execute())
 
     def _compose(self, bucket: Bucket | str, upload: MultipartUpload,
-                 destination: str, sources: builtins.list[str]) -> builtins.list[str]:
+                 destination: str, sources: builtins.list[dict[str, Any]]
+                 ) -> builtins.list[str]:
         """
-        Compose ``sources`` into ``destination``, chaining through
-        intermediate objects when there are more than ``_MAX_COMPOSE_SOURCES``.
-        Returns the list of intermediate object names created (to be cleaned
-        up by the caller).
+        Compose ``sources`` (``sourceObjects`` entries of a compose request)
+        into ``destination``, chaining through intermediate objects when there
+        are more than ``_MAX_COMPOSE_SOURCES``. Returns the list of
+        intermediate object names created (to be cleaned up by the caller).
         """
         intermediates = []
         level = sources
@@ -1824,27 +1892,26 @@ class GCPBucketObjectService(BaseBucketObjectService):
                     self._temp_prefix(upload), batch)
                 self._compose_once(bucket, name, group)
                 intermediates.append(name)
-                next_level.append(name)
+                next_level.append({'name': name})
                 batch += 1
             level = next_level
         self._compose_once(bucket, destination, level)
         return intermediates
 
     def _compose_once(self, bucket: Bucket | str, destination: str,
-                      sources: builtins.list[str]) -> None:
+                      sources: builtins.list[dict[str, Any]]) -> None:
         provider = cast("GCPCloudProvider", self.provider)
         (provider
          .gcp_storage
          .objects()
          .compose(destinationBucket=cast(GCPBucket, bucket).name,
                   destinationObject=destination,
-                  body={'sourceObjects': [{'name': s} for s in sources]})
+                  body={'sourceObjects': sources})
          .execute())
 
-    def _list_temp_objects(self, bucket: Bucket | str,
-                           upload: MultipartUpload) -> builtins.list[str]:
-        prefix = self._temp_prefix(upload)
-        names: builtins.list[str] = []
+    def _list_objects(self, bucket: Bucket | str,
+                      prefix: str) -> builtins.list[dict[str, Any]]:
+        objects: builtins.list[dict[str, Any]] = []
         page_token = None
         provider = cast("GCPCloudProvider", self.provider)
         while True:
@@ -1855,10 +1922,10 @@ class GCPBucketObjectService(BaseBucketObjectService):
                 .list(bucket=cast(GCPBucket, bucket).name,
                       prefix=prefix, pageToken=page_token)
                 .execute())
-            names.extend(o['name'] for o in response.get('items', []))
+            objects.extend(response.get('items', []))
             page_token = response.get('nextPageToken')
             if not page_token:
-                return names
+                return objects
 
     def _delete_objects(self, bucket: Bucket | str, names: builtins.list[str],
                         ignore_missing: bool = False) -> None:

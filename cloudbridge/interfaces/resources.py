@@ -2285,7 +2285,7 @@ class UploadPart(object):
         Opaque provider handle identifying the stored part.
 
         Its concrete form varies by provider (e.g. an S3 ETag, an Azure block
-        id, a GCS temp-object name, or a Swift segment descriptor) and should
+        id, a GCS part's MD5, or a Swift segment descriptor) and should
         not be interpreted by clients.
 
         :rtype: ``object``
